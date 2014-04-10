@@ -19,10 +19,8 @@ idiomatic wrapper needs some work, but is already useful as it is.
 ## Any documentation?
 
 Inotify is documented in the Linux man pages
-([online version](http://man7.org/linux/man-pages/man7/inotify.7.html)).
-
-Once you know inotify, it should be pretty easy to figure out the wrapper from
-the
+([online version](http://man7.org/linux/man-pages/man7/inotify.7.html)). Once
+you know inotify, it should be pretty easy to figure out the wrapper from the
 [source code](https://github.com/hannobraun/inotify-rs/blob/master/src/wrapper.rs).
 
 That's it, for now. Pull requests welcome!
