@@ -16,6 +16,11 @@ The bindings are complete (after all, inotify isn't that big of an API). The
 idiomatic wrapper needs some work, but is already useful as it is.
 
 
+## How can I compile it?
+
+> rustc src/lib.rs
+
+
 ## Any documentation?
 
 Inotify is documented in the Linux man pages
