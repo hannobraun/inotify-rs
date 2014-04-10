@@ -3,8 +3,8 @@
 ## What is inotify-rs?
 
 It consists of two things:
-- (http://en.wikipedia.org/wiki/Inotify)[inotify] bindings for the
-  (http://rust-lang.org/)[Rust programming language]
+- [inotify](http://en.wikipedia.org/wiki/Inotify) bindings for the
+  [Rust programming language](http://rust-lang.org/)
 - An idiomatic Rust wrapper for those bindings
 
 
@@ -13,17 +13,17 @@ It consists of two things:
 Yes.
 
 The bindings are complete (after all, inotify isn't that big of an API). The
-idiomatic wrapper needs some work, but is already useful.
+idiomatic wrapper needs some work, but is already useful as it is.
 
 
 ## Any documentation?
 
 Inotify is documented in the Linux man pages
-((http://man7.org/linux/man-pages/man7/inotify.7.html)[online version]).
+([online version](http://man7.org/linux/man-pages/man7/inotify.7.html)).
 
 Once you know inotify, it should be pretty easy to figure out the wrapper from
 the
-(https://github.com/hannobraun/inotify-rs/blob/master/src/wrapper.rs)[source code].
+[source code](https://github.com/hannobraun/inotify-rs/blob/master/src/wrapper.rs).
 
 That's it, for now. Pull requests welcome!
 
