@@ -15,7 +15,7 @@ pub type Watch = c_int;
 
 
 pub struct INotify {
-	fd: c_int
+	pub fd: c_int
 }
 
 impl INotify {
