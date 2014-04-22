@@ -80,7 +80,7 @@ impl INotify {
 	}
 
 	pub fn close(&self) -> Result<(), ~str> {
-		let result = unsafe { ffi::close(self.fd) };
+		let result = ffi::close(self.fd as int);
 		match result {
 			0 => Ok(()),
 			_ => Err(last_error())
