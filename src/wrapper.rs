@@ -5,6 +5,7 @@ use libc::{
 use std::c_str::CString;
 use std::mem;
 use std::io::{
+	EndOfFile,
 	IoError,
 	IoResult
 };
@@ -58,7 +59,7 @@ impl INotify {
 		}
 	}
 
-	pub fn event(&self) -> Result<inotify_event, ~str> {
+	pub fn event(&self) -> IoResult<inotify_event> {
 		let event = inotify_event {
 			wd    : 0,
 			mask  : 0,
@@ -77,8 +78,12 @@ impl INotify {
 		};
 
 		match result {
-			0  => Err(~"end of file"),
-			-1 => Err(last_error()),
+			0  => Err(IoError {
+				kind  : EndOfFile,
+				desc  : "end of file",
+				detail: None
+			}),
+			-1 => Err(IoError::last_error()),
 			_  => Ok(event)
 		}
 	}
