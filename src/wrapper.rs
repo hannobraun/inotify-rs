@@ -4,6 +4,10 @@ use libc::{
 	c_void };
 use std::c_str::CString;
 use std::mem;
+use std::io::{
+	IoError,
+	IoResult
+};
 use std::os;
 use std::ptr;
 
@@ -19,15 +23,15 @@ pub struct INotify {
 }
 
 impl INotify {
-	pub fn init() -> Result<INotify, ~str> {
+	pub fn init() -> IoResult<INotify> {
 		INotify::init_with_flags(0)
 	}
 
-	pub fn init_with_flags(flags: int) -> Result<INotify, ~str> {
+	pub fn init_with_flags(flags: int) -> IoResult<INotify> {
 		let fd = unsafe { ffi::inotify_init1(flags as c_int) };
 
 		match fd {
-			-1 => Err(last_error()),
+			-1 => Err(IoError::last_error()),
 			_  => Ok(INotify { fd: fd })
 		}
 	}
