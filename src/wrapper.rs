@@ -53,8 +53,8 @@ impl INotify {
 		match result {
 			0  => Ok(()),
 			-1 => Err(last_error()),
-			_  => Err(format!(
-				"unexpected return code from inotify_rm_watch ({})", result))
+			_  => fail!(
+				"unexpected return code from inotify_rm_watch ({})", result)
 		}
 	}
 
