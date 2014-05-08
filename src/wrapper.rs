@@ -48,11 +48,11 @@ impl INotify {
 		}
 	}
 
-	pub fn rm_watch(&self, watch: Watch) -> Result<(), ~str> {
+	pub fn rm_watch(&self, watch: Watch) -> IoResult<()> {
 		let result = unsafe { ffi::inotify_rm_watch(self.fd, watch) };
 		match result {
 			0  => Ok(()),
-			-1 => Err(last_error()),
+			-1 => Err(IoError::last_error()),
 			_  => fail!(
 				"unexpected return code from inotify_rm_watch ({})", result)
 		}
