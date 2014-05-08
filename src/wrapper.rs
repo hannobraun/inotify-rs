@@ -36,14 +36,14 @@ impl INotify {
 		}
 	}
 
-	pub fn add_watch(&self, path_name: &str, mask: u32) -> Result<Watch, ~str> {
+	pub fn add_watch(&self, path_name: &str, mask: u32) -> IoResult<Watch> {
 		let wd = unsafe {
 			let c_path_name = path_name.to_c_str().unwrap();
 			ffi::inotify_add_watch(self.fd, c_path_name, mask)
 		};
 
 		match wd {
-			-1 => Err(last_error()),
+			-1 => Err(IoError::last_error()),
 			_  => Ok(wd)
 		}
 	}
