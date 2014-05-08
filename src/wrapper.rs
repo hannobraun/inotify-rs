@@ -1,15 +1,12 @@
-use libc;
 use libc::{
 	c_int,
 	c_void };
-use std::c_str::CString;
 use std::mem;
 use std::io::{
 	EndOfFile,
 	IoError,
 	IoResult
 };
-use std::os;
 use std::ptr;
 
 use ffi;
@@ -88,22 +85,11 @@ impl INotify {
 		}
 	}
 
-	pub fn close(&self) -> Result<(), ~str> {
+	pub fn close(&self) -> IoResult<()> {
 		let result = ffi::close(self.fd as int);
 		match result {
 			0 => Ok(()),
-			_ => Err(last_error())
+			_ => Err(IoError::last_error())
 		}
-	}
-}
-
-
-fn last_error() -> ~str {
-	unsafe {
-		let c_error = libc::strerror(os::errno() as i32);
-		CString::new(c_error, false)
-			.as_str()
-			.expect("failed to convert C error message into Rust string")
-			.to_owned()
 	}
 }
