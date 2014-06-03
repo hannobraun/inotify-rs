@@ -57,7 +57,7 @@ impl INotify {
 	}
 
 	pub fn event(&self) -> IoResult<inotify_event> {
-		let event = inotify_event {
+		let mut event = inotify_event {
 			wd    : 0,
 			mask  : 0,
 			cookie: 0,
@@ -70,7 +70,7 @@ impl INotify {
 		let result = unsafe {
 			ffi::read(
 				self.fd,
-				&event as *inotify_event as *c_void,
+				&mut event as *mut inotify_event as *mut c_void,
 				event_size as u64)
 		};
 
