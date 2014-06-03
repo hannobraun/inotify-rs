@@ -1,6 +1,7 @@
 use libc::{
 	c_int,
 	c_void };
+use std::c_str::CString;
 use std::mem;
 use std::io::{
 	EndOfFile,
@@ -56,7 +57,7 @@ impl INotify {
 		}
 	}
 
-	pub fn event(&self) -> IoResult<inotify_event> {
+	pub fn event(&self) -> IoResult<Event> {
 		let mut event = inotify_event {
 			wd    : 0,
 			mask  : 0,
@@ -81,7 +82,7 @@ impl INotify {
 				detail: None
 			}),
 			-1 => Err(IoError::last_error()),
-			_  => Ok(event)
+			_  => Ok(Event::new(event))
 		}
 	}
 
@@ -91,5 +92,108 @@ impl INotify {
 			0 => Ok(()),
 			_ => Err(IoError::last_error())
 		}
+	}
+}
+
+
+pub struct Event {
+	pub event: inotify_event,
+
+	name: CString
+}
+
+impl Event {
+	fn new(event: inotify_event) -> Event {
+		unsafe {
+			Event {
+				event: event,
+				name: CString::new(event.name, false)
+			}
+		}
+	}
+	pub fn name<'a>(&'a self) -> &'a str {
+		if self.event.len > 0 {
+			match self.name.as_str() {
+				Some(string) =>
+					string,
+				None =>
+					fail!("Expected UTF-8 string")
+			}
+		}
+		else {
+			""
+		}
+	}
+
+	pub fn access(&self) -> bool {
+		return self.event.mask & ffi::IN_ACCESS > 0;
+	}
+
+	pub fn modify(&self) -> bool {
+		return self.event.mask & ffi::IN_MODIFY > 0;
+	}
+
+	pub fn attrib(&self) -> bool {
+		return self.event.mask & ffi::IN_ATTRIB > 0;
+	}
+
+	pub fn close_write(&self) -> bool {
+		return self.event.mask & ffi::IN_CLOSE_WRITE > 0;
+	}
+
+	pub fn close_nowrite(&self) -> bool {
+		return self.event.mask & ffi::IN_CLOSE_NOWRITE > 0;
+	}
+
+	pub fn open(&self) -> bool {
+		return self.event.mask & ffi::IN_OPEN > 0;
+	}
+
+	pub fn moved_from(&self) -> bool {
+		return self.event.mask & ffi::IN_MOVED_FROM > 0;
+	}
+
+	pub fn moved_to(&self) -> bool {
+		return self.event.mask & ffi::IN_MOVED_TO > 0;
+	}
+
+	pub fn create(&self) -> bool {
+		return self.event.mask & ffi::IN_CREATE > 0;
+	}
+
+	pub fn delete(&self) -> bool {
+		return self.event.mask & ffi::IN_DELETE > 0;
+	}
+
+	pub fn delete_self(&self) -> bool {
+		return self.event.mask & ffi::IN_DELETE_SELF > 0;
+	}
+
+	pub fn move_self(&self) -> bool {
+		return self.event.mask & ffi::IN_MOVE_SELF > 0;
+	}
+
+	pub fn move(&self) -> bool {
+		return self.event.mask & ffi::IN_MOVE > 0;
+	}
+
+	pub fn close(&self) -> bool {
+		return self.event.mask & ffi::IN_CLOSE > 0;
+	}
+
+	pub fn is_dir(&self) -> bool {
+		return self.event.mask & ffi::IN_ISDIR > 0;
+	}
+
+	pub fn unmount(&self) -> bool {
+		return self.event.mask & ffi::IN_UNMOUNT > 0;
+	}
+
+	pub fn queue_overflow(&self) -> bool {
+		return self.event.mask & ffi::IN_Q_OVERFLOW > 0;
+	}
+
+	pub fn ignored(&self) -> bool {
+		return self.event.mask & ffi::IN_IGNORED > 0;
 	}
 }
