@@ -71,7 +71,7 @@ impl INotify {
 		};
 
 		let mut buffer = [0u8, ..1024];
-		let mut len = unsafe {
+		let len = unsafe {
 			ffi::read(
 				self.fd,
 				buffer.as_mut_ptr() as *mut c_void,
@@ -89,14 +89,17 @@ impl INotify {
 			_ => ()
 		}
 
-		while len > 0 {
+		let mut i = 0;
+		while i < len {
+			let slice = buffer.slice_from(i as uint);
+
 			let event: inotify_event = unsafe {
-				mem::transmute(*(buffer.as_ptr() as *inotify_event))
+				mem::transmute(*(slice.as_ptr() as *inotify_event))
 			};
 
 			self.events.push(Event::new(event));
 
-			len -= (mem::size_of::<inotify_event>() + event.len as uint) as i64;
+			i += (mem::size_of::<inotify_event>() + event.len as uint) as i64;
 		}
 
 		Ok(self.events.pop().expect("expected event"))
