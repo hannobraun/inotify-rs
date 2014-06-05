@@ -99,103 +99,100 @@ impl INotify {
 
 
 pub struct Event {
-	pub event: inotify_event,
-
-	name: CString
+	pub wd    : i32,
+	pub mask  : u32,
+	pub cookie: u32,
+	pub name  : String
 }
 
 impl Event {
 	fn new(event: inotify_event) -> Event {
-		unsafe {
-			Event {
-				event: event,
-				name: CString::new(event.name, false)
-			}
-		}
-	}
-	pub fn name<'a>(&'a self) -> &'a str {
-		if self.event.len > 0 {
-			match self.name.as_str() {
+		let name = unsafe {
+			match CString::new(event.name, false).as_str() {
 				Some(string) =>
-					string,
+					string.to_str(),
 				None =>
-					fail!("Expected UTF-8 string")
+					fail!("Failed to convert c string to Rust string")
 			}
-		}
-		else {
-			""
+		};
+
+		Event {
+			wd    : event.wd,
+			mask  : event.mask,
+			cookie: event.cookie,
+			name  : name,
 		}
 	}
 
 	pub fn access(&self) -> bool {
-		return self.event.mask & ffi::IN_ACCESS > 0;
+		return self.mask & ffi::IN_ACCESS > 0;
 	}
 
 	pub fn modify(&self) -> bool {
-		return self.event.mask & ffi::IN_MODIFY > 0;
+		return self.mask & ffi::IN_MODIFY > 0;
 	}
 
 	pub fn attrib(&self) -> bool {
-		return self.event.mask & ffi::IN_ATTRIB > 0;
+		return self.mask & ffi::IN_ATTRIB > 0;
 	}
 
 	pub fn close_write(&self) -> bool {
-		return self.event.mask & ffi::IN_CLOSE_WRITE > 0;
+		return self.mask & ffi::IN_CLOSE_WRITE > 0;
 	}
 
 	pub fn close_nowrite(&self) -> bool {
-		return self.event.mask & ffi::IN_CLOSE_NOWRITE > 0;
+		return self.mask & ffi::IN_CLOSE_NOWRITE > 0;
 	}
 
 	pub fn open(&self) -> bool {
-		return self.event.mask & ffi::IN_OPEN > 0;
+		return self.mask & ffi::IN_OPEN > 0;
 	}
 
 	pub fn moved_from(&self) -> bool {
-		return self.event.mask & ffi::IN_MOVED_FROM > 0;
+		return self.mask & ffi::IN_MOVED_FROM > 0;
 	}
 
 	pub fn moved_to(&self) -> bool {
-		return self.event.mask & ffi::IN_MOVED_TO > 0;
+		return self.mask & ffi::IN_MOVED_TO > 0;
 	}
 
 	pub fn create(&self) -> bool {
-		return self.event.mask & ffi::IN_CREATE > 0;
+		return self.mask & ffi::IN_CREATE > 0;
 	}
 
 	pub fn delete(&self) -> bool {
-		return self.event.mask & ffi::IN_DELETE > 0;
+		return self.mask & ffi::IN_DELETE > 0;
 	}
 
 	pub fn delete_self(&self) -> bool {
-		return self.event.mask & ffi::IN_DELETE_SELF > 0;
+		return self.mask & ffi::IN_DELETE_SELF > 0;
 	}
 
 	pub fn move_self(&self) -> bool {
-		return self.event.mask & ffi::IN_MOVE_SELF > 0;
+		return self.mask & ffi::IN_MOVE_SELF > 0;
 	}
 
 	pub fn move(&self) -> bool {
-		return self.event.mask & ffi::IN_MOVE > 0;
+		return self.mask & ffi::IN_MOVE > 0;
 	}
 
 	pub fn close(&self) -> bool {
-		return self.event.mask & ffi::IN_CLOSE > 0;
+		return self.mask & ffi::IN_CLOSE > 0;
 	}
 
 	pub fn is_dir(&self) -> bool {
-		return self.event.mask & ffi::IN_ISDIR > 0;
+		return self.mask & ffi::IN_ISDIR > 0;
 	}
 
 	pub fn unmount(&self) -> bool {
-		return self.event.mask & ffi::IN_UNMOUNT > 0;
+		return self.mask & ffi::IN_UNMOUNT > 0;
 	}
 
 	pub fn queue_overflow(&self) -> bool {
-		return self.event.mask & ffi::IN_Q_OVERFLOW > 0;
+		return self.mask & ffi::IN_Q_OVERFLOW > 0;
 	}
 
 	pub fn ignored(&self) -> bool {
-		return self.event.mask & ffi::IN_IGNORED > 0;
+		return self.mask & ffi::IN_IGNORED > 0;
 	}
 }
