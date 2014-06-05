@@ -1,6 +1,7 @@
 use libc::{
 	c_int,
-	c_void };
+	c_void,
+};
 use std::mem;
 use std::io::{
 	EndOfFile,
