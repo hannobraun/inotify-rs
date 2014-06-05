@@ -59,7 +59,7 @@ pub struct inotify_event {
 	pub mask  : uint32_t,
 	pub cookie: uint32_t,
 	pub len   : uint32_t,
-	pub name  : *c_char
+	// The name attribute is optional and must be ommitted here.
 }
 
 

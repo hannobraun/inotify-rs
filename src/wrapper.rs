@@ -62,8 +62,7 @@ impl INotify {
 			wd    : 0,
 			mask  : 0,
 			cookie: 0,
-			len   : 0,
-			name  : ptr::null()
+			len   : 0
 		};
 
 		let event_size = mem::size_of::<inotify_event>();
