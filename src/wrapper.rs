@@ -17,7 +17,8 @@ pub type Watch = c_int;
 
 
 pub struct INotify {
-	pub fd: c_int
+	pub fd: c_int,
+	events: Vec<Event>,
 }
 
 impl INotify {
@@ -30,7 +31,10 @@ impl INotify {
 
 		match fd {
 			-1 => Err(IoError::last_error()),
-			_  => Ok(INotify { fd: fd })
+			_  => Ok(INotify {
+				fd    : fd,
+				events: Vec::new(),
+			})
 		}
 	}
 
@@ -58,32 +62,46 @@ impl INotify {
 		}
 	}
 
-	pub fn event(&self) -> IoResult<Event> {
-		let mut event = inotify_event {
-			wd    : 0,
-			mask  : 0,
-			cookie: 0,
-			len   : 0
+	pub fn event(&mut self) -> IoResult<Event> {
+		match self.events.pop() {
+			Some(event) =>
+				return Ok(event),
+			None =>
+				()
 		};
 
-		let event_size = mem::size_of::<inotify_event>();
-
-		let result = unsafe {
+		let mut buffer = [0u8, ..1024];
+		let mut len = unsafe {
 			ffi::read(
 				self.fd,
-				&mut event as *mut inotify_event as *mut c_void,
-				event_size as u64)
+				buffer.as_mut_ptr() as *mut c_void,
+				buffer.len() as u64)
 		};
 
-		match result {
-			0  => Err(IoError {
+		print!("len: {}, buffer: {}\n", len, buffer.as_slice());
+
+		match len {
+			0  => return Err(IoError {
 				kind  : EndOfFile,
 				desc  : "end of file",
 				detail: None
 			}),
-			-1 => Err(IoError::last_error()),
-			_  => Ok(Event::new(event))
+			-1 => return Err(IoError::last_error()),
+
+			_ => ()
 		}
+
+		while len > 0 {
+			let event: inotify_event = unsafe {
+				mem::transmute(*(buffer.as_ptr() as *inotify_event))
+			};
+
+			self.events.push(Event::new(event));
+
+			len -= (mem::size_of::<inotify_event>() + event.len as uint) as i64;
+		}
+
+		Ok(self.events.pop().expect("expected event"))
 	}
 
 	pub fn close(&self) -> IoResult<()> {
