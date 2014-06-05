@@ -78,8 +78,6 @@ impl INotify {
 				buffer.len() as u64)
 		};
 
-		print!("len: {}, buffer: {}\n", len, buffer.as_slice());
-
 		match len {
 			0  => return Err(IoError {
 				kind  : EndOfFile,
