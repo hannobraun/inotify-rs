@@ -1,7 +1,9 @@
 use libc::{
+	c_char,
 	c_int,
 	c_void,
 };
+use std::c_str::CString;
 use std::mem;
 use std::io::{
 	EndOfFile,
@@ -89,17 +91,33 @@ impl INotify {
 			_ => ()
 		}
 
+		let event_size = mem::size_of::<inotify_event>();
+
 		let mut i = 0;
 		while i < len {
-			let slice = buffer.slice_from(i as uint);
+			unsafe {
+				let slice = buffer.slice_from(i as uint);
 
-			let event: inotify_event = unsafe {
-				mem::transmute(*(slice.as_ptr() as *inotify_event))
-			};
+				let event = slice.as_ptr() as *inotify_event;
 
-			self.events.push(Event::new(event));
+				let name = if (*event).len > 0 {
+					let c_str = CString::new(event.offset(1) as *c_char, false);
 
-			i += (mem::size_of::<inotify_event>() + event.len as uint) as i64;
+					match c_str.as_str() {
+						Some(string)
+							=> string.to_str(),
+						None =>
+							fail!("Failed to convert C string into Rust string")
+					}
+				}
+				else {
+					"".to_str()
+				};
+
+				self.events.push(Event::new(&*event, name));
+
+				i += (event_size + (*event).len as uint) as i64;
+			}
 		}
 
 		Ok(self.events.pop().expect("expected event"))
@@ -119,14 +137,16 @@ pub struct Event {
 	pub wd    : i32,
 	pub mask  : u32,
 	pub cookie: u32,
+	pub name  : String,
 }
 
 impl Event {
-	fn new(event: inotify_event) -> Event {
+	fn new(event: &inotify_event, name: String) -> Event {
 		Event {
 			wd    : event.wd,
 			mask  : event.mask,
 			cookie: event.cookie,
+			name  : name,
 		}
 	}
 
