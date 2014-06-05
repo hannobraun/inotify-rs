@@ -1,14 +1,12 @@
 use libc::{
 	c_int,
 	c_void };
-use std::c_str::CString;
 use std::mem;
 use std::io::{
 	EndOfFile,
 	IoError,
 	IoResult
 };
-use std::ptr;
 
 use ffi;
 use ffi::inotify_event;
@@ -102,25 +100,14 @@ pub struct Event {
 	pub wd    : i32,
 	pub mask  : u32,
 	pub cookie: u32,
-	pub name  : String
 }
 
 impl Event {
 	fn new(event: inotify_event) -> Event {
-		let name = unsafe {
-			match CString::new(event.name, false).as_str() {
-				Some(string) =>
-					string.to_str(),
-				None =>
-					fail!("Failed to convert c string to Rust string")
-			}
-		};
-
 		Event {
 			wd    : event.wd,
 			mask  : event.mask,
 			cookie: event.cookie,
-			name  : name,
 		}
 	}
 
