@@ -4,8 +4,8 @@ use libc::{
 	uint32_t };
 
 
+pub use libc::close;
 pub use libc::read;
-pub use std::os::close;
 
 
 // Flags for inotify_init1()

@@ -124,7 +124,7 @@ impl INotify {
 	}
 
 	pub fn close(&self) -> IoResult<()> {
-		let result = ffi::close(self.fd as int);
+		let result = unsafe { ffi::close(self.fd) };
 		match result {
 			0 => Ok(()),
 			_ => Err(IoError::last_error())
