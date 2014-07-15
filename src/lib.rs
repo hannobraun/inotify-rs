@@ -1,4 +1,4 @@
-#![crate_id   = "github.com/hannobraun/inotify-rs#inotify:0.1"]
+#![crate_name = "inotify"]
 #![crate_type = "lib"]
 
 extern crate libc;
