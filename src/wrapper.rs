@@ -98,20 +98,22 @@ impl INotify {
 			unsafe {
 				let slice = buffer.slice_from(i as uint);
 
-				let event = slice.as_ptr() as *inotify_event;
+				let event = slice.as_ptr() as *const inotify_event;
 
 				let name = if (*event).len > 0 {
-					let c_str = CString::new(event.offset(1) as *c_char, false);
+					let c_str = CString::new(
+						event.offset(1) as *const c_char,
+						false);
 
 					match c_str.as_str() {
 						Some(string)
-							=> string.to_str(),
+							=> string.to_string(),
 						None =>
 							fail!("Failed to convert C string into Rust string")
 					}
 				}
 				else {
-					"".to_str()
+					"".to_string()
 				};
 
 				self.events.push(Event::new(&*event, name));
