@@ -1,4 +1,7 @@
 #![unstable]
+#![allow(missing_doc)]
+
+//! Idiomatic wrapper for inotify
 
 use libc::{
 	c_char,

@@ -28,10 +28,12 @@ You can also use [Cargo] to compile it and use it in your projects.
 
 ## Any documentation?
 
-The source is fully documented, but because inotify usage is subject to
+The binding is fully documented, but because inotify usage is subject to
 various caveats, warnings, and recommendations to build a robust and
 efficient application, programmers should read through the [inotify(7)]
 man page.
+
+The wrapper is not document at this time. (But pull requests are appreciated!)
 
 [inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html).
 
