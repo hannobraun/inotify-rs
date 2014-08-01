@@ -35,7 +35,7 @@ man page.
 
 The wrapper is not document at this time. (But pull requests are appreciated!)
 
-[inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html).
+[inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 
 ## What's the license?
