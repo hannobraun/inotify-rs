@@ -18,8 +18,13 @@ idiomatic wrapper needs some work, but is already useful as it is.
 
 ## How can I compile it?
 
-> rustc src/lib.rs
+```bash
+$ rustc src/lib.rs
+```
 
+You can also use [Cargo] to compile it and use it in your projects.
+
+[Cargo]: http://crates.io
 
 ## Any documentation?
 
