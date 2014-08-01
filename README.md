@@ -23,12 +23,12 @@ idiomatic wrapper needs some work, but is already useful as it is.
 
 ## Any documentation?
 
-Inotify is documented in the Linux man pages
-([online version](http://man7.org/linux/man-pages/man7/inotify.7.html)). Once
-you know inotify, it should be pretty easy to figure out the wrapper from the
-[source code](https://github.com/hannobraun/inotify-rs/blob/master/src/wrapper.rs).
+The source is fully documented, but because inotify usage is subject to
+various caveats, warnings, and recommendations to build a robust and
+efficient application, programmers should read through the [inotify(7)]
+man page.
 
-That's it, for now. Pull requests welcome!
+[inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html).
 
 
 ## What's the license?
