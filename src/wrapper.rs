@@ -1,3 +1,5 @@
+#![unstable]
+
 use libc::{
 	c_char,
 	c_int,
