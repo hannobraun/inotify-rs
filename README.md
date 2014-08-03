@@ -18,17 +18,24 @@ idiomatic wrapper needs some work, but is already useful as it is.
 
 ## How can I compile it?
 
-> rustc src/lib.rs
+```bash
+$ rustc src/lib.rs
+```
 
+You can also use [Cargo] to compile it and use it in your projects.
+
+[Cargo]: http://crates.io
 
 ## Any documentation?
 
-Inotify is documented in the Linux man pages
-([online version](http://man7.org/linux/man-pages/man7/inotify.7.html)). Once
-you know inotify, it should be pretty easy to figure out the wrapper from the
-[source code](https://github.com/hannobraun/inotify-rs/blob/master/src/wrapper.rs).
+The binding is fully documented, but because inotify usage is subject to
+various caveats, warnings, and recommendations to build a robust and
+efficient application, programmers should read through the [inotify(7)]
+man page.
 
-That's it, for now. Pull requests welcome!
+The wrapper is not document at this time. (But pull requests are appreciated!)
+
+[inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 
 ## What's the license?

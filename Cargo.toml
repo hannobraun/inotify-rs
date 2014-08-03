@@ -1,0 +1,8 @@
+[package]
+
+name = "inotify"
+version = "1.0.0"
+authors = [
+  "Hanno Braun <mail@hannobraun.de>",
+  "Félix Saparelli <me@passcod.name>"
+]
