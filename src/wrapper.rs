@@ -22,7 +22,7 @@ use ffi::inotify_event;
 
 pub type Watch = c_int;
 
-
+#[deriving(Clone)]
 pub struct INotify {
 	pub fd: c_int,
 	events: Vec<Event>,
@@ -139,7 +139,7 @@ impl INotify {
 	}
 }
 
-
+#[deriving(Clone)]
 pub struct Event {
 	pub wd    : i32,
 	pub mask  : u32,
@@ -157,59 +157,59 @@ impl Event {
 		}
 	}
 
-	pub fn access(&self) -> bool {
+	pub fn is_access(&self) -> bool {
 		return self.mask & ffi::IN_ACCESS > 0;
 	}
 
-	pub fn modify(&self) -> bool {
+	pub fn is_modify(&self) -> bool {
 		return self.mask & ffi::IN_MODIFY > 0;
 	}
 
-	pub fn attrib(&self) -> bool {
+	pub fn is_attrib(&self) -> bool {
 		return self.mask & ffi::IN_ATTRIB > 0;
 	}
 
-	pub fn close_write(&self) -> bool {
+	pub fn is_close_write(&self) -> bool {
 		return self.mask & ffi::IN_CLOSE_WRITE > 0;
 	}
 
-	pub fn close_nowrite(&self) -> bool {
+	pub fn is_close_nowrite(&self) -> bool {
 		return self.mask & ffi::IN_CLOSE_NOWRITE > 0;
 	}
 
-	pub fn open(&self) -> bool {
+	pub fn is_open(&self) -> bool {
 		return self.mask & ffi::IN_OPEN > 0;
 	}
 
-	pub fn moved_from(&self) -> bool {
+	pub fn is_moved_from(&self) -> bool {
 		return self.mask & ffi::IN_MOVED_FROM > 0;
 	}
 
-	pub fn moved_to(&self) -> bool {
+	pub fn is_moved_to(&self) -> bool {
 		return self.mask & ffi::IN_MOVED_TO > 0;
 	}
 
-	pub fn create(&self) -> bool {
+	pub fn is_create(&self) -> bool {
 		return self.mask & ffi::IN_CREATE > 0;
 	}
 
-	pub fn delete(&self) -> bool {
+	pub fn is_delete(&self) -> bool {
 		return self.mask & ffi::IN_DELETE > 0;
 	}
 
-	pub fn delete_self(&self) -> bool {
+	pub fn is_delete_self(&self) -> bool {
 		return self.mask & ffi::IN_DELETE_SELF > 0;
 	}
 
-	pub fn move_self(&self) -> bool {
+	pub fn is_move_self(&self) -> bool {
 		return self.mask & ffi::IN_MOVE_SELF > 0;
 	}
 
-	pub fn move(&self) -> bool {
+	pub fn is_move(&self) -> bool {
 		return self.mask & ffi::IN_MOVE > 0;
 	}
 
-	pub fn close(&self) -> bool {
+	pub fn is_close(&self) -> bool {
 		return self.mask & ffi::IN_CLOSE > 0;
 	}
 
@@ -217,15 +217,15 @@ impl Event {
 		return self.mask & ffi::IN_ISDIR > 0;
 	}
 
-	pub fn unmount(&self) -> bool {
+	pub fn is_unmount(&self) -> bool {
 		return self.mask & ffi::IN_UNMOUNT > 0;
 	}
 
-	pub fn queue_overflow(&self) -> bool {
+	pub fn is_queue_overflow(&self) -> bool {
 		return self.mask & ffi::IN_Q_OVERFLOW > 0;
 	}
 
-	pub fn ignored(&self) -> bool {
+	pub fn is_ignored(&self) -> bool {
 		return self.mask & ffi::IN_IGNORED > 0;
 	}
 }
