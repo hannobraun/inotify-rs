@@ -7,6 +7,8 @@ use libc::{
 	c_char,
 	c_int,
 	c_void,
+	size_t,
+	ssize_t
 };
 use std::c_str::CString;
 use std::mem;
@@ -82,7 +84,7 @@ impl INotify {
 			ffi::read(
 				self.fd,
 				buffer.as_mut_ptr() as *mut c_void,
-				buffer.len() as u64)
+				buffer.len() as size_t)
 		};
 
 		match len {
@@ -123,7 +125,7 @@ impl INotify {
 
 				self.events.push(Event::new(&*event, name));
 
-				i += (event_size + (*event).len as uint) as i64;
+				i += (event_size + (*event).len as uint) as ssize_t;
 			}
 		}
 
