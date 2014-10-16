@@ -40,7 +40,7 @@ The wrapper is not documented at this time. (But pull requests are appreciated!)
 
 ## What's the license?
 
-Copyright (c) 2014, Hanno Braun
+Copyright (c) 2014, Hanno Braun and contributors
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
