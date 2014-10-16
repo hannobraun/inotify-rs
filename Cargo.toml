@@ -4,5 +4,7 @@ name = "inotify"
 version = "0.0.1"
 authors = [
   "Hanno Braun <mail@hannobraun.de>",
-  "Félix Saparelli <me@passcod.name>"
+  "Félix Saparelli <me@passcod.name>",
+  "Cristian Kubis <cristian.kubis@tsunix.de>",
+  "Frank Denis <github@pureftpd.org>"
 ]
