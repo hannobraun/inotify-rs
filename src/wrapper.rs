@@ -66,7 +66,7 @@ impl INotify {
 		match result {
 			0  => Ok(()),
 			-1 => Err(IoError::last_error()),
-			_  => fail!(
+			_  => panic!(
 				"unexpected return code from inotify_rm_watch ({})", result)
 		}
 	}
@@ -116,7 +116,7 @@ impl INotify {
 						Some(string)
 							=> string.to_string(),
 						None =>
-							fail!("Failed to convert C string into Rust string")
+							panic!("Failed to convert C string into Rust string")
 					}
 				}
 				else {
