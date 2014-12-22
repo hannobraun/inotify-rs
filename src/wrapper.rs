@@ -51,7 +51,7 @@ impl INotify {
 		let wd = unsafe {
 			ffi::inotify_add_watch(
 				self.fd,
-				path.to_c_str().unwrap(),
+				path.to_c_str().into_inner(),
 				mask)
 		};
 
