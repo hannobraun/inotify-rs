@@ -18,7 +18,7 @@ idiomatic wrapper needs some work, but is already useful as it is.
 
 ## How do I use it?
 
-Include it you Cargo.toml:
+Include it in your Cargo.toml:
 ```toml
 [dependencies]
 inotify = "*"
