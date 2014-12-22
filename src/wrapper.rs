@@ -80,9 +80,27 @@ impl INotify {
 		}
 	}
 
+	/// Wait until events are available, then return them.
+	/// This function will block until events are available. If you want it to
+	/// return immediately, use `available_events`.
+	pub fn wait_for_events(&mut self) -> IoResult<&[Event]> {
+		let fd = self.fd;
+
+		unsafe {
+			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
+		};
+		let result = self.available_events();
+		unsafe {
+			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+		};
+
+		result
+	}
+
 	/// Returns available inotify events.
 	/// If no events are available, this method will simply return a slice with
-	/// zero events.
+	/// zero events. If you want to wait for events to become available, call
+	/// `wait_for_events`.
 	pub fn available_events(&mut self) -> IoResult<&[Event]> {
 		let mut buffer = [0u8, ..1024];
 		let len = unsafe {
