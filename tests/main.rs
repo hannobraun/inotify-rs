@@ -22,11 +22,7 @@ fn test_watch() {
 		panic!("Failed to add watch: {}", error)
 	);
 
-	file
-		.write_line("This should trigger an inotify event.")
-		.unwrap_or_else(|error|
-			panic!("Failed to write to file: {}", error)
-		);
+	write_to(&mut file);
 
 	let event = inotify.event().unwrap_or_else(|error|
 		panic!("Failed to retrieve event: {}", error)
@@ -43,4 +39,12 @@ fn temp_file() -> (Path, File) {
 	);
 
 	(path, file)
+}
+
+fn write_to(file: &mut File) {
+	file
+		.write_line("This should trigger an inotify event.")
+		.unwrap_or_else(|error|
+			panic!("Failed to write to file: {}", error)
+		);
 }
