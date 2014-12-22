@@ -84,7 +84,8 @@ impl INotify {
 			ffi::read(
 				self.fd,
 				buffer.as_mut_ptr() as *mut c_void,
-				buffer.len() as size_t)
+				buffer.len() as size_t
+			)
 		};
 
 		match len {
