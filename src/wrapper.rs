@@ -71,14 +71,7 @@ impl INotify {
 		}
 	}
 
-	pub fn event(&mut self) -> IoResult<Event> {
-		match self.events.pop() {
-			Some(event) =>
-				return Ok(event),
-			None =>
-				()
-		};
-
+	pub fn events(&mut self) -> IoResult<&[Event]> {
 		let mut buffer = [0u8, ..1024];
 		let len = unsafe {
 			ffi::read(
@@ -132,7 +125,7 @@ impl INotify {
 			}
 		}
 
-		Ok(self.events.pop().expect("expected event"))
+		Ok(self.events.as_slice())
 	}
 
 	pub fn close(&self) -> IoResult<()> {
