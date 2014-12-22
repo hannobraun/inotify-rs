@@ -89,14 +89,16 @@ impl INotify {
 		};
 
 		match len {
-			0  => return Err(IoError {
-				kind  : EndOfFile,
-				desc  : "end of file",
-				detail: None
-			}),
-			-1 => return Err(IoError::last_error()),
-
-			_ => ()
+			0 =>
+				return Err(IoError {
+					kind  : EndOfFile,
+					desc  : "end of file",
+					detail: None
+				}),
+			-1 =>
+				return Err(IoError::last_error()),
+			_ =>
+				()
 		}
 
 		let event_size = mem::size_of::<inotify_event>();
