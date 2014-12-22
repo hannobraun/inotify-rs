@@ -4,10 +4,8 @@
 extern crate inotify;
 
 
-use std::io::{
-	File,
-	TempDir,
-};
+use std::io::File;
+use std::os::tmpdir;
 
 use inotify::INotify;
 use inotify::ffi::IN_MODIFY;
@@ -15,21 +13,16 @@ use inotify::ffi::IN_MODIFY;
 
 #[test]
 fn test_watch() {
-	let temp_dir = TempDir::new("inotify-test").unwrap_or_else(|error|
-		panic!("Failed to create temporary directory: {}", error)
-	);
-	let     temp_file_path = temp_dir.path().join("test-file");
-	let mut temp_file      = File::create(&temp_file_path);
-
+	let (path, mut file) = temp_file();
 
 	let mut inotify = INotify::init().unwrap_or_else(|error|
 		panic!("Failed to initialize inotify: {}", error)
 	);
-	let watch = inotify.add_watch(&temp_file_path, IN_MODIFY).unwrap_or_else(|error|
+	let watch = inotify.add_watch(&path, IN_MODIFY).unwrap_or_else(|error|
 		panic!("Failed to add watch: {}", error)
 	);
 
-	temp_file
+	file
 		.write_line("This should trigger an inotify event.")
 		.unwrap_or_else(|error|
 			panic!("Failed to write to file: {}", error)
@@ -40,4 +33,14 @@ fn test_watch() {
 	);
 
 	assert_eq!(watch, event.wd);
+}
+
+
+fn temp_file() -> (Path, File) {
+	let path = tmpdir().join("test-file");
+	let file = File::create(&path).unwrap_or_else(|error|
+		panic!("Failed to create temporary file: {}", error)
+	);
+
+	(path, file)
 }
