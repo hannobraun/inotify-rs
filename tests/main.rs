@@ -34,6 +34,19 @@ fn it_should_return_immediately_if_no_events_are_available() {
 	assert_eq!(0, inotify.available_events().unwrap().len());
 }
 
+#[test]
+fn it_should_not_return_duplicate_events() {
+	let (path, mut file) = temp_file();
+
+	let mut inotify = INotify::init().unwrap();
+	inotify.add_watch(&path, IN_MODIFY).unwrap();
+
+	write_to(&mut file);
+	inotify.wait_for_events().unwrap();
+
+	assert_eq!(0, inotify.available_events().unwrap().len());
+}
+
 
 fn temp_file() -> (Path, File) {
 	let path = tmpdir().join("test-file");

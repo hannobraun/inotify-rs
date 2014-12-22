@@ -102,6 +102,8 @@ impl INotify {
 	/// zero events. If you want to wait for events to become available, call
 	/// `wait_for_events`.
 	pub fn available_events(&mut self) -> IoResult<&[Event]> {
+		self.events.clear();
+
 		let mut buffer = [0u8, ..1024];
 		let len = unsafe {
 			ffi::read(
