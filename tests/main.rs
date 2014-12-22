@@ -12,7 +12,7 @@ use inotify::ffi::IN_MODIFY;
 
 
 #[test]
-fn test_watch() {
+fn it_should_watch_a_file() {
 	let (path, mut file) = temp_file();
 
 	let mut inotify = INotify::init().unwrap_or_else(|error|
