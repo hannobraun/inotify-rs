@@ -15,19 +15,12 @@ use inotify::ffi::IN_MODIFY;
 fn it_should_watch_a_file() {
 	let (path, mut file) = temp_file();
 
-	let mut inotify = INotify::init().unwrap_or_else(|error|
-		panic!("Failed to initialize inotify: {}", error)
-	);
-	let watch = inotify.add_watch(&path, IN_MODIFY).unwrap_or_else(|error|
-		panic!("Failed to add watch: {}", error)
-	);
+	let mut inotify = INotify::init().unwrap();
+	let watch = inotify.add_watch(&path, IN_MODIFY).unwrap();
 
 	write_to(&mut file);
 
-	let event = inotify.event().unwrap_or_else(|error|
-		panic!("Failed to retrieve event: {}", error)
-	);
-
+	let event = inotify.event().unwrap();
 	assert_eq!(watch, event.wd);
 }
 
