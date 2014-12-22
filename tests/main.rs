@@ -26,7 +26,7 @@ fn it_should_watch_a_file() {
 }
 
 #[test]
-fn it_should_not_block_if_no_events_are_available() {
+fn it_should_return_immediately_if_no_events_are_available() {
 	let mut inotify = INotify::init().unwrap();
 
 	assert_eq!(0, inotify.events().unwrap().len());
