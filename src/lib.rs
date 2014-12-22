@@ -1,6 +1,6 @@
 #![crate_name = "inotify"]
 #![crate_type = "lib"]
-#![warn(missing_doc)]
+#![warn(missing_docs)]
 #![stable]
 
 //! Binding and wrapper for inotify.
