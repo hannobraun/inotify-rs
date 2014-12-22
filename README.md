@@ -16,10 +16,12 @@ The bindings are complete (after all, inotify isn't that big of an API). The
 idiomatic wrapper needs some work, but is already useful as it is.
 
 
-## How can I compile it?
+## How do I use it?
 
-```bash
-$ rustc src/lib.rs
+Include it you Cargo.toml:
+```toml
+[dependencies]
+inotify = "*"
 ```
 
 You can also use [Cargo] to compile it and use it in your projects.
