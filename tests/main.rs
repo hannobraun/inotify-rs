@@ -20,7 +20,9 @@ fn it_should_watch_a_file() {
 
 	write_to(&mut file);
 
-	for event in inotify.available_events().unwrap().iter() {
+	let events = inotify.available_events().unwrap();
+	assert!(events.len() > 0);
+	for event in events.iter() {
 		assert_eq!(watch, event.wd);
 	}
 }
