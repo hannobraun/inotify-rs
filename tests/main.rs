@@ -20,7 +20,7 @@ fn it_should_watch_a_file() {
 
 	write_to(&mut file);
 
-	for event in inotify.events().unwrap().iter() {
+	for event in inotify.available_events().unwrap().iter() {
 		assert_eq!(watch, event.wd);
 	}
 }
@@ -29,7 +29,7 @@ fn it_should_watch_a_file() {
 fn it_should_return_immediately_if_no_events_are_available() {
 	let mut inotify = INotify::init().unwrap();
 
-	assert_eq!(0, inotify.events().unwrap().len());
+	assert_eq!(0, inotify.available_events().unwrap().len());
 }
 
 

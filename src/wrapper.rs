@@ -83,7 +83,7 @@ impl INotify {
 	/// Returns available inotify events.
 	/// If no events are available, this method will simply return a slice with
 	/// zero events.
-	pub fn events(&mut self) -> IoResult<&[Event]> {
+	pub fn available_events(&mut self) -> IoResult<&[Event]> {
 		let mut buffer = [0u8, ..1024];
 		let len = unsafe {
 			ffi::read(
