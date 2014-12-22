@@ -25,8 +25,6 @@ inotify = "*"
 ```
 
 
-[Cargo]: http://crates.io
-
 ## Any documentation?
 
 The binding is fully documented, but because inotify usage is subject to
