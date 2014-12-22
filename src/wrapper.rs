@@ -4,6 +4,12 @@
 //! Idiomatic wrapper for inotify
 
 use libc::{
+	EAGAIN,
+	EWOULDBLOCK,
+	F_GETFL,
+	F_SETFL,
+	O_NONBLOCK,
+	fcntl,
 	c_char,
 	c_int,
 	c_void,
@@ -17,6 +23,7 @@ use std::io::{
 	IoError,
 	IoResult
 };
+use std::os::errno;
 
 use ffi;
 use ffi::inotify_event;
@@ -37,6 +44,8 @@ impl INotify {
 
 	pub fn init_with_flags(flags: int) -> IoResult<INotify> {
 		let fd = unsafe { ffi::inotify_init1(flags as c_int) };
+
+		unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
 
 		match fd {
 			-1 => Err(IoError::last_error()),
@@ -71,6 +80,9 @@ impl INotify {
 		}
 	}
 
+	/// Returns available inotify events.
+	/// If no events are available, this method will simply return a slice with
+	/// zero events.
 	pub fn events(&mut self) -> IoResult<&[Event]> {
 		let mut buffer = [0u8, ..1024];
 		let len = unsafe {
@@ -88,8 +100,15 @@ impl INotify {
 					desc  : "end of file",
 					detail: None
 				}),
-			-1 =>
-				return Err(IoError::last_error()),
+			-1 => {
+				let error = errno();
+				if error == EAGAIN as uint || error == EWOULDBLOCK as uint {
+					return Ok(self.events.as_slice());
+				}
+				else {
+					return Err(IoError::from_errno(error, true));
+				}
+			},
 			_ =>
 				()
 		}
