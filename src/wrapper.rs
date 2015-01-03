@@ -104,7 +104,7 @@ impl INotify {
 	pub fn available_events(&mut self) -> IoResult<&[Event]> {
 		self.events.clear();
 
-		let mut buffer = [0u8, ..1024];
+		let mut buffer = [0u8; 1024];
 		let len = unsafe {
 			ffi::read(
 				self.fd,
