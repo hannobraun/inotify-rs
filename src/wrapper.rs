@@ -16,7 +16,10 @@ use libc::{
 	size_t,
 	ssize_t
 };
-use std::c_str::CString;
+use std::c_str::{
+	CString,
+	ToCStr,
+};
 use std::mem;
 use std::io::{
 	EndOfFile,
