@@ -126,7 +126,7 @@ impl INotify {
             -1 => {
                 let error = errno();
                 if error == EAGAIN as usize || error == EWOULDBLOCK as usize {
-                    return Ok(self.events.as_slice());
+                    return Ok(&self.events[]);
                 }
                 else {
                     return Err(IoError::from_errno(error, true));
@@ -141,7 +141,7 @@ impl INotify {
         let mut i = 0;
         while i < len {
             unsafe {
-                let slice = buffer.slice_from(i as usize);
+                let slice = &buffer[i as usize..];
 
                 let event = slice.as_ptr() as *const inotify_event;
 
@@ -165,7 +165,7 @@ impl INotify {
             }
         }
 
-        Ok(self.events.as_slice())
+        Ok(&self.events[])
     }
 
     pub fn close(&self) -> IoResult<()> {
