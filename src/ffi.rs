@@ -31,9 +31,9 @@
 //! [inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 use libc::{
-	c_char,
-	c_int,
-	uint32_t };
+    c_char,
+    c_int,
+    uint32_t };
 
 
 pub use libc::close;
@@ -185,9 +185,9 @@ pub const IN_CLOSE: uint32_t = (IN_CLOSE_WRITE | IN_CLOSE_NOWRITE);
 
 /// Event: Any event occured.
 pub const IN_ALL_EVENTS: uint32_t = (
-	IN_ACCESS | IN_MODIFY | IN_ATTRIB | IN_CLOSE_WRITE | IN_CLOSE_NOWRITE
-	| IN_OPEN | IN_MOVED_FROM | IN_MOVED_TO | IN_CREATE | IN_DELETE
-	| IN_DELETE_SELF | IN_MOVE_SELF);
+    IN_ACCESS | IN_MODIFY | IN_ATTRIB | IN_CLOSE_WRITE | IN_CLOSE_NOWRITE
+    | IN_OPEN | IN_MOVED_FROM | IN_MOVED_TO | IN_CREATE | IN_DELETE
+    | IN_DELETE_SELF | IN_MOVE_SELF);
 
 /// Option: Don't watch children (if self is a directory).
 pub const IN_ONLYDIR    : uint32_t = 0x01000000;
@@ -260,61 +260,61 @@ pub const IN_IGNORED   : uint32_t = 0x00008000;
 #[allow(raw_pointer_deriving)]
 #[derive(Copy, Show)]
 pub struct inotify_event {
-	/// Identifies the watch for which this event occurs.
-	///
-	/// It is one of the watch descriptors returned by a previous call
-	/// to `inotify_add_watch()`.
-	pub wd    : c_int,
+    /// Identifies the watch for which this event occurs.
+    ///
+    /// It is one of the watch descriptors returned by a previous call
+    /// to `inotify_add_watch()`.
+    pub wd    : c_int,
 
-	/// Contains bits that describe the event that occurred.
-	pub mask  : uint32_t,
+    /// Contains bits that describe the event that occurred.
+    pub mask  : uint32_t,
 
-	/// A unique integer that connects related events.
-	///
-	/// Currently used only for rename events. A related pair of
-	/// IN_MOVED_FROM and IN_MOVED_TO events will have the same,
-	/// non-zero, cookie. For all other events, cookie is 0.
-	pub cookie: uint32_t,
+    /// A unique integer that connects related events.
+    ///
+    /// Currently used only for rename events. A related pair of
+    /// IN_MOVED_FROM and IN_MOVED_TO events will have the same,
+    /// non-zero, cookie. For all other events, cookie is 0.
+    pub cookie: uint32_t,
 
-	/// The length of `name`.
-	///
-	/// Used to determine the size of this structure. When `name`
-	/// isn't present (`name` is only present when an event occurs
-	/// for a file inside a watched directory), it is 0. When `name`
-	/// *is* present, it counts all of `name`'s bytes, including `\0`.
-	///
-	/// > The `name` field is present only when an event is returned for
-	/// > a file inside a watched directory; it identifies the file
-	/// > pathname relative to the watched directory. This pathname is
-	/// > null-terminated, and may include further null bytes ('\0') to
-	/// > align subsequent reads to a suitable address boundary.
-	///
-	/// The `name` field must be ommited in this definition.
-	pub len   : uint32_t,
+    /// The length of `name`.
+    ///
+    /// Used to determine the size of this structure. When `name`
+    /// isn't present (`name` is only present when an event occurs
+    /// for a file inside a watched directory), it is 0. When `name`
+    /// *is* present, it counts all of `name`'s bytes, including `\0`.
+    ///
+    /// > The `name` field is present only when an event is returned for
+    /// > a file inside a watched directory; it identifies the file
+    /// > pathname relative to the watched directory. This pathname is
+    /// > null-terminated, and may include further null bytes ('\0') to
+    /// > align subsequent reads to a suitable address boundary.
+    ///
+    /// The `name` field must be ommited in this definition.
+    pub len   : uint32_t,
 }
 
 
 extern {
-	/// Creates an inotify instance.
-	///
-	/// Returns a file descriptor referring to the inotify instance.
-	pub fn inotify_init() -> c_int;
+    /// Creates an inotify instance.
+    ///
+    /// Returns a file descriptor referring to the inotify instance.
+    pub fn inotify_init() -> c_int;
 
-	/// Creates an inotify instance.
-	///
-	/// Also takes a bit mask of flags that provide access to extra
-	/// functionality. Returns a file descriptor.
-	pub fn inotify_init1(flags: c_int) -> c_int;
+    /// Creates an inotify instance.
+    ///
+    /// Also takes a bit mask of flags that provide access to extra
+    /// functionality. Returns a file descriptor.
+    pub fn inotify_init1(flags: c_int) -> c_int;
 
-	/// Manipulates the "watch list" associated with an inotify instance.
-	///
-	/// > Each item ("watch") in the watch list specifies the pathname of
-	/// > a file or directory, along with some set of events that the kernel
-	/// > should monitor for the file referred to by that pathname.
-	///
-	/// This function either creates a new watch, or modifies an existing one.
-	pub fn inotify_add_watch(fd: c_int, pathname: *const c_char, mask: uint32_t) -> c_int;
+    /// Manipulates the "watch list" associated with an inotify instance.
+    ///
+    /// > Each item ("watch") in the watch list specifies the pathname of
+    /// > a file or directory, along with some set of events that the kernel
+    /// > should monitor for the file referred to by that pathname.
+    ///
+    /// This function either creates a new watch, or modifies an existing one.
+    pub fn inotify_add_watch(fd: c_int, pathname: *const c_char, mask: uint32_t) -> c_int;
 
-	/// Removes an item from an inotify watch list.
-	pub fn inotify_rm_watch(fd: c_int, wd: c_int) -> c_int;
+    /// Removes an item from an inotify watch list.
+    pub fn inotify_rm_watch(fd: c_int, wd: c_int) -> c_int;
 }
