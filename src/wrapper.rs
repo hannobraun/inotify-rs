@@ -45,7 +45,7 @@ impl INotify {
         INotify::init_with_flags(0)
     }
 
-    pub fn init_with_flags(flags: int) -> IoResult<INotify> {
+    pub fn init_with_flags(flags: isize) -> IoResult<INotify> {
         let fd = unsafe { ffi::inotify_init1(flags as c_int) };
 
         unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
@@ -126,7 +126,7 @@ impl INotify {
                 }),
             -1 => {
                 let error = errno();
-                if error == EAGAIN as uint || error == EWOULDBLOCK as uint {
+                if error == EAGAIN as usize || error == EWOULDBLOCK as usize {
                     return Ok(self.events.as_slice());
                 }
                 else {
@@ -142,7 +142,7 @@ impl INotify {
         let mut i = 0;
         while i < len {
             unsafe {
-                let slice = buffer.slice_from(i as uint);
+                let slice = buffer.slice_from(i as usize);
 
                 let event = slice.as_ptr() as *const inotify_event;
 
@@ -162,7 +162,7 @@ impl INotify {
 
                 self.events.push(Event::new(&*event, name));
 
-                i += (event_size + (*event).len as uint) as ssize_t;
+                i += (event_size + (*event).len as usize) as ssize_t;
             }
         }
 
