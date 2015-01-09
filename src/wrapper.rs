@@ -10,7 +10,6 @@ use libc::{
     F_SETFL,
     O_NONBLOCK,
     fcntl,
-    c_char,
     c_int,
     c_void,
     size_t,
