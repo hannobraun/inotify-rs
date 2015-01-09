@@ -16,9 +16,8 @@ use libc::{
 	size_t,
 	ssize_t
 };
-use std::c_str::{
+use std::ffi::{
 	CString,
-	ToCStr,
 };
 use std::mem;
 use std::io::{
@@ -27,6 +26,7 @@ use std::io::{
 	IoResult
 };
 use std::os::errno;
+use std::path::BytesContainer;
 
 use ffi;
 use ffi::inotify_event;
@@ -61,9 +61,10 @@ impl INotify {
 
 	pub fn add_watch(&self, path: &Path, mask: u32) -> IoResult<Watch> {
 		let wd = unsafe {
+            let path_c_str = CString::from_slice(path.container_as_bytes());
 			ffi::inotify_add_watch(
 				self.fd,
-				path.to_c_str().into_inner(),
+				path_c_str.as_ptr(),
 				mask)
 		};
 
@@ -146,11 +147,9 @@ impl INotify {
 				let event = slice.as_ptr() as *const inotify_event;
 
 				let name = if (*event).len > 0 {
-					let c_str = CString::new(
-						event.offset(1) as *const c_char,
-						false);
+					let c_str = CString::from_slice(slice);
 
-					match c_str.as_str() {
+					match c_str.container_as_str() {
 						Some(string)
 							=> string.to_string(),
 						None =>
