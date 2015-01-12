@@ -264,10 +264,10 @@ pub struct inotify_event {
     ///
     /// It is one of the watch descriptors returned by a previous call
     /// to `inotify_add_watch()`.
-    pub wd    : c_int,
+    pub wd: c_int,
 
     /// Contains bits that describe the event that occurred.
-    pub mask  : uint32_t,
+    pub mask: uint32_t,
 
     /// A unique integer that connects related events.
     ///
@@ -290,7 +290,7 @@ pub struct inotify_event {
     /// > align subsequent reads to a suitable address boundary.
     ///
     /// The `name` field must be ommited in this definition.
-    pub len   : uint32_t,
+    pub len: uint32_t,
 }
 
 
