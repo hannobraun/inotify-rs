@@ -47,6 +47,24 @@ fn it_should_not_return_duplicate_events() {
 	assert_eq!(0, inotify.available_events().unwrap().len());
 }
 
+#[test]
+fn it_should_handle_file_names_correctly() {
+	let (mut path, mut file) = temp_file();
+	let file_name = file.path().filename_str().unwrap().to_string();
+	path.pop(); // Get path to the directory the file is in
+
+	let mut inotify = INotify::init().unwrap();
+	inotify.add_watch(&path, IN_MODIFY).unwrap();
+
+	write_to(&mut file);
+
+	let events = inotify.wait_for_events().unwrap();
+	assert!(events.len() > 0);
+	for event in events.iter() {
+		assert_eq!(file_name, event.name);
+	}
+}
+
 
 fn temp_file() -> (Path, File) {
 	let path = tmpdir().join("test-file");

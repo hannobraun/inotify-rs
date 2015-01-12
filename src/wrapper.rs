@@ -26,6 +26,7 @@ use std::io::{
 };
 use std::os::errno;
 use std::path::BytesContainer;
+use std::slice;
 
 use ffi;
 use ffi::inotify_event;
@@ -146,7 +147,24 @@ impl INotify {
                 let event = slice.as_ptr() as *const inotify_event;
 
                 let name = if (*event).len > 0 {
-                    let c_str = CString::from_slice(slice);
+                    let name_ptr = slice
+                        .as_ptr()
+                        .offset(event_size as isize);
+
+                    let mut name_slice = slice::from_raw_buf(
+                        &name_ptr,
+                        (*event).len as usize,
+                    );
+
+                    // Make sure slice contains no \0, CString doesn't like
+                    // them.
+                    let pos = name_slice.position_elem(&0);
+                    match pos {
+                        Some(pos) => name_slice = &name_slice[..pos],
+                        None      => (),
+                    }
+
+                    let c_str = CString::from_slice(name_slice);
 
                     match c_str.container_as_str() {
                         Some(string)
