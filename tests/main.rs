@@ -36,6 +36,15 @@ fn it_should_return_immediately_if_no_events_are_available() {
 
 #[test]
 fn it_should_not_return_duplicate_events() {
+	// Usually, the write in this test seems to generate only one event, but
+	// sometimes it generates multiple events. If that happens, the assertion at
+	// the end will likely fail.
+	//
+	// I'm not sure why that happens, and since the test works as intended most
+	// of the time, I don't think it's that big of a deal. If you happen to know
+	// more about the subject, please consider to fix the test accordingly. It
+	// would be greatly appreciated!
+
 	let (path, mut file) = temp_file();
 
 	let mut inotify = INotify::init().unwrap();
