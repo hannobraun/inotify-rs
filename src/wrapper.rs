@@ -19,7 +19,7 @@ use std::ffi::{
     CString,
 };
 use std::mem;
-use std::io::{
+use std::old_io::{
     EndOfFile,
     IoError,
     IoResult
