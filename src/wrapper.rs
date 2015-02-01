@@ -195,7 +195,7 @@ impl INotify {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Event {
     pub wd    : i32,
     pub mask  : u32,
