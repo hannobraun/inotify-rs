@@ -4,7 +4,7 @@
 extern crate inotify;
 
 
-use std::io::File;
+use std::old_io::File;
 use std::os::tmpdir;
 
 use inotify::INotify;
