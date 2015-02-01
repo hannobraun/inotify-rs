@@ -1,6 +1,8 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
+#![feature(collections, io, os, path)]
+
 extern crate inotify;
 
 
