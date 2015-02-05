@@ -25,7 +25,9 @@ use std::old_io::{
     IoResult
 };
 use std::os::errno;
-use std::path::BytesContainer;
+use std::os::unix::OsStrExt;
+use std::path::Path;
+use std::ffi::AsOsStr;
 use std::slice;
 
 use ffi;
@@ -61,7 +63,7 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> IoResult<Watch> {
         let wd = unsafe {
-            let path_c_str = CString::from_slice(path.container_as_bytes());
+            let path_c_str = CString::from_slice(path.as_os_str().as_byte_slice());
             ffi::inotify_add_watch(
                 self.fd,
                 path_c_str.as_ptr(),
@@ -166,11 +168,11 @@ impl INotify {
 
                     let c_str = CString::from_slice(name_slice);
 
-                    match c_str.container_as_str() {
-                        Some(string)
+                    match String::from_utf8(c_str.as_bytes().to_vec()) {
+                        Ok(string)
                             => string.to_string(),
-                        None =>
-                            panic!("Failed to convert C string into Rust string")
+                        Err(e) =>
+                            panic!("Failed to convert C string into Rust string: {}", e)
                     }
                 }
                 else {
