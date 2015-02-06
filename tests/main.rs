@@ -1,13 +1,15 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
-#![feature(collections, io, os, path)]
+#![feature(io, env, path, std_misc, core)]
 
 extern crate inotify;
 
 
 use std::old_io::File;
-use std::os::tmpdir;
+use std::env::temp_dir;
+use std::path::PathBuf;
+use std::ffi::AsOsStr;
 
 use inotify::INotify;
 use inotify::ffi::IN_MODIFY;
@@ -71,19 +73,20 @@ fn it_should_handle_file_names_correctly() {
 
 	let events = inotify.wait_for_events().unwrap();
 	assert!(events.len() > 0);
-	for event in events.iter() {
+	for event in events {
 		assert_eq!(file_name, event.name);
 	}
 }
 
 
-fn temp_file() -> (Path, File) {
-	let path = tmpdir().join("test-file");
+fn temp_file() -> (PathBuf, File) {
+	let path = temp_dir().join("test-file");
 	let file = File::create(&path).unwrap_or_else(|error|
 		panic!("Failed to create temporary file: {}", error)
 	);
+	let pathbuf = PathBuf::new(path.as_os_str());
 
-	(path, file)
+	(pathbuf, file)
 }
 
 fn write_to(file: &mut File) {
