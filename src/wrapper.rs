@@ -117,7 +117,11 @@ impl INotify {
 
         match len {
             0 => {
-                return Ok(&self.events[]);
+                return Err(
+                    io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "buffer passed to read() was too small to read event",
+                        None));
             }
             -1 => {
                 let error = errno();
