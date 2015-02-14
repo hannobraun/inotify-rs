@@ -19,11 +19,6 @@ use std::ffi::{
     CString,
 };
 use std::mem;
-use std::old_io::{
-    EndOfFile,
-    IoError,
-    IoResult
-};
 use std::io;
 use std::os::errno;
 use std::os::unix::OsStrExt;
@@ -151,8 +146,8 @@ impl INotify {
                         .as_ptr()
                         .offset(event_size as isize);
 
-                    let mut name_slice = slice::from_raw_buf(
-                        &name_ptr,
+                    let mut name_slice = slice::from_raw_parts(
+                        name_ptr,
                         (*event).len as usize,
                     );
 
