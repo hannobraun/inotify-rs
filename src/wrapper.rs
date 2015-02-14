@@ -24,6 +24,7 @@ use std::old_io::{
     IoError,
     IoResult
 };
+use std::io;
 use std::os::errno;
 use std::os::unix::OsStrExt;
 use std::path::Path;
@@ -43,17 +44,17 @@ pub struct INotify {
 }
 
 impl INotify {
-    pub fn init() -> IoResult<INotify> {
+    pub fn init() -> io::Result<INotify> {
         INotify::init_with_flags(0)
     }
 
-    pub fn init_with_flags(flags: isize) -> IoResult<INotify> {
+    pub fn init_with_flags(flags: isize) -> io::Result<INotify> {
         let fd = unsafe { ffi::inotify_init1(flags as c_int) };
 
         unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
 
         match fd {
-            -1 => Err(IoError::last_error()),
+            -1 => Err(io::Error::last_os_error()),
             _  => Ok(INotify {
                 fd    : fd,
                 events: Vec::new(),
@@ -61,7 +62,7 @@ impl INotify {
         }
     }
 
-    pub fn add_watch(&self, path: &Path, mask: u32) -> IoResult<Watch> {
+    pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
             let path_c_str = CString::from_slice(path.as_os_str().as_byte_slice());
             ffi::inotify_add_watch(
@@ -71,16 +72,16 @@ impl INotify {
         };
 
         match wd {
-            -1 => Err(IoError::last_error()),
+            -1 => Err(io::Error::last_os_error()),
             _  => Ok(wd)
         }
     }
 
-    pub fn rm_watch(&self, watch: Watch) -> IoResult<()> {
+    pub fn rm_watch(&self, watch: Watch) -> io::Result<()> {
         let result = unsafe { ffi::inotify_rm_watch(self.fd, watch) };
         match result {
             0  => Ok(()),
-            -1 => Err(IoError::last_error()),
+            -1 => Err(io::Error::last_os_error()),
             _  => panic!(
                 "unexpected return code from inotify_rm_watch ({})", result)
         }
@@ -89,7 +90,7 @@ impl INotify {
     /// Wait until events are available, then return them.
     /// This function will block until events are available. If you want it to
     /// return immediately, use `available_events`.
-    pub fn wait_for_events(&mut self) -> IoResult<&[Event]> {
+    pub fn wait_for_events(&mut self) -> io::Result<&[Event]> {
         let fd = self.fd;
 
         unsafe {
@@ -107,7 +108,7 @@ impl INotify {
     /// If no events are available, this method will simply return a slice with
     /// zero events. If you want to wait for events to become available, call
     /// `wait_for_events`.
-    pub fn available_events(&mut self) -> IoResult<&[Event]> {
+    pub fn available_events(&mut self) -> io::Result<&[Event]> {
         self.events.clear();
 
         let mut buffer = [0u8; 1024];
@@ -120,19 +121,16 @@ impl INotify {
         };
 
         match len {
-            0 =>
-                return Err(IoError {
-                    kind  : EndOfFile,
-                    desc  : "end of file",
-                    detail: None
-                }),
+            0 => {
+                return Ok(&self.events[]);
+            }
             -1 => {
                 let error = errno();
                 if error == EAGAIN as usize || error == EWOULDBLOCK as usize {
                     return Ok(&self.events[]);
                 }
                 else {
-                    return Err(IoError::from_errno(error, true));
+                    return Err(io::Error::from_os_error(error as i32));
                 }
             },
             _ =>
@@ -188,11 +186,11 @@ impl INotify {
         Ok(&self.events[])
     }
 
-    pub fn close(&self) -> IoResult<()> {
+    pub fn close(&self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         match result {
             0 => Ok(()),
-            _ => Err(IoError::last_error())
+            _ => Err(io::Error::last_os_error())
         }
     }
 }
