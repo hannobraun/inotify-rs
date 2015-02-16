@@ -1,7 +1,7 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
-#![feature(io, env, path, std_misc, core)]
+#![feature(io, env, path, std_misc)]
 
 extern crate inotify;
 
