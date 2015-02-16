@@ -59,11 +59,11 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
-            let path_c_str = CString::from_slice(path.as_os_str().as_byte_slice());
             ffi::inotify_add_watch(
                 self.fd,
-                path_c_str.as_ptr(),
-                mask)
+                path.as_os_str().to_cstring().as_ptr(),
+                mask
+            )
         };
 
         match wd {
