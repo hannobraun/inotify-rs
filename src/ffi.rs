@@ -259,6 +259,7 @@ pub const IN_IGNORED   : uint32_t = 0x00008000;
 #[allow(non_camel_case_types)]
 #[allow(raw_pointer_derive)]
 #[derive(Copy, Debug)]
+#[repr(C)]
 pub struct inotify_event {
     /// Identifies the watch for which this event occurs.
     ///
