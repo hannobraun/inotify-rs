@@ -129,7 +129,7 @@ impl INotify {
                     return Ok(&self.events[]);
                 }
                 else {
-                    return Err(io::Error::from_os_error(error as i32));
+                    return Err(io::Error::from_os_error(error));
                 }
             },
             _ =>
