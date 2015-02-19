@@ -125,7 +125,7 @@ impl INotify {
             }
             -1 => {
                 let error = errno();
-                if error == EAGAIN as usize || error == EWOULDBLOCK as usize {
+                if error == EAGAIN as i32 || error == EWOULDBLOCK as i32 {
                     return Ok(&self.events[]);
                 }
                 else {
