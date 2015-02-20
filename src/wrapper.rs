@@ -127,7 +127,7 @@ impl INotify {
             -1 => {
                 let error = errno();
                 if error == EAGAIN as i32 || error == EWOULDBLOCK as i32 {
-                    return Ok(&self.events[]);
+                    return Ok(&self.events[..]);
                 }
                 else {
                     return Err(io::Error::from_os_error(error));
@@ -183,7 +183,7 @@ impl INotify {
             }
         }
 
-        Ok(&self.events[])
+        Ok(&self.events[..])
     }
 
     pub fn close(&self) -> io::Result<()> {
