@@ -59,9 +59,10 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
+            let c_str = try!(path.as_os_str().to_cstring());
             ffi::inotify_add_watch(
                 self.fd,
-                path.as_os_str().to_cstring().as_ptr(),
+                c_str.as_ptr(),
                 mask
             )
         };
@@ -163,7 +164,7 @@ impl INotify {
                         None      => (),
                     }
 
-                    let c_str = CString::from_slice(name_slice);
+                    let c_str = try!(CString::new(name_slice));
 
                     match String::from_utf8(c_str.as_bytes().to_vec()) {
                         Ok(string)
