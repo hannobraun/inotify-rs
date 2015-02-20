@@ -1,12 +1,14 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
-#![feature(io, env, path, std_misc)]
+#![feature(io, os, fs, env, path, old_path, std_misc)]
 
 extern crate inotify;
 
 
-use std::old_io::File;
+use std::fs::File;
+use std::io::Write;
+
 use std::env::temp_dir;
 use std::path::PathBuf;
 use std::ffi::AsOsStr;
@@ -63,7 +65,10 @@ fn it_should_not_return_duplicate_events() {
 #[test]
 fn it_should_handle_file_names_correctly() {
 	let (mut path, mut file) = temp_file();
-	let file_name = file.path().filename_str().unwrap().to_string();
+	let file_name = file.path().unwrap()
+        .file_name().unwrap()
+        .to_str().unwrap()
+        .to_string();
 	path.pop(); // Get path to the directory the file is in
 
 	let mut inotify = INotify::init().unwrap();
@@ -91,7 +96,7 @@ fn temp_file() -> (PathBuf, File) {
 
 fn write_to(file: &mut File) {
 	file
-		.write_line("This should trigger an inotify event.")
+		.write(b"This should trigger an inotify event.")
 		.unwrap_or_else(|error|
 			panic!("Failed to write to file: {}", error)
 		);
