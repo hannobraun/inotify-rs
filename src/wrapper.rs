@@ -59,9 +59,10 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
+            let c_str = try!(path.as_os_str().to_cstring());
             ffi::inotify_add_watch(
                 self.fd,
-                path.as_os_str().to_cstring().as_ptr(),
+                c_str.as_ptr(),
                 mask
             )
         };
@@ -126,7 +127,7 @@ impl INotify {
             -1 => {
                 let error = errno();
                 if error == EAGAIN as i32 || error == EWOULDBLOCK as i32 {
-                    return Ok(&self.events[]);
+                    return Ok(&self.events[..]);
                 }
                 else {
                     return Err(io::Error::from_os_error(error));
@@ -163,7 +164,7 @@ impl INotify {
                         None      => (),
                     }
 
-                    let c_str = CString::from_slice(name_slice);
+                    let c_str = try!(CString::new(name_slice));
 
                     match String::from_utf8(c_str.as_bytes().to_vec()) {
                         Ok(string)
@@ -182,7 +183,7 @@ impl INotify {
             }
         }
 
-        Ok(&self.events[])
+        Ok(&self.events[..])
     }
 
     pub fn close(&self) -> io::Result<()> {
