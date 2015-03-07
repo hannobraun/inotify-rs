@@ -24,6 +24,49 @@ Include it in your Cargo.toml:
 inotify = "*"
 ```
 
+And here's a little example:
+```Rust
+#![feature(path)]
+
+extern crate inotify;
+
+use inotify::INotify;
+use inotify::ffi::*;
+use std::path::Path;
+
+fn main() {
+    let mut ino = INotify::init().unwrap();
+
+    ino.add_watch(Path::new("/home"), IN_MODIFY | IN_CREATE | IN_DELETE).unwrap();
+    loop {
+        let events = ino.wait_for_events().unwrap();
+
+        for event in events.iter() {
+            if event.mask & IN_CREATE > 0 {
+                if event.mask & IN_ISDIR > 0 {
+                    println!("The directory \"{}\" was created.", event.name);       
+                } else {
+                    println!("The file \"{}\" was created.", event.name);
+                }
+            } else if event.mask & IN_DELETE > 0 {
+                if event.mask & IN_ISDIR > 0 {
+                    println!("The directory \"{}\" was deleted.", event.name);       
+                } else {
+                    println!("The file \"{}\" was deleted.", event.name);
+                }
+            } else if event.mask & IN_MODIFY > 0 {
+                if event.mask & IN_ISDIR > 0 {
+                    println!("The directory \"{}\" was modified.", event.name);
+                } else {
+                    println!("The file \"{}\" was modified.", event.name);
+                }
+            }
+        }
+    }
+    // You need to execute this line before leaving your program normally
+    //ino.rm_watch(IN_MODIFY | IN_CREATE | IN_DELETE).unwrap();
+}
+```
 
 ## Any documentation?
 
