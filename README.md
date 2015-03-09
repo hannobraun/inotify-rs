@@ -42,20 +42,20 @@ fn main() {
         let events = ino.wait_for_events().unwrap();
 
         for event in events.iter() {
-            if event.is_create() > 0 {
-                if event.is_dir() > 0 {
+            if event.is_create() {
+                if event.is_dir() {
                     println!("The directory \"{}\" was created.", event.name);       
                 } else {
                     println!("The file \"{}\" was created.", event.name);
                 }
-            } else if event.is_delete() > 0 {
-                if event.is_dir() > 0 {
+            } else if event.is_delete() {
+                if event.is_dir() {
                     println!("The directory \"{}\" was deleted.", event.name);       
                 } else {
                     println!("The file \"{}\" was deleted.", event.name);
                 }
-            } else if event.is_modify() > 0 {
-                if event.is_dir() > 0 {
+            } else if event.is_modify() {
+                if event.is_dir() {
                     println!("The directory \"{}\" was modified.", event.name);
                 } else {
                     println!("The file \"{}\" was modified.", event.name);
