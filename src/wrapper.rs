@@ -21,7 +21,7 @@ use std::ffi::{
 use std::mem;
 use std::io;
 use std::os::errno;
-use std::os::unix::OsStrExt;
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ffi::AsOsStr;
 use std::slice;
