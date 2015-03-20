@@ -118,11 +118,11 @@ impl INotify {
 
         match len {
             0 => {
-                return Err(
-                    io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "buffer passed to read() was too small to read event",
-                        None));
+                panic!(
+                    "Call to read returned 0. This should never happen and may \
+                    indicate a bug in inotify-rs. For example, the buffer used \
+                    to read into might be too small."
+                );
             }
             -1 => {
                 let error = errno();
