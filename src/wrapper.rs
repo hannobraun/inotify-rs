@@ -4,8 +4,6 @@
 //! Idiomatic wrapper for inotify
 
 use libc::{
-    EAGAIN,
-    EWOULDBLOCK,
     F_GETFL,
     F_SETFL,
     O_NONBLOCK,
@@ -20,7 +18,6 @@ use std::ffi::{
 };
 use std::mem;
 use std::io;
-use std::os::errno;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ffi::AsOsStr;
@@ -125,12 +122,12 @@ impl INotify {
                 );
             }
             -1 => {
-                let error = errno();
-                if error == EAGAIN as i32 || error == EWOULDBLOCK as i32 {
+                let error = io::Error::last_os_error();
+                if error.kind() == io::ErrorKind::WouldBlock {
                     return Ok(&self.events[..]);
                 }
                 else {
-                    return Err(io::Error::from_os_error(error));
+                    return Err(error);
                 }
             },
             _ =>

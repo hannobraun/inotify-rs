@@ -2,7 +2,7 @@
 #![crate_type = "lib"]
 #![warn(missing_docs)]
 #![stable]
-#![feature(collections, libc, io, os, std_misc)]
+#![feature(collections, libc, std_misc)]
 
 //! Binding and wrapper for inotify.
 //!
