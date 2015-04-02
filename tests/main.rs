@@ -89,9 +89,9 @@ fn temp_file() -> (PathBuf, File) {
 	let file = File::create(&path).unwrap_or_else(|error|
 		panic!("Failed to create temporary file: {}", error)
 	);
-	let pathbuf = PathBuf::from(path.as_os_str());
+	let path_buf = PathBuf::from(path.as_os_str());
 
-	(pathbuf, file)
+	(path_buf, file)
 }
 
 fn write_to(file: &mut File) {
