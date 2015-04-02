@@ -56,7 +56,15 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
-            let c_str = try!(path.as_os_str().to_cstring());
+            let c_str = match path.as_os_str().to_cstring() {
+                Some(c_str) =>
+                    c_str,
+                None => return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Path contains interior nulls",
+                )),
+            };
+
             ffi::inotify_add_watch(
                 self.fd,
                 c_str.as_ptr(),
