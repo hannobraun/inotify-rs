@@ -20,7 +20,6 @@ use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use std::ffi::AsOsStr;
 use std::slice;
 
 use ffi;
@@ -56,14 +55,7 @@ impl INotify {
 
     pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
         let wd = unsafe {
-            let c_str = match path.as_os_str().to_cstring() {
-                Some(c_str) =>
-                    c_str,
-                None => return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Path contains interior nulls",
-                )),
-            };
+            let c_str = try!(CString::new(path.as_os_str().as_bytes()));
 
             ffi::inotify_add_watch(
                 self.fd,
@@ -156,18 +148,17 @@ impl INotify {
                         .as_ptr()
                         .offset(event_size as isize);
 
-                    let mut name_slice = slice::from_raw_parts(
+                    let name_slice_with_0 = slice::from_raw_parts(
                         name_ptr,
                         (*event).len as usize,
                     );
 
-                    // Make sure slice contains no \0, CString doesn't like
-                    // them.
-                    let pos = name_slice.position_elem(&0);
-                    match pos {
-                        Some(pos) => name_slice = &name_slice[..pos],
-                        None      => (),
-                    }
+                    // This split ensures that the slice contains no \0 bytes, as CString
+                    // doesn't like them. It will replace the slice with all bytes before the
+                    // first \0 byte, or just leave the whole slice if the slice doesn't contain
+                    // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
+                    // at least 1 result, even if the original slice contains no instances of \0.
+                    let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
 
                     let c_str = try!(CString::new(name_slice));
 
