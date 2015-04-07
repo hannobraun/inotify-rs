@@ -13,3 +13,6 @@ documentation = "https://github.com/hannobraun/inotify-rs/blob/master/README.md"
 homepage = "https://github.com/hannobraun/inotify-rs"
 repository = "https://github.com/hannobraun/inotify-rs"
 license = "ISC"
+
+[dependencies]
+libc = "*"

@@ -1,5 +1,10 @@
 language: rust
 
+# Test using both the rust 1.0.0-beta, and the latest nightly
+rust:
+  - 1.0.0-beta
+  - nightly
+
 # Run this build on the "container-based infrastructure"
 # See http://docs.travis-ci.com/user/workers/container-based-infrastructure/.
 sudo: false

@@ -1,8 +1,6 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
-#![feature(file_path, std_misc)]
-
 extern crate inotify;
 
 
@@ -11,7 +9,6 @@ use std::io::Write;
 
 use std::env::temp_dir;
 use std::path::PathBuf;
-use std::ffi::AsOsStr;
 
 use inotify::INotify;
 use inotify::ffi::IN_MODIFY;
@@ -65,7 +62,7 @@ fn it_should_not_return_duplicate_events() {
 #[test]
 fn it_should_handle_file_names_correctly() {
 	let (mut path, mut file) = temp_file();
-	let file_name = file.path().unwrap()
+	let file_name = path
         .file_name().unwrap()
         .to_str().unwrap()
         .to_string();
@@ -89,7 +86,7 @@ fn temp_file() -> (PathBuf, File) {
 	let file = File::create(&path).unwrap_or_else(|error|
 		panic!("Failed to create temporary file: {}", error)
 	);
-	let path_buf = PathBuf::from(path.as_os_str());
+	let path_buf = PathBuf::from(path);
 
 	(path_buf, file)
 }
