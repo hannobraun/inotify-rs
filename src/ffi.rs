@@ -1,5 +1,3 @@
-#![stable]
-
 //! Bindings for inotify
 //!
 //! There are four types of statics:
