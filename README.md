@@ -63,8 +63,6 @@ fn main() {
             }
         }
     }
-    // You need to execute this line before leaving your program normally
-    //ino.rm_watch(IN_MODIFY | IN_CREATE | IN_DELETE).unwrap();
 }
 ```
 
