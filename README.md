@@ -26,8 +26,6 @@ inotify = "*"
 
 And here's a little example:
 ```Rust
-#![feature(path)]
-
 extern crate inotify;
 
 use inotify::INotify;
