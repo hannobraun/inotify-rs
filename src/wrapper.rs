@@ -314,7 +314,7 @@ impl Drop for INotify {
 
 impl INotifyCloser {
     pub fn close_async(&self) {
-        if state == INotifyState::Open {
+        if self.state() == INotifyState::Open {
             self.state.store(CLOSING, Ordering::Relaxed);
         }
     }
