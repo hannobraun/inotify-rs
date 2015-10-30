@@ -150,7 +150,7 @@ impl TestDir {
         let id = self.counter;
         self.counter += 1;
 
-        let path = self.dir.path().join("file-".to_owned() + &id.to_string());
+        let path = self.dir.path().join("file-".to_string() + &id.to_string());
         let file = File::create(&path)
             .unwrap_or_else(|error| panic!("Failed to create temporary file: {}", error));
 
