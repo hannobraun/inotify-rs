@@ -3,7 +3,8 @@
 //! Idiomatic wrapper for inotify
 
 use epoll::{self, EpollEvent};
-use epoll::util::{ctl_op as EpollControlOp, event_type as EpollEventType};
+use epoll::util::ctl_op as EpollControlOp;
+use epoll::util::event_type as EpollEventType;
 use libc::{
     F_GETFL,
     F_SETFL,
