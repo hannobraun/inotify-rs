@@ -2,6 +2,8 @@
 
 //! Idiomatic wrapper for inotify
 
+use epoll::{self, EpollEvent};
+use epoll::util::{ctl_op as EpollControlOp, event_type as EpollEventType};
 use libc::{
     F_GETFL,
     F_SETFL,
@@ -20,17 +22,37 @@ use std::io;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::slice;
+use std::sync::{Arc, Condvar, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ffi;
 use ffi::inotify_event;
 
-
 pub type Watch = c_int;
 
-#[derive(Clone)]
 pub struct INotify {
-    pub fd: c_int,
+    fd: Option<c_int>,
     events: Vec<Event>,
+    closer: Option<Arc<INotifyCloser>>,
+}
+
+const OPEN: usize         = 0b0000;
+const CLOSING: usize      = 0b0001;
+const CLOSED: usize       = 0b0010;
+const CLOSE_FAILED: usize = 0b0100;
+
+pub struct INotifyCloser {
+    state: AtomicUsize,
+    mutex: Mutex<()>,
+    cvar: Condvar,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum INotifyState {
+    Open,
+    Closing,
+    Closed,
+    CloseFailed,
 }
 
 impl INotify {
@@ -46,18 +68,21 @@ impl INotify {
         match fd {
             -1 => Err(io::Error::last_os_error()),
             _  => Ok(INotify {
-                fd    : fd,
+                fd    : Some(fd),
                 events: Vec::new(),
+                closer: None,
             })
         }
     }
 
-    pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
+    pub fn add_watch(&mut self, path: &Path, mask: u32) -> io::Result<Watch> {
+        let fd = self.fd.expect("The inotify handler was already closed.");
+
         let wd = unsafe {
             let c_str = try!(CString::new(path.as_os_str().as_bytes()));
 
             ffi::inotify_add_watch(
-                self.fd,
+                fd,
                 c_str.as_ptr(),
                 mask
             )
@@ -69,8 +94,11 @@ impl INotify {
         }
     }
 
-    pub fn rm_watch(&self, watch: Watch) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, watch) };
+    pub fn rm_watch(&mut self, watch: Watch) -> io::Result<()> {
+        let fd = self.fd.expect("The inotify handler was already closed.");
+
+        let result = unsafe { ffi::inotify_rm_watch(fd, watch) };
+
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -80,20 +108,54 @@ impl INotify {
     }
 
     /// Wait until events are available, then return them.
-    /// This function will block until events are available. If you want it to
-    /// return immediately, use `available_events`.
+    /// This function will block until events are available or return an
+    /// empty slice iff the inotify object was closed. If you want
+    /// non-blocking behavior, use `available_events`.
     pub fn wait_for_events(&mut self) -> io::Result<&[Event]> {
-        let fd = self.fd;
+        enum Action {
+            Read,
+            Spin,
+            Return,
+            Close,
+        }
 
-        unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
-        };
-        let result = self.available_events();
-        unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
-        };
+        loop {
+            let state = self.state();
+            let action = match state {
+                INotifyState::Open => {
+                    let fd = self.fd.expect("State != Closed");
+                    let mut events = Vec::<EpollEvent>::with_capacity(1);
+                    let mut event = EpollEvent {
+                        data: fd as u64,
+                        events: EpollEventType::EPOLLIN
+                    };
 
-        result
+                    let epfd = epoll::create1(0).unwrap();
+                    epoll::ctl(epfd, EpollControlOp::ADD, fd, &mut event).unwrap();
+                    events.push(event);
+                    let events = epoll::wait(epfd, &mut events[..], 10).unwrap();
+
+                    match events {
+                        0 => Action::Spin,
+                        _ => Action::Read,
+                    }
+                },
+                INotifyState::Closed => Action::Return,
+                INotifyState::Closing => Action::Close,
+                _ => panic!("Unexpected State {:?}", state),
+            };
+
+            match action {
+                Action::Read => return self.available_events(),
+                Action::Spin => {},
+                Action::Return => return Ok(&self.events[..]),
+                Action::Close => {
+                    self.close().unwrap();
+                    self.events.clear();
+                    return Ok(&self.events[..]);
+                },
+            }
+        }
     }
 
     /// Returns available inotify events.
@@ -106,7 +168,7 @@ impl INotify {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
             ffi::read(
-                self.fd,
+                self.fd.unwrap(),
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -181,11 +243,122 @@ impl INotify {
         Ok(&self.events[..])
     }
 
-    pub fn close(&self) -> io::Result<()> {
-        let result = unsafe { ffi::close(self.fd) };
-        match result {
-            0 => Ok(()),
-            _ => Err(io::Error::last_os_error())
+    // TODO do not return an Arc
+    pub fn closer(&mut self) -> Arc<INotifyCloser> {
+        if self.closer.is_none() {
+            self.closer = Some(Arc::new(INotifyCloser {
+                state: AtomicUsize::new(self.state().as_usize()),
+                mutex: Mutex::new(()),
+                cvar: Condvar::new(),
+            }));
+        }
+
+        self.closer.as_ref().unwrap().clone()
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        self.transition_state(|state| {
+            assert!(state != INotifyState::Closed);
+            let fd = self.fd.expect("State != Closed");
+
+            let result = unsafe { ffi::close(fd) };
+
+            match result {
+                0 => (INotifyState::Closed, Ok(())),
+                _ => (INotifyState::CloseFailed, Err(io::Error::last_os_error()))
+            }
+        }).map(|_| {
+            // Success => We're definetely done with this fd.
+            self.fd = None;
+        })
+    }
+
+    fn transition_state<A, R>(&self, action: A) -> R
+        where A: FnOnce(INotifyState) -> (INotifyState, R) {
+
+        let state = self.state();
+        match self.closer {
+            Some(ref closer) => {
+                let _ = closer.mutex.lock().unwrap();
+                let (new_state, result) = action(state);
+
+                if state != new_state {
+                    closer.state.store(new_state.as_usize(), Ordering::Relaxed);
+                    closer.cvar.notify_all();
+                }
+
+                result
+            },
+            None => action(state).1,
+        }
+    }
+
+    fn state(&self) -> INotifyState {
+        match self.closer {
+            Some(ref closer) => closer.state(),
+            None => match self.fd {
+                Some(_) => INotifyState::Open,
+                None => INotifyState::Closed,
+            },
+        }
+    }
+}
+
+impl Drop for INotify {
+    fn drop(&mut self) {
+        if self.fd.is_some() {
+            let _ = self.close();
+        }
+    }
+}
+
+impl INotifyCloser {
+    pub fn close_async(&self) {
+        if state == INotifyState::Open {
+            self.state.store(CLOSING, Ordering::Relaxed);
+        }
+    }
+
+    // TODO return a result(?)
+    pub fn close_sync(&self) {
+        if self.state().as_usize() & (CLOSED | CLOSE_FAILED) != 0 {
+            return;
+        }
+
+        let mut guard = self.mutex.lock().unwrap();
+        let state = self.state();
+
+        if state == INotifyState::Open {
+            self.state.store(CLOSING, Ordering::Relaxed);
+        }
+
+        while self.state().as_usize() & (CLOSED | CLOSE_FAILED) == 0 {
+            guard = self.cvar.wait(guard).unwrap();
+        }
+    }
+
+    fn state(&self) -> INotifyState {
+        INotifyState::from_usize(self.state.load(Ordering::Relaxed))
+    }
+}
+
+impl INotifyState {
+    fn from_usize(state: usize) -> INotifyState {
+        match state {
+            OPEN => INotifyState::Open,
+            CLOSING => INotifyState::Closing,
+            CLOSED => INotifyState::Closed,
+            CLOSE_FAILED => INotifyState::CloseFailed,
+            _ => panic!("Unexpected argument: {}", state),
+        }
+    }
+
+    fn as_usize(self) -> usize {
+        match self {
+            INotifyState::Open => OPEN,
+            INotifyState::Closing => CLOSING,
+            INotifyState::Closed => CLOSED,
+            INotifyState::CloseFailed => CLOSE_FAILED,
         }
     }
 }

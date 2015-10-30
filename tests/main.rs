@@ -2,13 +2,17 @@
 // Contributions to improve test coverage would be highly appreciated!
 
 extern crate inotify;
-
+extern crate tempdir;
 
 use std::fs::File;
 use std::io::Write;
 
-use std::env::temp_dir;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+
+use tempdir::TempDir;
 
 use inotify::INotify;
 use inotify::ffi::IN_MODIFY;
@@ -16,7 +20,8 @@ use inotify::ffi::IN_MODIFY;
 
 #[test]
 fn it_should_watch_a_file() {
-	let (path, mut file) = temp_file();
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
 
 	let mut inotify = INotify::init().unwrap();
 	let watch = inotify.add_watch(&path, IN_MODIFY).unwrap();
@@ -38,17 +43,56 @@ fn it_should_return_immediately_if_no_events_are_available() {
 }
 
 #[test]
-fn it_should_not_return_duplicate_events() {
-	// Usually, the write in this test seems to generate only one event, but
-	// sometimes it generates multiple events. If that happens, the assertion at
-	// the end will likely fail.
-	//
-	// I'm not sure why that happens, and since the test works as intended most
-	// of the time, I don't think it's that big of a deal. If you happen to know
-	// more about the subject, please consider to fix the test accordingly. It
-	// would be greatly appreciated!
+fn it_should_wait_for_events() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
 
-	let (path, mut file) = temp_file();
+    let mut inotify = INotify::init().unwrap();
+    inotify.add_watch(&path, IN_MODIFY).unwrap();
+
+    thread::spawn(move|| {
+        thread::sleep_ms(50);
+        write_to(&mut file);
+    });
+
+    let events = inotify.wait_for_events().unwrap();
+    assert!(events.len() > 0);
+}
+
+#[test]
+fn it_should_be_asynchronously_closable() {
+    let mut inotify = INotify::init().unwrap();
+    let closer = inotify.closer();
+
+    thread::spawn(move|| {
+        thread::sleep_ms(50);
+        closer.close_sync();
+    });
+
+    inotify.wait_for_events().unwrap();
+}
+
+#[test]
+fn it_should_wait_for_the_inotify_descriptor_to_be_closed() {
+    let mut inotify = INotify::init().unwrap();
+    let closer = inotify.closer();
+    let waited = Arc::new(AtomicBool::new(false));
+    let waited_clone = waited.clone();
+
+    thread::spawn(move|| {
+        thread::sleep_ms(50);
+        waited_clone.store(true, Ordering::Relaxed);
+        inotify.wait_for_events().unwrap();
+    });
+
+    closer.close_sync();
+    assert!(waited.load(Ordering::Relaxed));
+}
+
+#[test]
+fn it_should_not_return_duplicate_events() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
 
 	let mut inotify = INotify::init().unwrap();
 	inotify.add_watch(&path, IN_MODIFY).unwrap();
@@ -61,7 +105,8 @@ fn it_should_not_return_duplicate_events() {
 
 #[test]
 fn it_should_handle_file_names_correctly() {
-	let (mut path, mut file) = temp_file();
+    let mut testdir = TestDir::new();
+    let (mut path, mut file) = testdir.new_file();
 	let file_name = path
         .file_name().unwrap()
         .to_str().unwrap()
@@ -80,17 +125,6 @@ fn it_should_handle_file_names_correctly() {
 	}
 }
 
-
-fn temp_file() -> (PathBuf, File) {
-	let path = temp_dir().join("test-file");
-	let file = File::create(&path).unwrap_or_else(|error|
-		panic!("Failed to create temporary file: {}", error)
-	);
-	let path_buf = PathBuf::from(path);
-
-	(path_buf, file)
-}
-
 fn write_to(file: &mut File) {
 	file
 		.write(b"This should trigger an inotify event.")
@@ -98,3 +132,29 @@ fn write_to(file: &mut File) {
 			panic!("Failed to write to file: {}", error)
 		);
 }
+
+struct TestDir {
+    dir: TempDir,
+    counter: u32,
+}
+
+impl TestDir {
+    fn new() -> TestDir {
+        TestDir {
+            dir: TempDir::new("inotify-rs-test").unwrap(),
+            counter: 0,
+        }
+    }
+
+    fn new_file(&mut self) -> (PathBuf, File) {
+        let id = self.counter;
+        self.counter += 1;
+
+        let path = self.dir.path().join("file-".to_owned() + &id.to_string());
+        let file = File::create(&path)
+            .unwrap_or_else(|error| panic!("Failed to create temporary file: {}", error));
+
+        (path, file)
+    }
+}
+

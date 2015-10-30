@@ -19,6 +19,7 @@
 //! [wiki]: https://en.wikipedia.org/wiki/Inotify
 //! [inotify7]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
+extern crate epoll;
 extern crate libc;
 
 pub use wrapper::INotify;
