@@ -113,50 +113,49 @@ impl INotify {
     /// empty slice iff the inotify object was closed. If you want
     /// non-blocking behavior, use `available_events`.
     pub fn wait_for_events(&mut self) -> io::Result<&[Event]> {
-        enum Action {
-            Read,
-            Spin,
-            Return,
-            Close,
+        let state = self.state();
+        match state {
+            INotifyState::Open => self.handle_open(),
+            INotifyState::Closed => return Ok(&self.events[..]),
+            INotifyState::Closing => self.handle_closing(),
+            _ => panic!("Unexpected State {:?}", state),
         }
+    }
+
+    fn handle_open(&mut self) -> io::Result<&[Event]> {
+        let fd = self.fd.expect("State != Closed");
+
+        let mut events = Vec::<EpollEvent>::with_capacity(1);
+        let mut event = EpollEvent {
+            data: fd as u64,
+            events: EpollEventType::EPOLLIN
+        };
+
+        let epfd = epoll::create1(0).unwrap();
+        epoll::ctl(epfd, EpollControlOp::ADD, fd, &mut event).unwrap();
+        events.push(event);
 
         loop {
+            let events = epoll::wait(epfd, &mut events[..], 10).unwrap();
+
+            match events {
+                0 => { /* no new inotify events */ },
+                _ => return self.available_events(),
+            }
+
             let state = self.state();
-            let action = match state {
-                INotifyState::Open => {
-                    let fd = self.fd.expect("State != Closed");
-                    let mut events = Vec::<EpollEvent>::with_capacity(1);
-                    let mut event = EpollEvent {
-                        data: fd as u64,
-                        events: EpollEventType::EPOLLIN
-                    };
-
-                    let epfd = epoll::create1(0).unwrap();
-                    epoll::ctl(epfd, EpollControlOp::ADD, fd, &mut event).unwrap();
-                    events.push(event);
-                    let events = epoll::wait(epfd, &mut events[..], 10).unwrap();
-
-                    match events {
-                        0 => Action::Spin,
-                        _ => Action::Read,
-                    }
-                },
-                INotifyState::Closed => Action::Return,
-                INotifyState::Closing => Action::Close,
+            match self.state() {
+                INotifyState::Open => { /* still open, spin */ },
+                INotifyState::Closing => return self.handle_closing(),
                 _ => panic!("Unexpected State {:?}", state),
-            };
-
-            match action {
-                Action::Read => return self.available_events(),
-                Action::Spin => {},
-                Action::Return => return Ok(&self.events[..]),
-                Action::Close => {
-                    self.close().unwrap();
-                    self.events.clear();
-                    return Ok(&self.events[..]);
-                },
             }
         }
+    }
+
+    fn handle_closing(&mut self) -> io::Result<&[Event]> {
+        self.close().unwrap();
+        self.events.clear();
+        return Ok(&self.events[..]);
     }
 
     /// Returns available inotify events.
