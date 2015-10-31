@@ -5,6 +5,7 @@
 use epoll::{self, EpollEvent};
 use epoll::util::ctl_op as EpollControlOp;
 use epoll::util::event_type as EpollEventType;
+use epoll::util::WaitError;
 use libc::{
     F_GETFL,
     F_SETFL,
@@ -136,11 +137,17 @@ impl INotify {
         events.push(event);
 
         loop {
-            let events = epoll::wait(epfd, &mut events[..], 10).unwrap();
-
-            match events {
-                0 => { /* no new inotify events */ },
-                _ => return self.available_events(),
+            match epoll::wait(epfd, &mut events[..], 10) {
+                Ok(0) => { /* no new inotify events */ },
+                Ok(_) => return self.available_events(),
+                Err(WaitError::EINTR) => {
+                    // We were interrupted. This must
+                    // be handled at a higher level.
+                },
+                error @ _ => {
+                  // panic with the error information.
+                  error.unwrap();
+                },
             }
 
             let state = self.state();
@@ -153,7 +160,7 @@ impl INotify {
     }
 
     fn handle_closing(&mut self) -> io::Result<&[Event]> {
-        self.close().unwrap();
+        try!(self.close());
         self.events.clear();
         return Ok(&self.events[..]);
     }
@@ -168,7 +175,7 @@ impl INotify {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
             ffi::read(
-                self.fd.unwrap(),
+                self.fd.expect("The inotify handler was already closed."),
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -257,8 +264,9 @@ impl INotify {
     }
 
     pub fn close(&mut self) -> io::Result<()> {
-        self.transition_state(|state| {
-            assert!(state != INotifyState::Closed);
+        assert!(self.state() != INotifyState::Closed);
+
+        let result = self.transition_state(|| {
             let fd = self.fd.expect("State != Closed");
 
             let result = unsafe { ffi::close(fd) };
@@ -267,20 +275,25 @@ impl INotify {
                 0 => (INotifyState::Closed, Ok(())),
                 _ => (INotifyState::CloseFailed, Err(io::Error::last_os_error()))
             }
-        }).map(|_| {
+        });
+
+        if result.is_ok() {
             // Success => We're definetely done with this fd.
             self.fd = None;
-        })
+        }
+
+        result
     }
 
     fn transition_state<A, R>(&self, action: A) -> R
-        where A: FnOnce(INotifyState) -> (INotifyState, R) {
+        where A: FnOnce() -> (INotifyState, R) {
 
-        let state = self.state();
         match self.closer {
             Some(ref closer) => {
                 let _ = closer.mutex.lock().unwrap();
-                let (new_state, result) = action(state);
+
+                let state = self.state();
+                let (new_state, result) = action();
 
                 if state != new_state {
                     closer.state.store(new_state.as_usize(), Ordering::Relaxed);
@@ -289,7 +302,7 @@ impl INotify {
 
                 result
             },
-            None => action(state).1,
+            None => action().1,
         }
     }
 
