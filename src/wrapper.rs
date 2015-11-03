@@ -180,7 +180,7 @@ impl INotify {
         Ok(&self.events[..])
     }
 
-    pub fn close(&self) -> io::Result<()> {
+    pub fn close(self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         match result {
             0 => Ok(()),
