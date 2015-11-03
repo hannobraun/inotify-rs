@@ -51,7 +51,7 @@ pub use libc::read;
 /// [execve(2)]: http://man7.org/linux/man-pages/man2/execve.2.html
 /// [open(2)]: http://man7.org/linux/man-pages/man2/open.2.html
 /// [fcntl(2)]: http://man7.org/linux/man-pages/man2/fcntl.2.html
-pub const IN_CLOEXEC : c_int = 0o2000000;
+pub const IN_CLOEXEC: c_int = 0o2000000;
 
 /// Flag: Set the O_NONBLOCK file status flag
 ///
@@ -85,10 +85,10 @@ pub const IN_NONBLOCK: c_int = 0o4000;
 ///
 /// When monitoring a directory, the event may occur both for the
 /// directory itself and the files within.
-pub const IN_ACCESS       : uint32_t = 0x00000001;
+pub const IN_ACCESS: uint32_t = 0x00000001;
 
 /// Event: File was modified.
-pub const IN_MODIFY       : uint32_t = 0x00000002;
+pub const IN_MODIFY: uint32_t = 0x00000002;
 
 /// Event: Metadata has changed.
 ///
@@ -108,13 +108,13 @@ pub const IN_MODIFY       : uint32_t = 0x00000002;
 /// [link(2)]: http://man7.org/linux/man-pages/man2/link.2.html
 /// [unlink(2)]: http://man7.org/linux/man-pages/man2/link.2.html
 /// [chown(2)]: http://man7.org/linux/man-pages/man2/link.2.html
-pub const IN_ATTRIB       : uint32_t = 0x00000004;
+pub const IN_ATTRIB: uint32_t = 0x00000004;
 
 /// Event: File opened for writing was closed.
 ///
 /// When monitoring a directory, the event may occur both for the
 /// directory itself and the files within.
-pub const IN_CLOSE_WRITE  : uint32_t = 0x00000008;
+pub const IN_CLOSE_WRITE: uint32_t = 0x00000008;
 
 /// Event: File not opened for writing was closed.
 ///
@@ -126,19 +126,19 @@ pub const IN_CLOSE_NOWRITE: uint32_t = 0x00000010;
 ///
 /// When monitoring a directory, the event may occur both for the
 /// directory itself and the files within.
-pub const IN_OPEN         : uint32_t = 0x00000020;
+pub const IN_OPEN: uint32_t = 0x00000020;
 
 /// Event: File or directory was moved away.
 ///
 /// When monitoring a directory, the event may occur *only* for
 /// the files within, not the directory itself.
-pub const IN_MOVED_FROM   : uint32_t = 0x00000040;
+pub const IN_MOVED_FROM: uint32_t = 0x00000040;
 
 /// Event: File or directory was moved in.
 ///
 /// When monitoring a directory, the event may occur *only* for
 /// the files within, not the directory itself.
-pub const IN_MOVED_TO     : uint32_t = 0x00000080;
+pub const IN_MOVED_TO: uint32_t = 0x00000080;
 
 /// Event: File or directory was created.
 ///
@@ -146,7 +146,7 @@ pub const IN_MOVED_TO     : uint32_t = 0x00000080;
 ///
 /// When monitoring a directory, the event may occur *only* for
 /// the files within, not the directory itself.
-pub const IN_CREATE       : uint32_t = 0x00000100;
+pub const IN_CREATE: uint32_t = 0x00000100;
 
 /// Event: File or directory was deleted.
 ///
@@ -154,7 +154,7 @@ pub const IN_CREATE       : uint32_t = 0x00000100;
 ///
 /// When monitoring a directory, the event may occur *only* for
 /// the files within, not the directory itself.
-pub const IN_DELETE       : uint32_t = 0x00000200;
+pub const IN_DELETE: uint32_t = 0x00000200;
 
 /// Event: Watched file or directory was deleted.
 ///
@@ -165,16 +165,16 @@ pub const IN_DELETE       : uint32_t = 0x00000200;
 /// An IN_IGNORED event will subsequently be generated.
 ///
 /// [mv(1)]: http://man7.org/linux/man-pages/man1/mv.1.html
-pub const IN_DELETE_SELF  : uint32_t = 0x00000400;
+pub const IN_DELETE_SELF: uint32_t = 0x00000400;
 
 /// Event: Watched file or directory was moved.
-pub const IN_MOVE_SELF    : uint32_t = 0x00000800;
+pub const IN_MOVE_SELF: uint32_t = 0x00000800;
 
 /// Event: File or directory was moved away or in.
 ///
 /// When monitoring a directory, the event may occur *only* for
 /// the files within, not the directory itself.
-pub const IN_MOVE : uint32_t = (IN_MOVED_FROM | IN_MOVED_TO);
+pub const IN_MOVE: uint32_t = (IN_MOVED_FROM | IN_MOVED_TO);
 
 /// Event: File opened was closed.
 ///
@@ -189,7 +189,7 @@ pub const IN_ALL_EVENTS: uint32_t = (
     | IN_DELETE_SELF | IN_MOVE_SELF);
 
 /// Option: Don't watch children (if self is a directory).
-pub const IN_ONLYDIR    : uint32_t = 0x01000000;
+pub const IN_ONLYDIR: uint32_t = 0x01000000;
 
 /// Option: Don't dereference (if self is a symlink).
 pub const IN_DONT_FOLLOW: uint32_t = 0x02000000;
@@ -214,18 +214,18 @@ pub const IN_EXCL_UNLINK: uint32_t = 0x04000000;
 /// > If a watch instance already exists for the filesystem
 /// > object corresponding to self, add (|) the events to the
 /// > watch mask instead of replacing it.
-pub const IN_MASK_ADD   : uint32_t = 0x20000000;
+pub const IN_MASK_ADD: uint32_t = 0x20000000;
 
 /// Option: Listen for one event, then remove the watch.
-pub const IN_ONESHOT    : uint32_t = 0x80000000;
+pub const IN_ONESHOT: uint32_t = 0x80000000;
 
 /// Info: Subject of this event is a directory.
-pub const IN_ISDIR     : uint32_t = 0x40000000;
+pub const IN_ISDIR: uint32_t = 0x40000000;
 
 /// Info: Filesystem containing self was unmounted.
 ///
 /// An IN_IGNORED event will subsequently be generated.
-pub const IN_UNMOUNT   : uint32_t = 0x00002000;
+pub const IN_UNMOUNT: uint32_t = 0x00002000;
 
 /// Info: Event queue overflowed.
 pub const IN_Q_OVERFLOW: uint32_t = 0x00004000;
@@ -239,7 +239,7 @@ pub const IN_Q_OVERFLOW: uint32_t = 0x00004000;
 /// See the BUGS section of [inotify(7)] for more details.
 ///
 /// [inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
-pub const IN_IGNORED   : uint32_t = 0x00008000;
+pub const IN_IGNORED: uint32_t = 0x00008000;
 
 
 /// Describes an event.
