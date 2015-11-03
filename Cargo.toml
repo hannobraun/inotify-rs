@@ -16,3 +16,6 @@ license = "ISC"
 
 [dependencies]
 libc = "*"
+
+[dev-dependencies]
+tempdir = "*"
