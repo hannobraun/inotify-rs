@@ -87,6 +87,7 @@ pub const IN_NONBLOCK: c_int = 0o4000;
 /// directory itself and the files within.
 pub const IN_ACCESS       : uint32_t = 0x00000001;
 
+/// Event: File was modified.
 pub const IN_MODIFY       : uint32_t = 0x00000002;
 
 /// Event: Metadata has changed.
