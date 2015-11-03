@@ -27,7 +27,6 @@ use ffi::inotify_event;
 
 pub type Watch = c_int;
 
-#[derive(Clone)]
 pub struct INotify {
     pub fd: c_int,
     events: Vec<Event>,
