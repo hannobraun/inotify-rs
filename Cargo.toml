@@ -15,7 +15,7 @@ repository = "https://github.com/hannobraun/inotify-rs"
 license = "ISC"
 
 [dependencies]
-libc = "^0.1"
+libc = "^0.2"
 
 [dev-dependencies]
 tempdir = "^0.3"
