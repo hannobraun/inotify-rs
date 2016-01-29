@@ -256,7 +256,6 @@ pub const IN_IGNORED: uint32_t = 0x00008000;
 /// [read(2)]: http://man7.org/linux/man-pages/man2/read.2.html
 /// [signal(7)]: http://man7.org/linux/man-pages/man2/read.2.html
 #[allow(non_camel_case_types)]
-#[allow(raw_pointer_derive)]
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct inotify_event {
