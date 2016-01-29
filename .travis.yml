@@ -1,8 +1,9 @@
 language: rust
 
-# Test using both the rust 1.0.0-beta, and the latest nightly
+# Test on the latest versions of all channels.
 rust:
-  - 1.0.0-beta
+  - stable
+  - beta
   - nightly
 
 # Run this build on the "container-based infrastructure"
