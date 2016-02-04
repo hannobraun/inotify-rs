@@ -57,7 +57,7 @@ impl INotify {
 
             ffi::inotify_add_watch(
                 self.fd,
-                c_str.as_ptr(),
+                c_str.as_ptr() as *const _,
                 mask
             )
         };
