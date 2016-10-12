@@ -173,11 +173,20 @@ impl INotify {
         Ok(&self.events[..])
     }
 
-    pub fn close(self) -> io::Result<()> {
+    pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
+        self.fd = -1;
         match result {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error())
+        }
+    }
+}
+
+impl Drop for INotify {
+    fn drop(&mut self) {
+        if self.fd != -1 {
+            unsafe { ffi::close(self.fd); }
         }
     }
 }
