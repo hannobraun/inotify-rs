@@ -37,8 +37,8 @@ impl INotify {
         INotify::init_with_flags(0)
     }
 
-    pub fn init_with_flags(flags: isize) -> io::Result<INotify> {
-        let fd = unsafe { ffi::inotify_init1(flags as c_int) };
+    pub fn init_with_flags(flags: c_int) -> io::Result<INotify> {
+        let fd = unsafe { ffi::inotify_init1(flags) };
 
         unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
 
