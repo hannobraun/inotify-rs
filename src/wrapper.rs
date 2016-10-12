@@ -34,13 +34,12 @@ pub struct INotify {
 
 impl INotify {
     pub fn init() -> io::Result<INotify> {
-        INotify::init_with_flags(0)
+        INotify::init_with_flags(ffi::IN_CLOEXEC)
     }
 
     pub fn init_with_flags(flags: c_int) -> io::Result<INotify> {
+        let flags = flags | ffi::IN_NONBLOCK;
         let fd = unsafe { ffi::inotify_init1(flags) };
-
-        unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
