@@ -68,7 +68,7 @@ fn it_should_handle_file_names_correctly() {
 	let events = inotify.wait_for_events().unwrap();
 	assert!(events.len() > 0);
 	for event in events {
-		assert_eq!(file_name, event.name);
+		assert_eq!(file_name, event.name.to_str().unwrap());
 	}
 }
 

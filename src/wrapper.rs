@@ -13,12 +13,13 @@ use libc::{
     ssize_t
 };
 use std::ffi::{
+    OsStr,
     CString,
 };
 use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 use std::slice;
 
 use ffi;
@@ -157,17 +158,10 @@ impl INotify {
                     // at least 1 result, even if the original slice contains no instances of \0.
                     let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
 
-                    let c_str = try!(CString::new(name_slice));
-
-                    match String::from_utf8(c_str.as_bytes().to_vec()) {
-                        Ok(string)
-                            => string.to_string(),
-                        Err(e) =>
-                            panic!("Failed to convert C string into Rust string: {}", e)
-                    }
+                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
                 }
                 else {
-                    "".to_string()
+                    PathBuf::new()
                 };
 
                 self.events.push(Event::new(&*event, name));
@@ -193,11 +187,11 @@ pub struct Event {
     pub wd    : i32,
     pub mask  : u32,
     pub cookie: u32,
-    pub name  : String,
+    pub name  : PathBuf,
 }
 
 impl Event {
-    fn new(event: &inotify_event, name: String) -> Event {
+    fn new(event: &inotify_event, name: PathBuf) -> Event {
         Event {
             wd    : event.wd,
             mask  : event.mask,
