@@ -13,12 +13,13 @@ use libc::{
     ssize_t
 };
 use std::ffi::{
+    OsStr,
     CString,
 };
 use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 use std::slice;
 
 use ffi;
@@ -34,13 +35,12 @@ pub struct INotify {
 
 impl INotify {
     pub fn init() -> io::Result<INotify> {
-        INotify::init_with_flags(0)
+        INotify::init_with_flags(ffi::IN_CLOEXEC)
     }
 
-    pub fn init_with_flags(flags: isize) -> io::Result<INotify> {
-        let fd = unsafe { ffi::inotify_init1(flags as c_int) };
-
-        unsafe { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) };
+    pub fn init_with_flags(flags: c_int) -> io::Result<INotify> {
+        let flags = flags | ffi::IN_NONBLOCK;
+        let fd = unsafe { ffi::inotify_init1(flags) };
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
@@ -158,17 +158,10 @@ impl INotify {
                     // at least 1 result, even if the original slice contains no instances of \0.
                     let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
 
-                    let c_str = try!(CString::new(name_slice));
-
-                    match String::from_utf8(c_str.as_bytes().to_vec()) {
-                        Ok(string)
-                            => string.to_string(),
-                        Err(e) =>
-                            panic!("Failed to convert C string into Rust string: {}", e)
-                    }
+                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
                 }
                 else {
-                    "".to_string()
+                    PathBuf::new()
                 };
 
                 self.events.push(Event::new(&*event, name));
@@ -180,11 +173,20 @@ impl INotify {
         Ok(&self.events[..])
     }
 
-    pub fn close(self) -> io::Result<()> {
+    pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
+        self.fd = -1;
         match result {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error())
+        }
+    }
+}
+
+impl Drop for INotify {
+    fn drop(&mut self) {
+        if self.fd != -1 {
+            unsafe { ffi::close(self.fd); }
         }
     }
 }
@@ -194,11 +196,11 @@ pub struct Event {
     pub wd    : i32,
     pub mask  : u32,
     pub cookie: u32,
-    pub name  : String,
+    pub name  : PathBuf,
 }
 
 impl Event {
-    fn new(event: &inotify_event, name: String) -> Event {
+    fn new(event: &inotify_event, name: PathBuf) -> Event {
         Event {
             wd    : event.wd,
             mask  : event.mask,
