@@ -2,6 +2,16 @@
 
 //! Idiomatic wrapper for inotify
 
+use std::mem;
+use std::io;
+use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
+use std::slice;
+use std::ffi::{
+    OsStr,
+    CString,
+};
+
 use libc::{
     F_GETFL,
     F_SETFL,
@@ -10,20 +20,9 @@ use libc::{
     c_int,
     c_void,
     size_t,
-    ssize_t
+    ssize_t,
 };
-use std::ffi::{
-    OsStr,
-    CString,
-};
-use std::mem;
-use std::io;
-use std::os::unix::ffi::OsStrExt;
-use std::path::{Path,PathBuf};
-use std::slice;
-
-use ffi;
-use ffi::inotify_event;
+use ffi::{self, inotify_event};
 
 
 pub type Watch = c_int;
@@ -34,6 +33,7 @@ pub struct INotify {
 }
 
 impl INotify {
+
     pub fn init() -> io::Result<INotify> {
         INotify::init_with_flags(ffi::IN_CLOEXEC)
     }
@@ -64,7 +64,7 @@ impl INotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(wd)
+            _  => Ok(wd),
         }
     }
 
@@ -178,7 +178,7 @@ impl INotify {
         self.fd = -1;
         match result {
             0 => Ok(()),
-            _ => Err(io::Error::last_os_error())
+            _ => Err(io::Error::last_os_error()),
         }
     }
 }
