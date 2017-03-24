@@ -9,7 +9,7 @@ authors = [
   "Frank Denis <github@pureftpd.org>"
 ]
 description = "Bindings and an idiomatic wrapper for inotify"
-documentation = "https://github.com/hannobraun/inotify-rs/blob/master/README.md"
+documentation = "https://docs.rs/inotify"
 homepage = "https://github.com/hannobraun/inotify-rs"
 repository = "https://github.com/hannobraun/inotify-rs"
 license = "ISC"
