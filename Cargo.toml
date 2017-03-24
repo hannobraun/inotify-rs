@@ -13,6 +13,13 @@ description   = "Bindings and an idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
 repository    = "https://github.com/hannobraun/inotify-rs"
 license       = "ISC"
+readme        = "README.md"
+
+keywords   = ["linux"]
+categories = ["api-bindings", "external-ffi-bindings", "filesystem"]
+
+[badges]
+travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
 libc = "^0.2"
