@@ -1,6 +1,6 @@
 [package]
 
-name = "inotify"
+name    = "inotify"
 version = "0.3.0"
 authors = [
   "Hanno Braun <mail@hannobraun.de>",
@@ -8,10 +8,11 @@ authors = [
   "Cristian Kubis <cristian.kubis@tsunix.de>",
   "Frank Denis <github@pureftpd.org>"
 ]
-description = "Bindings and an idiomatic wrapper for inotify"
+
+description   = "Bindings and an idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
-repository = "https://github.com/hannobraun/inotify-rs"
-license = "ISC"
+repository    = "https://github.com/hannobraun/inotify-rs"
+license       = "ISC"
 
 [dependencies]
 libc = "^0.2"
