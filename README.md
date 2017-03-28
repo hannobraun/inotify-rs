@@ -1,4 +1,4 @@
-# inotify-rs [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs)
+# inotify-rs [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify)
 
 ## What is inotify-rs?
 

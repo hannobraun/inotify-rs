@@ -1,6 +1,6 @@
 [package]
 
-name = "inotify"
+name    = "inotify"
 version = "0.3.0"
 authors = [
   "Hanno Braun <mail@hannobraun.de>",
@@ -8,11 +8,18 @@ authors = [
   "Cristian Kubis <cristian.kubis@tsunix.de>",
   "Frank Denis <github@pureftpd.org>"
 ]
-description = "Bindings and an idiomatic wrapper for inotify"
-documentation = "https://github.com/hannobraun/inotify-rs/blob/master/README.md"
-homepage = "https://github.com/hannobraun/inotify-rs"
-repository = "https://github.com/hannobraun/inotify-rs"
-license = "ISC"
+
+description   = "Bindings and an idiomatic wrapper for inotify"
+documentation = "https://docs.rs/inotify"
+repository    = "https://github.com/hannobraun/inotify-rs"
+license       = "ISC"
+readme        = "README.md"
+
+keywords   = ["linux"]
+categories = ["api-bindings", "external-ffi-bindings", "filesystem"]
+
+[badges]
+travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
 libc = "^0.2"
