@@ -35,12 +35,24 @@ pub struct INotify {
 impl INotify {
 
     pub fn init() -> io::Result<INotify> {
-        INotify::init_with_flags(ffi::IN_CLOEXEC)
-    }
-
-    pub fn init_with_flags(flags: c_int) -> io::Result<INotify> {
-        let flags = flags | ffi::IN_NONBLOCK;
-        let fd = unsafe { ffi::inotify_init1(flags) };
+        let fd = unsafe {
+            // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
+            //
+            // `IN_NONBLOCK` is needed, because `INotify` manages blocking
+            // behavior for the API consumer, and the way we do that is to make
+            // everything non-blocking by default and later override that as
+            // required.
+            //
+            // Passing `IN_CLOEXEC` prevents leaking file descriptors to
+            // processes executed by this process and seems to be a best
+            // practice. I don't grasp this issue completely and failed to find
+            // any authorative sources on the topic. There's some discussion in
+            // the open(2) and fcntl(2) man pages, but I didn't find that
+            // helpful in understanding the issue of leaked file scriptors.
+            // For what it's worth, there's a Rust issue about this:
+            // https://github.com/rust-lang/rust/issues/12148
+            ffi::inotify_init1(ffi::IN_CLOEXEC | ffi::IN_NONBLOCK)
+        };
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
