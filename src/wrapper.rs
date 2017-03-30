@@ -80,8 +80,8 @@ impl Inotify {
         }
     }
 
-    pub fn rm_watch(&self, watch: WatchDescriptor) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, watch.0) };
+    pub fn rm_watch(&self, wd: WatchDescriptor) -> io::Result<()> {
+        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
