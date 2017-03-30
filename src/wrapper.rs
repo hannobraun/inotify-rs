@@ -25,8 +25,6 @@ use libc::{
 use ffi::{self, inotify_event};
 
 
-pub type Watch = c_int;
-
 pub struct INotify {
     pub fd: c_int,
     events: Vec<Event>,
@@ -63,7 +61,9 @@ impl INotify {
         }
     }
 
-    pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
+    pub fn add_watch(&self, path: &Path, mask: u32)
+        -> io::Result<WatchDescriptor>
+    {
         let wd = unsafe {
             let c_str = try!(CString::new(path.as_os_str().as_bytes()));
 
@@ -76,12 +76,12 @@ impl INotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(wd),
+            _  => Ok(WatchDescriptor(wd)),
         }
     }
 
-    pub fn rm_watch(&self, watch: Watch) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, watch) };
+    pub fn rm_watch(&self, watch: WatchDescriptor) -> io::Result<()> {
+        let result = unsafe { ffi::inotify_rm_watch(self.fd, watch.0) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -203,9 +203,19 @@ impl Drop for INotify {
     }
 }
 
+
+/// Represents a file that inotify is watching
+///
+/// Can be obtained from `Inotify::add_watch` or from an `Event`. A
+/// `WatchDescriptor` can be used to get inotify to stop watching a file by
+/// passing it to `INotify::rm_watch`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WatchDescriptor(c_int);
+
+
 #[derive(Clone, Debug)]
 pub struct Event {
-    pub wd    : i32,
+    pub wd    : WatchDescriptor,
     pub mask  : u32,
     pub cookie: u32,
     pub name  : PathBuf,
@@ -214,7 +224,7 @@ pub struct Event {
 impl Event {
     fn new(event: &inotify_event, name: PathBuf) -> Event {
         Event {
-            wd    : event.wd,
+            wd    : WatchDescriptor(event.wd),
             mask  : event.mask,
             cookie: event.cookie,
             name  : name,
