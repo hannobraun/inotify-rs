@@ -21,7 +21,7 @@
 
 extern crate libc;
 
-pub use wrapper::INotify;
+pub use wrapper::Inotify;
 
 pub mod ffi;
 pub mod wrapper;

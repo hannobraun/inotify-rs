@@ -25,18 +25,18 @@ use libc::{
 use ffi::{self, inotify_event};
 
 
-pub struct INotify {
+pub struct Inotify {
     pub fd: c_int,
     events: Vec<Event>,
 }
 
-impl INotify {
+impl Inotify {
 
-    pub fn init() -> io::Result<INotify> {
+    pub fn init() -> io::Result<Inotify> {
         let fd = unsafe {
             // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
             //
-            // `IN_NONBLOCK` is needed, because `INotify` manages blocking
+            // `IN_NONBLOCK` is needed, because `Inotify` manages blocking
             // behavior for the API consumer, and the way we do that is to make
             // everything non-blocking by default and later override that as
             // required.
@@ -54,7 +54,7 @@ impl INotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(INotify {
+            _  => Ok(Inotify {
                 fd    : fd,
                 events: Vec::new(),
             })
@@ -195,7 +195,7 @@ impl INotify {
     }
 }
 
-impl Drop for INotify {
+impl Drop for Inotify {
     fn drop(&mut self) {
         if self.fd != -1 {
             unsafe { ffi::close(self.fd); }
@@ -208,7 +208,7 @@ impl Drop for INotify {
 ///
 /// Can be obtained from `Inotify::add_watch` or from an `Event`. A
 /// `WatchDescriptor` can be used to get inotify to stop watching a file by
-/// passing it to `INotify::rm_watch`.
+/// passing it to `Inotify::rm_watch`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WatchDescriptor(c_int);
 
