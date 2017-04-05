@@ -4,8 +4,10 @@
 extern crate inotify;
 extern crate tempdir;
 
-use inotify::Inotify;
-use inotify::ffi::IN_MODIFY;
+use inotify::{
+    watch_mask,
+    Inotify,
+};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -18,7 +20,7 @@ fn it_should_watch_a_file() {
     let (path, mut file) = testdir.new_file();
 
 	let mut inotify = Inotify::init().unwrap();
-	let watch = inotify.add_watch(&path, IN_MODIFY).unwrap();
+    let watch = inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
 
 	write_to(&mut file);
 
@@ -42,7 +44,7 @@ fn it_should_not_return_duplicate_events() {
     let (path, mut file) = testdir.new_file();
 
 	let mut inotify = Inotify::init().unwrap();
-	inotify.add_watch(&path, IN_MODIFY).unwrap();
+    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
 
 	write_to(&mut file);
 	inotify.wait_for_events().unwrap();
@@ -61,7 +63,7 @@ fn it_should_handle_file_names_correctly() {
 	path.pop(); // Get path to the directory the file is in
 
 	let mut inotify = Inotify::init().unwrap();
-	inotify.add_watch(&path, IN_MODIFY).unwrap();
+    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
 
 	write_to(&mut file);
 

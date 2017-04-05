@@ -26,7 +26,10 @@ extern crate bitflags;
 extern crate libc;
 
 
-pub use wrapper::Inotify;
+pub use wrapper::{
+    watch_mask,
+    Inotify,
+};
 
 pub mod ffi;
 pub mod wrapper;

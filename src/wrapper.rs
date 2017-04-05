@@ -61,7 +61,7 @@ impl Inotify {
         }
     }
 
-    pub fn add_watch(&self, path: &Path, mask: u32)
+    pub fn add_watch(&self, path: &Path, mask: WatchMask)
         -> io::Result<WatchDescriptor>
     {
         let wd = unsafe {
@@ -70,7 +70,7 @@ impl Inotify {
             ffi::inotify_add_watch(
                 self.fd,
                 c_str.as_ptr() as *const _,
-                mask
+                mask.bits(),
             )
         };
 
@@ -202,6 +202,93 @@ impl Drop for Inotify {
         }
     }
 }
+
+
+/// Contains the [`WatchMask`](struct.WatchMask.html) flags
+///
+/// Contains constants for all valid
+/// [`WatchMask`](struct.WatchMask.html) flags, which can be used to
+/// compare against a [`WatchMask`](struct.WatchMask.html) instance
+/// using its [`contains`](struct.WatchMask.html#method.contains) method.
+pub mod watch_mask {
+    use ffi;
+
+    bitflags! {
+        /// Mask for a file watch
+        ///
+        /// Passed to
+        /// [`Inotify::add_watch`](../struct.Inotify.html#method.add_watch), to
+        /// describe what file system events to watch for and how to do that.
+        pub flags WatchMask: u32 {
+            /// File was accessed.
+            const ACCESS        = ffi::IN_ACCESS,
+
+            /// Metadata changed.
+            const ATTRIB        = ffi::IN_ATTRIB,
+
+            /// File opened for writing was closed.
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
+
+            /// File or directory not opened for writing was closed.
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
+
+            /// File/directory created in watched directory.
+            const CREATE        = ffi::IN_CREATE,
+
+            /// File/directory deleted from watched directory.
+            const DELETE        = ffi::IN_DELETE,
+
+            /// Watched file/directory was itself deleted.
+            const DELETE_SELF   = ffi::IN_DELETE_SELF,
+
+            /// File was modified.
+            const MODIFY        = ffi::IN_MODIFY,
+
+            /// Watched file/directory was itself moved.
+            const MOVE_SELF     = ffi::IN_MOVE_SELF,
+
+            /// Generated for the directory containing the old filename when a
+            /// file is renamend.
+            const MOVED_FROM    = ffi::IN_MOVED_FROM,
+
+            /// Generated for the directory containing the new filename when a
+            /// file is renamed.
+            const MOVED_TO      = ffi::IN_MOVED_TO,
+
+            /// File or directory was opened.
+            const OPEN          = ffi::IN_OPEN,
+
+            /// Watch for all events.
+            const ALL_EVENTS    = ffi::IN_ALL_EVENTS,
+
+            /// Watch for both `MOVED_FROM` and `MOVED_TO`.
+            const MOVE          = ffi::IN_MOVE,
+
+            /// Watch for both `IN_CLOSE_WRITE` and `IN_CLOSE_NOWRITE`.
+            const CLOSE         = ffi::IN_CLOSE,
+
+            /// Don't dereference the path if it is a symbolic link
+            const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW,
+
+            /// Don't watch events for children that have been unlinked from
+            /// watched directory.
+            const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK,
+
+            /// If a watch instance already exists for the inode corresponding
+            /// to the given path, amend the existing watch mask instead of
+            /// replacing it.
+            const MASK_ADD      = ffi::IN_MASK_ADD,
+
+            /// Only monitor for one event, then remove the watch
+            const ONESHOT       = ffi::IN_ONESHOT,
+
+            /// Only watch path, if it is a directory.
+            const ONLYDIR       = ffi::IN_ONLYDIR,
+        }
+    }
+}
+
+pub use self::watch_mask::WatchMask;
 
 
 /// Represents a file that inotify is watching
