@@ -61,7 +61,7 @@ impl Inotify {
         }
     }
 
-    pub fn add_watch<P>(&self, path: P, mask: WatchMask)
+    pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
     {
@@ -81,7 +81,7 @@ impl Inotify {
         }
     }
 
-    pub fn rm_watch(&self, wd: WatchDescriptor) -> io::Result<()> {
+    pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
         let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
         match result {
             0  => Ok(()),
