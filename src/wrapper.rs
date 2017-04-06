@@ -1,5 +1,3 @@
-#![allow(missing_docs)]
-
 //! Idiomatic wrapper for inotify
 
 use std::mem;
