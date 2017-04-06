@@ -512,18 +512,95 @@ impl<'a> Iterator for Events<'a> {
 #[derive(Clone, Debug)]
 pub struct Event {
     pub wd    : WatchDescriptor,
-    pub mask  : u32,
+    pub mask  : EventMask,
     pub cookie: u32,
     pub name  : PathBuf,
 }
 
 impl Event {
     fn new(event: &inotify_event, name: PathBuf) -> Event {
+        let mask = EventMask::from_bits(event.mask)
+            .expect("Failed to convert event mask. This indicates a bug.");
+
         Event {
             wd    : WatchDescriptor(event.wd),
-            mask  : event.mask,
+            mask  : mask,
             cookie: event.cookie,
             name  : name,
         }
     }
 }
+
+
+/// Contains the [`EventMask`](struct.EventMask.html) flags
+///
+/// Contains constants for all valid
+/// [`EventMask`](struct.EventMask.html) flags, which can be used to
+/// compare against a [`EventMask`](struct.EventMask.html) instance
+/// using its [`contains`](struct.EventMask.html#method.contains) method.
+pub mod event_mask {
+    use ffi;
+
+    bitflags! {
+        /// Mask for an event
+        ///
+        /// This struct can be retrieved from an [`Event`](../struct.Event.html)
+        /// via its `mask` field. You can determine the
+        /// [`Event`](../struct.Event.html)'s type by comparing it to the
+        /// constants in the [`event_mask`](index.html) module using
+        /// [`EventMask::contains`](struct.EventMask.html#method.contains).
+        pub flags EventMask: u32 {
+            /// File was accessed.
+            const ACCESS        = ffi::IN_ACCESS,
+
+            /// Metadata changed.
+            const ATTRIB        = ffi::IN_ATTRIB,
+
+            /// File opened for writing was closed.
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
+
+            /// File or directory not opened for writing was closed.
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
+
+            /// File/directory created in watched directory.
+            const CREATE        = ffi::IN_CREATE,
+
+            /// File/directory deleted from watched directory.
+            const DELETE        = ffi::IN_DELETE,
+
+            /// Watched file/directory was itself deleted.
+            const DELETE_SELF   = ffi::IN_DELETE_SELF,
+
+            /// File was modified.
+            const MODIFY        = ffi::IN_MODIFY,
+
+            /// Watched file/directory was itself moved.
+            const MOVE_SELF     = ffi::IN_MOVE_SELF,
+
+            /// Generated for the directory containing the old filename when a
+            /// file is renamend.
+            const MOVED_FROM    = ffi::IN_MOVED_FROM,
+
+            /// Generated for the directory containing the new filename when a
+            /// file is renamed.
+            const MOVED_TO      = ffi::IN_MOVED_TO,
+
+            /// File or directory was opened.
+            const OPEN          = ffi::IN_OPEN,
+
+            /// Watch was removed.
+            const IGNORED       = ffi::IN_IGNORED,
+
+            /// Subject of this event is a directory.
+            const ISDIR         = ffi::IN_ISDIR,
+
+            /// Event queue overflowed.
+            const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW,
+
+            /// File system containing watched object was unmounted.
+            const UNMOUNT       = ffi::IN_UNMOUNT,
+        }
+    }
+}
+
+pub use self::event_mask::EventMask;
