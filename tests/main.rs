@@ -27,7 +27,7 @@ fn it_should_watch_a_file() {
     let events = inotify.wait_for_events().unwrap();
 
     let mut num_events = 0;
-    for event in events.iter() {
+    for event in events {
         assert_eq!(watch, event.wd);
         num_events += 1;
     }
@@ -38,7 +38,7 @@ fn it_should_watch_a_file() {
 fn it_should_return_immediately_if_no_events_are_available() {
     let mut inotify = Inotify::init().unwrap();
 
-    assert_eq!(0, inotify.available_events().unwrap().len());
+    assert_eq!(0, inotify.available_events().unwrap().count());
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn it_should_not_return_duplicate_events() {
     write_to(&mut file);
     inotify.wait_for_events().unwrap();
 
-    assert_eq!(0, inotify.available_events().unwrap().len());
+    assert_eq!(0, inotify.available_events().unwrap().count());
 }
 
 #[test]

@@ -11,6 +11,7 @@ use std::ffi::{
     OsStr,
     CString,
 };
+use std::vec;
 
 use libc::{
     F_GETFL,
@@ -94,7 +95,7 @@ impl Inotify {
     /// Wait until events are available, then return them.
     /// This function will block until events are available. If you want it to
     /// return immediately, use `available_events`.
-    pub fn wait_for_events(&mut self) -> io::Result<&[Event]> {
+    pub fn wait_for_events(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
         unsafe {
@@ -112,9 +113,7 @@ impl Inotify {
     /// If no events are available, this method will simply return a slice with
     /// zero events. If you want to wait for events to become available, call
     /// `wait_for_events`.
-    pub fn available_events(&mut self) -> io::Result<&[Event]> {
-        self.events.clear();
-
+    pub fn available_events(&mut self) -> io::Result<Events> {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
             ffi::read(
@@ -135,7 +134,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(&self.events[..]);
+                    return Ok(Events(self.events.drain(..)));
                 }
                 else {
                     return Err(error);
@@ -183,7 +182,7 @@ impl Inotify {
             }
         }
 
-        Ok(&self.events[..])
+        Ok(Events(self.events.drain(..)))
     }
 
     pub fn close(mut self) -> io::Result<()> {
@@ -294,11 +293,30 @@ pub use self::watch_mask::WatchMask;
 
 /// Represents a file that inotify is watching
 ///
-/// Can be obtained from `Inotify::add_watch` or from an `Event`. A
-/// `WatchDescriptor` can be used to get inotify to stop watching a file by
-/// passing it to `Inotify::rm_watch`.
+/// Can be obtained from
+/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from an
+/// [`Event`](struct.Event.html). A watch descriptor can be used to get inotify
+/// to stop watching a file by passing it to
+/// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WatchDescriptor(c_int);
+
+
+/// Iterates over inotify events
+///
+/// Iterates over the events returned by
+/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
+/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
+pub struct Events<'a>(vec::Drain<'a, Event>);
+
+impl<'a> Iterator for Events<'a> {
+    type Item = Event;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+}
 
 
 #[derive(Clone, Debug)]
