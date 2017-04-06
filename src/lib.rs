@@ -19,9 +19,17 @@
 //! [wiki]: https://en.wikipedia.org/wiki/Inotify
 //! [inotify7]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
+
+#[macro_use]
+extern crate bitflags;
+
 extern crate libc;
 
-pub use wrapper::INotify;
+
+pub use wrapper::{
+    watch_mask,
+    Inotify,
+};
 
 pub mod ffi;
 pub mod wrapper;

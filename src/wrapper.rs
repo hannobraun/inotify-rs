@@ -1,5 +1,3 @@
-#![allow(missing_docs)]
-
 //! Idiomatic wrapper for inotify
 
 use std::mem;
@@ -11,6 +9,7 @@ use std::ffi::{
     OsStr,
     CString,
 };
+use std::vec;
 
 use libc::{
     F_GETFL,
@@ -25,51 +24,199 @@ use libc::{
 use ffi::{self, inotify_event};
 
 
-pub type Watch = c_int;
-
-pub struct INotify {
-    pub fd: c_int,
+/// Idiomatic Rust wrapper for Linux's inotify API
+///
+/// `Inotify` is a wrapper around an inotify instance. It generally tries to
+/// adhere to the underlying inotify API as closely as possible, while at the
+/// same time making access to it safe and convenient.
+///
+/// Please note that using inotify correctly is not always trivial, and while
+/// this wrapper tries to alleviate that, it is not perfect. Please refer to the
+/// inotify man pages for potential problems to watch out for.
+///
+/// # Examples
+///
+/// ```
+/// use inotify::{
+///     Inotify,
+///     watch_mask,
+/// };
+///
+/// let mut inotify = Inotify::init()
+///     .expect("Error while initializing inotify instance");
+///
+/// // Watch for modify and close events.
+/// // Ignore returned error, as this is an example, and the file we're trying
+/// // to watch here doesn't actually exist.
+/// let _ = inotify.add_watch(
+///     "path/to/file",
+///     watch_mask::MODIFY | watch_mask::CLOSE,
+/// );
+///
+/// let events = inotify.available_events()
+///     .expect("Error while reading events");
+///
+/// for event in events {
+///     // Handle event
+/// }
+/// ```
+pub struct Inotify {
+    fd    : c_int,
     events: Vec<Event>,
 }
 
-impl INotify {
-
-    pub fn init() -> io::Result<INotify> {
-        INotify::init_with_flags(ffi::IN_CLOEXEC)
-    }
-
-    pub fn init_with_flags(flags: c_int) -> io::Result<INotify> {
-        let flags = flags | ffi::IN_NONBLOCK;
-        let fd = unsafe { ffi::inotify_init1(flags) };
+impl Inotify {
+    /// Creates an [`Inotify`](struct.Inotify.html) instance
+    ///
+    /// Initializes an inotify instance by calling
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html).
+    ///
+    /// This method passes both flags accepted by
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), and doesn't allow the
+    /// user any choice in the matter, as not passing any of the flags would be
+    /// inappropriate in the context of this wrapper:
+    ///
+    /// - [`IN_CLOEXEC`](../ffi/constant.IN_CLOEXEC.html) prevents leaking file
+    ///   descriptors to other processes.
+    /// - [`IN_NONBLOCK`](../ffi/constant.IN_NONBLOCK.html) controls the
+    ///   blocking behavior of the inotify API, which is entirely managed by
+    ///   this wrapper.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    /// ```
+    pub fn init() -> io::Result<Inotify> {
+        let fd = unsafe {
+            // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
+            //
+            // `IN_NONBLOCK` is needed, because `Inotify` manages blocking
+            // behavior for the API consumer, and the way we do that is to make
+            // everything non-blocking by default and later override that as
+            // required.
+            //
+            // Passing `IN_CLOEXEC` prevents leaking file descriptors to
+            // processes executed by this process and seems to be a best
+            // practice. I don't grasp this issue completely and failed to find
+            // any authorative sources on the topic. There's some discussion in
+            // the open(2) and fcntl(2) man pages, but I didn't find that
+            // helpful in understanding the issue of leaked file scriptors.
+            // For what it's worth, there's a Rust issue about this:
+            // https://github.com/rust-lang/rust/issues/12148
+            ffi::inotify_init1(ffi::IN_CLOEXEC | ffi::IN_NONBLOCK)
+        };
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(INotify {
+            _  => Ok(Inotify {
                 fd    : fd,
                 events: Vec::new(),
             })
         }
     }
 
-    pub fn add_watch(&self, path: &Path, mask: u32) -> io::Result<Watch> {
-        let wd = unsafe {
-            let c_str = try!(CString::new(path.as_os_str().as_bytes()));
+    /// Watches the file at the given path
+    ///
+    /// Adds a watch for the file at the given path by calling
+    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html). Returns a watch
+    /// descriptor that can be used to refer to this watch later.
+    ///
+    /// The `mask` argument defines what kind of changes the file should be
+    /// watched for, and how to do that. See the documentation of
+    /// [`WatchMask`](struct.WatchMask.html) for details.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html), without
+    /// adding any error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::{
+    ///     Inotify,
+    ///     watch_mask,
+    /// };
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// // Ignore any errors, as this is an example and the file we're trying to
+    /// // watch here doesn't actually exist.
+    /// let _ = inotify.add_watch("path/to/file", watch_mask::MODIFY);
+    ///
+    /// // Handle events for the file here
+    /// ```
+    pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
+        -> io::Result<WatchDescriptor>
+        where P: AsRef<Path>
+    {
+        let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
 
+        let wd = unsafe {
             ffi::inotify_add_watch(
                 self.fd,
-                c_str.as_ptr() as *const _,
-                mask
+                path.as_ptr() as *const _,
+                mask.bits(),
             )
         };
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(wd),
+            _  => Ok(WatchDescriptor(wd)),
         }
     }
 
-    pub fn rm_watch(&self, watch: Watch) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, watch) };
+    /// Stops watching a file
+    ///
+    /// Removes the watch represented by the provided
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by calling
+    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html). You can obtain a
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by saving one returned
+    /// by [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from
+    /// the `wd` field of [`Event`](struct.Event.html).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html), without adding
+    /// any error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// // Move the events into a buffer of our own. If we don't do this, we'll
+    /// // have a mutable borrow on `inotify`, which prevents us from calling
+    /// // `rm_watch` in the event handling loop below.
+    /// let mut events = Vec::new();
+    /// events.extend(
+    ///     inotify
+    ///         .available_events()
+    ///         .expect("Error while waiting for events")
+    /// );
+    ///
+    /// for event in events {
+    ///     inotify.rm_watch(event.wd);
+    /// }
+    /// ```
+    pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
+        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -78,10 +225,17 @@ impl INotify {
         }
     }
 
-    /// Wait until events are available, then return them.
-    /// This function will block until events are available. If you want it to
-    /// return immediately, use `available_events`.
-    pub fn wait_for_events(&mut self) -> io::Result<&[Event]> {
+    /// Waits until events are available, then returns them
+    ///
+    /// This method will block the current thread until at least one event is
+    /// available. If this is not desirable, please take a look at
+    /// [`available_events`](struct.Inotify.html#method.available_events).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `read`, without adding any
+    /// error conditions of its own.
+    pub fn wait_for_events(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
         unsafe {
@@ -95,13 +249,36 @@ impl INotify {
         result
     }
 
-    /// Returns available inotify events.
-    /// If no events are available, this method will simply return a slice with
-    /// zero events. If you want to wait for events to become available, call
-    /// `wait_for_events`.
-    pub fn available_events(&mut self) -> io::Result<&[Event]> {
-        self.events.clear();
-
+    /// Returns any available events
+    ///
+    /// Returns an iterator over all events that are currently available. If no
+    /// events are available, an iterator is still returned.
+    ///
+    /// If you need a method that will block until at least one event is
+    /// available, please call
+    /// [`wait_for_events`](struct.Inotify.html#wait_for_events).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `read`, without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// let events = inotify.available_events()
+    ///     .expect("Error while reading events");
+    ///
+    /// for event in events {
+    ///     // Handle event
+    /// }
+    /// ```
+    pub fn available_events(&mut self) -> io::Result<Events> {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
             ffi::read(
@@ -122,7 +299,7 @@ impl INotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(&self.events[..]);
+                    return Ok(Events(self.events.drain(..)));
                 }
                 else {
                     return Err(error);
@@ -170,9 +347,32 @@ impl INotify {
             }
         }
 
-        Ok(&self.events[..])
+        Ok(Events(self.events.drain(..)))
     }
 
+    /// Closes the inotify instance
+    ///
+    /// Closes the file descriptor referring to the inotify instance. The user
+    /// usually doesn't have to call this function, as the underlying inotify
+    /// instance is closed automatically, when [`Inotify`](struct.Inotify.html)
+    /// is dropped.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `close`, without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// inotify.close()
+    ///     .expect("Failed to close inotify instance");
+    /// ```
     pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         self.fd = -1;
@@ -183,7 +383,7 @@ impl INotify {
     }
 }
 
-impl Drop for INotify {
+impl Drop for Inotify {
     fn drop(&mut self) {
         if self.fd != -1 {
             unsafe { ffi::close(self.fd); }
@@ -191,93 +391,248 @@ impl Drop for INotify {
     }
 }
 
+
+/// Contains the [`WatchMask`](struct.WatchMask.html) flags
+///
+/// Contains constants for all valid
+/// [`WatchMask`](struct.WatchMask.html) flags, which can be used to
+/// compare against a [`WatchMask`](struct.WatchMask.html) instance
+/// using its [`contains`](struct.WatchMask.html#method.contains) method.
+pub mod watch_mask {
+    use ffi;
+
+    bitflags! {
+        /// Mask for a file watch
+        ///
+        /// Passed to
+        /// [`Inotify::add_watch`](../struct.Inotify.html#method.add_watch), to
+        /// describe what file system events to watch for and how to do that.
+        pub flags WatchMask: u32 {
+            /// File was accessed.
+            const ACCESS        = ffi::IN_ACCESS,
+
+            /// Metadata changed.
+            const ATTRIB        = ffi::IN_ATTRIB,
+
+            /// File opened for writing was closed.
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
+
+            /// File or directory not opened for writing was closed.
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
+
+            /// File/directory created in watched directory.
+            const CREATE        = ffi::IN_CREATE,
+
+            /// File/directory deleted from watched directory.
+            const DELETE        = ffi::IN_DELETE,
+
+            /// Watched file/directory was itself deleted.
+            const DELETE_SELF   = ffi::IN_DELETE_SELF,
+
+            /// File was modified.
+            const MODIFY        = ffi::IN_MODIFY,
+
+            /// Watched file/directory was itself moved.
+            const MOVE_SELF     = ffi::IN_MOVE_SELF,
+
+            /// Generated for the directory containing the old filename when a
+            /// file is renamend.
+            const MOVED_FROM    = ffi::IN_MOVED_FROM,
+
+            /// Generated for the directory containing the new filename when a
+            /// file is renamed.
+            const MOVED_TO      = ffi::IN_MOVED_TO,
+
+            /// File or directory was opened.
+            const OPEN          = ffi::IN_OPEN,
+
+            /// Watch for all events.
+            const ALL_EVENTS    = ffi::IN_ALL_EVENTS,
+
+            /// Watch for both `MOVED_FROM` and `MOVED_TO`.
+            const MOVE          = ffi::IN_MOVE,
+
+            /// Watch for both `IN_CLOSE_WRITE` and `IN_CLOSE_NOWRITE`.
+            const CLOSE         = ffi::IN_CLOSE,
+
+            /// Don't dereference the path if it is a symbolic link
+            const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW,
+
+            /// Don't watch events for children that have been unlinked from
+            /// watched directory.
+            const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK,
+
+            /// If a watch instance already exists for the inode corresponding
+            /// to the given path, amend the existing watch mask instead of
+            /// replacing it.
+            const MASK_ADD      = ffi::IN_MASK_ADD,
+
+            /// Only monitor for one event, then remove the watch
+            const ONESHOT       = ffi::IN_ONESHOT,
+
+            /// Only watch path, if it is a directory.
+            const ONLYDIR       = ffi::IN_ONLYDIR,
+        }
+    }
+}
+
+pub use self::watch_mask::WatchMask;
+
+
+/// Represents a file that inotify is watching
+///
+/// Can be obtained from
+/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from an
+/// [`Event`](struct.Event.html). A watch descriptor can be used to get inotify
+/// to stop watching a file by passing it to
+/// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WatchDescriptor(c_int);
+
+
+/// Iterates over inotify events
+///
+/// Iterates over the events returned by
+/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
+/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
+pub struct Events<'a>(vec::Drain<'a, Event>);
+
+impl<'a> Iterator for Events<'a> {
+    type Item = Event;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+}
+
+
+/// An inotify event
+///
+/// A file system event that describes a change that the user previously
+/// registered interest in. To watch for events, call
+/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch). To retrieve events,
+/// call
+/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
+/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
 #[derive(Clone, Debug)]
 pub struct Event {
-    pub wd    : i32,
-    pub mask  : u32,
+    /// Identifies the watch this event originates from
+    ///
+    /// This is the same [`WatchDescriptor`](struct.WatchDescriptor.html) that
+    /// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch)
+    /// returned when interest for this event was registered. The
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) can be used to remove
+    /// the watch using
+    /// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch), thereby
+    /// preventing future events of this type from being created.
+    pub wd    : WatchDescriptor,
+
+    /// Shows what kind of event this is
+    ///
+    /// The various flags that can be set on this mask are defined in the
+    /// [`event_mask`](event_mask/index.html) module. You can check against any
+    /// flags that are of interest to you using
+    /// [`EventMask::contains`](event_mask/struct.EventMask.html#contains).
+    pub mask  : EventMask,
+
+    /// Connects related events to each other
+    ///
+    /// When a file is renamed, this results two events:
+    /// [`MOVED_FROM`](event_mask/constant.MOVED_FROM.html) and
+    /// [`MOVED_TO`](event_mask/constant.MOVED_TO.html). The `cookie` field
+    /// will be the same for both of them, thereby making is possible to connect
+    /// the event pair.
     pub cookie: u32,
+
+    /// The name of the file the event originates from
     pub name  : PathBuf,
 }
 
 impl Event {
     fn new(event: &inotify_event, name: PathBuf) -> Event {
+        let mask = EventMask::from_bits(event.mask)
+            .expect("Failed to convert event mask. This indicates a bug.");
+
         Event {
-            wd    : event.wd,
-            mask  : event.mask,
+            wd    : WatchDescriptor(event.wd),
+            mask  : mask,
             cookie: event.cookie,
             name  : name,
         }
     }
+}
 
-    pub fn is_access(&self) -> bool {
-        return self.mask & ffi::IN_ACCESS > 0;
-    }
 
-    pub fn is_modify(&self) -> bool {
-        return self.mask & ffi::IN_MODIFY > 0;
-    }
+/// Contains the [`EventMask`](struct.EventMask.html) flags
+///
+/// Contains constants for all valid
+/// [`EventMask`](struct.EventMask.html) flags, which can be used to
+/// compare against a [`EventMask`](struct.EventMask.html) instance
+/// using its [`contains`](struct.EventMask.html#method.contains) method.
+pub mod event_mask {
+    use ffi;
 
-    pub fn is_attrib(&self) -> bool {
-        return self.mask & ffi::IN_ATTRIB > 0;
-    }
+    bitflags! {
+        /// Mask for an event
+        ///
+        /// This struct can be retrieved from an [`Event`](../struct.Event.html)
+        /// via its `mask` field. You can determine the
+        /// [`Event`](../struct.Event.html)'s type by comparing it to the
+        /// constants in the [`event_mask`](index.html) module using
+        /// [`EventMask::contains`](struct.EventMask.html#method.contains).
+        pub flags EventMask: u32 {
+            /// File was accessed.
+            const ACCESS        = ffi::IN_ACCESS,
 
-    pub fn is_close_write(&self) -> bool {
-        return self.mask & ffi::IN_CLOSE_WRITE > 0;
-    }
+            /// Metadata changed.
+            const ATTRIB        = ffi::IN_ATTRIB,
 
-    pub fn is_close_nowrite(&self) -> bool {
-        return self.mask & ffi::IN_CLOSE_NOWRITE > 0;
-    }
+            /// File opened for writing was closed.
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
 
-    pub fn is_open(&self) -> bool {
-        return self.mask & ffi::IN_OPEN > 0;
-    }
+            /// File or directory not opened for writing was closed.
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
 
-    pub fn is_moved_from(&self) -> bool {
-        return self.mask & ffi::IN_MOVED_FROM > 0;
-    }
+            /// File/directory created in watched directory.
+            const CREATE        = ffi::IN_CREATE,
 
-    pub fn is_moved_to(&self) -> bool {
-        return self.mask & ffi::IN_MOVED_TO > 0;
-    }
+            /// File/directory deleted from watched directory.
+            const DELETE        = ffi::IN_DELETE,
 
-    pub fn is_create(&self) -> bool {
-        return self.mask & ffi::IN_CREATE > 0;
-    }
+            /// Watched file/directory was itself deleted.
+            const DELETE_SELF   = ffi::IN_DELETE_SELF,
 
-    pub fn is_delete(&self) -> bool {
-        return self.mask & ffi::IN_DELETE > 0;
-    }
+            /// File was modified.
+            const MODIFY        = ffi::IN_MODIFY,
 
-    pub fn is_delete_self(&self) -> bool {
-        return self.mask & ffi::IN_DELETE_SELF > 0;
-    }
+            /// Watched file/directory was itself moved.
+            const MOVE_SELF     = ffi::IN_MOVE_SELF,
 
-    pub fn is_move_self(&self) -> bool {
-        return self.mask & ffi::IN_MOVE_SELF > 0;
-    }
+            /// Generated for the directory containing the old filename when a
+            /// file is renamend.
+            const MOVED_FROM    = ffi::IN_MOVED_FROM,
 
-    pub fn is_move(&self) -> bool {
-        return self.mask & ffi::IN_MOVE > 0;
-    }
+            /// Generated for the directory containing the new filename when a
+            /// file is renamed.
+            const MOVED_TO      = ffi::IN_MOVED_TO,
 
-    pub fn is_close(&self) -> bool {
-        return self.mask & ffi::IN_CLOSE > 0;
-    }
+            /// File or directory was opened.
+            const OPEN          = ffi::IN_OPEN,
 
-    pub fn is_dir(&self) -> bool {
-        return self.mask & ffi::IN_ISDIR > 0;
-    }
+            /// Watch was removed.
+            const IGNORED       = ffi::IN_IGNORED,
 
-    pub fn is_unmount(&self) -> bool {
-        return self.mask & ffi::IN_UNMOUNT > 0;
-    }
+            /// Subject of this event is a directory.
+            const ISDIR         = ffi::IN_ISDIR,
 
-    pub fn is_queue_overflow(&self) -> bool {
-        return self.mask & ffi::IN_Q_OVERFLOW > 0;
-    }
+            /// Event queue overflowed.
+            const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW,
 
-    pub fn is_ignored(&self) -> bool {
-        return self.mask & ffi::IN_IGNORED > 0;
+            /// File system containing watched object was unmounted.
+            const UNMOUNT       = ffi::IN_UNMOUNT,
+        }
     }
 }
+
+pub use self::event_mask::EventMask;
