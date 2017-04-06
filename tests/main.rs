@@ -25,10 +25,13 @@ fn it_should_watch_a_file() {
     write_to(&mut file);
 
     let events = inotify.wait_for_events().unwrap();
-    assert!(events.len() > 0);
+
+    let mut num_events = 0;
     for event in events.iter() {
         assert_eq!(watch, event.wd);
+        num_events += 1;
     }
+    assert!(num_events > 0);
 }
 
 #[test]
@@ -68,10 +71,13 @@ fn it_should_handle_file_names_correctly() {
     write_to(&mut file);
 
     let events = inotify.wait_for_events().unwrap();
-    assert!(events.len() > 0);
+
+    let mut num_events = 0;
     for event in events {
         assert_eq!(file_name, event.name.to_str().unwrap());
+        num_events += 1;
     }
+    assert!(num_events > 0);
 }
 
 
