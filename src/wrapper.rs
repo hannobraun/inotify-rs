@@ -509,11 +509,45 @@ impl<'a> Iterator for Events<'a> {
 }
 
 
+/// An inotify event
+///
+/// A file system event that describes a change that the user previously
+/// registered interest in. To watch for events, call
+/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch). To retrieve events,
+/// call
+/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
+/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
 #[derive(Clone, Debug)]
 pub struct Event {
+    /// Identifies the watch this event originates from
+    ///
+    /// This is the same [`WatchDescriptor`](struct.WatchDescriptor.html) that
+    /// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch)
+    /// returned when interest for this event was registered. The
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) can be used to remove
+    /// the watch using
+    /// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch), thereby
+    /// preventing future events of this type from being created.
     pub wd    : WatchDescriptor,
+
+    /// Shows what kind of event this is
+    ///
+    /// The various flags that can be set on this mask are defined in the
+    /// [`event_mask`](event_mask/index.html) module. You can check against any
+    /// flags that are of interest to you using
+    /// [`EventMask::contains`](event_mask/struct.EventMask.html#contains).
     pub mask  : EventMask,
+
+    /// Connects related events to each other
+    ///
+    /// When a file is renamed, this results two events:
+    /// [`MOVED_FROM`](event_mask/constant.MOVED_FROM.html) and
+    /// [`MOVED_TO`](event_mask/constant.MOVED_TO.html). The `cookie` field
+    /// will be the same for both of them, thereby making is possible to connect
+    /// the event pair.
     pub cookie: u32,
+
+    /// The name of the file the event originates from
     pub name  : PathBuf,
 }
 
