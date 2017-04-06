@@ -26,13 +26,78 @@ use libc::{
 use ffi::{self, inotify_event};
 
 
+/// Idiomatic Rust wrapper for Linux's inotify API
+///
+/// `Inotify` is a wrapper around an inotify instance. It generally tries to
+/// adhere to the underlying inotify API as closely as possible, while at the
+/// same time making access to it safe and convenient.
+///
+/// Please note that using inotify correctly is not always trivial, and while
+/// this wrapper tries to alleviate that, it is not perfect. Please refer to the
+/// inotify man pages for potential problems to watch out for.
+///
+/// # Examples
+///
+/// ```
+/// use inotify::{
+///     Inotify,
+///     watch_mask,
+/// };
+///
+/// let mut inotify = Inotify::init()
+///     .expect("Error while initializing inotify instance");
+///
+/// // Watch for modify and close events.
+/// // Ignore returned error, as this is an example, and the file we're trying
+/// // to watch here doesn't actually exist.
+/// let _ = inotify.add_watch(
+///     "path/to/file",
+///     watch_mask::MODIFY | watch_mask::CLOSE,
+/// );
+///
+/// let events = inotify.available_events()
+///     .expect("Error while reading events");
+///
+/// for event in events {
+///     // Handle event
+/// }
+/// ```
 pub struct Inotify {
     fd    : c_int,
     events: Vec<Event>,
 }
 
 impl Inotify {
-
+    /// Creates an [`Inotify`](struct.Inotify.html) instance
+    ///
+    /// Initializes an inotify instance by calling
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html).
+    ///
+    /// This method passes both flags accepted by
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), and doesn't allow the
+    /// user any choice in the matter, as not passing any of the flags would be
+    /// inappropriate in the context of this wrapper:
+    ///
+    /// - [`IN_CLOEXEC`](../ffi/constant.IN_CLOEXEC.html) prevents leaking file
+    ///   descriptors to other processes.
+    /// - [`IN_NONBLOCK`](../ffi/constant.IN_NONBLOCK.html) controls the
+    ///   blocking behavior of the inotify API, which is entirely managed by
+    ///   this wrapper.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    /// ```
     pub fn init() -> io::Result<Inotify> {
         let fd = unsafe {
             // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
@@ -62,6 +127,39 @@ impl Inotify {
         }
     }
 
+    /// Watches the file at the given path
+    ///
+    /// Adds a watch for the file at the given path by calling
+    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html). Returns a watch
+    /// descriptor that can be used to refer to this watch later.
+    ///
+    /// The `mask` argument defines what kind of changes the file should be
+    /// watched for, and how to do that. See the documentation of
+    /// [`WatchMask`](struct.WatchMask.html) for details.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html), without
+    /// adding any error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::{
+    ///     Inotify,
+    ///     watch_mask,
+    /// };
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// // Ignore any errors, as this is an example and the file we're trying to
+    /// // watch here doesn't actually exist.
+    /// let _ = inotify.add_watch("path/to/file", watch_mask::MODIFY);
+    ///
+    /// // Handle events for the file here
+    /// ```
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
@@ -82,6 +180,43 @@ impl Inotify {
         }
     }
 
+    /// Stops watching a file
+    ///
+    /// Removes the watch represented by the provided
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by calling
+    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html). You can obtain a
+    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by saving one returned
+    /// by [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from
+    /// the `wd` field of [`Event`](struct.Event.html).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html), without adding
+    /// any error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// // Move the events into a buffer of our own. If we don't do this, we'll
+    /// // have a mutable borrow on `inotify`, which prevents us from calling
+    /// // `rm_watch` in the event handling loop below.
+    /// let mut events = Vec::new();
+    /// events.extend(
+    ///     inotify
+    ///         .available_events()
+    ///         .expect("Error while waiting for events")
+    /// );
+    ///
+    /// for event in events {
+    ///     inotify.rm_watch(event.wd);
+    /// }
+    /// ```
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
         let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
         match result {
@@ -92,9 +227,16 @@ impl Inotify {
         }
     }
 
-    /// Wait until events are available, then return them.
-    /// This function will block until events are available. If you want it to
-    /// return immediately, use `available_events`.
+    /// Waits until events are available, then returns them
+    ///
+    /// This method will block the current thread until at least one event is
+    /// available. If this is not desirable, please take a look at
+    /// [`available_events`](struct.Inotify.html#method.available_events).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `read`, without adding any
+    /// error conditions of its own.
     pub fn wait_for_events(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
@@ -109,10 +251,35 @@ impl Inotify {
         result
     }
 
-    /// Returns available inotify events.
-    /// If no events are available, this method will simply return a slice with
-    /// zero events. If you want to wait for events to become available, call
-    /// `wait_for_events`.
+    /// Returns any available events
+    ///
+    /// Returns an iterator over all events that are currently available. If no
+    /// events are available, an iterator is still returned.
+    ///
+    /// If you need a method that will block until at least one event is
+    /// available, please call
+    /// [`wait_for_events`](struct.Inotify.html#wait_for_events).
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `read`, without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// let events = inotify.available_events()
+    ///     .expect("Error while reading events");
+    ///
+    /// for event in events {
+    ///     // Handle event
+    /// }
+    /// ```
     pub fn available_events(&mut self) -> io::Result<Events> {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
@@ -185,6 +352,29 @@ impl Inotify {
         Ok(Events(self.events.drain(..)))
     }
 
+    /// Closes the inotify instance
+    ///
+    /// Closes the file descriptor referring to the inotify instance. The user
+    /// usually doesn't have to call this function, as the underlying inotify
+    /// instance is closed automatically, when [`Inotify`](struct.Inotify.html)
+    /// is dropped.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to `close`, without adding any
+    /// error conditions of its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// inotify.close()
+    ///     .expect("Failed to close inotify instance");
+    /// ```
     pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         self.fd = -1;
