@@ -64,9 +64,9 @@ impl Inotify {
     pub fn add_watch(&self, path: &Path, mask: WatchMask)
         -> io::Result<WatchDescriptor>
     {
-        let wd = unsafe {
-            let path = CString::new(path.as_os_str().as_bytes())?;
+        let path = CString::new(path.as_os_str().as_bytes())?;
 
+        let wd = unsafe {
             ffi::inotify_add_watch(
                 self.fd,
                 path.as_ptr() as *const _,
