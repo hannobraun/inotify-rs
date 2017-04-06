@@ -27,7 +27,7 @@ use ffi::{self, inotify_event};
 
 
 pub struct Inotify {
-    pub fd: c_int,
+    fd    : c_int,
     events: Vec<Event>,
 }
 
