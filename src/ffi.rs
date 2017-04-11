@@ -2,23 +2,23 @@
 //!
 //! There are four types of statics:
 //!
-//! - __Flags__, to be passed to `inotify_init1()`;
+//! - __Flags__, to be passed to [`inotify_init1()`];
 //! - __Events__, that describe which events should be
-//!   watched for (when calling `inotify_add_watch()`),
+//!   watched for (when calling [`inotify_add_watch()`]),
 //!   and which event has occured (when returned by
-//!   `read()`);
+//!   [`read()`]);
 //! - __Options__, which can be added to the bit mask
-//!   passed to `inotify_add_watch()`, to change default
+//!   passed to [`inotify_add_watch()`], to change default
 //!   behavior;
 //! - __Infos__, indicating further details of the event
-//!   that occured (returned by `read()`).
+//!   that occured (returned by [`read()`]).
 //!
 //! When events occur for monitored files and directories, those events
 //! are made available to the application as structured data that can
-//! be read from the inotify file descriptor using `read()`.
+//! be read from the inotify file descriptor using [`read()`].
 //!
 //! When all file descriptors referring to an inotify instance have been
-//! closed (using `close()`), the underlying object and its resources
+//! closed (using [`close()`]), the underlying object and its resources
 //! are freed for reuse by the kernel; all associated watches are
 //! automatically freed.
 //!
@@ -26,6 +26,10 @@
 //! the [inotify(7)] man page, which contains many caveats, warnings, and
 //! recommendations for proper, robust, and efficient usage of inotify.
 //!
+//! [`inotify_init1()`]: fn.inotify_init1.html
+//! [`inotify_add_watch()`]: fn.inotify_add_watch.html
+//! [`read()`]: ../../libc/fn.read.html
+//! [`close()`]: ../../libc/fn.close.html
 //! [inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 use libc::{
