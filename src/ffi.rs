@@ -2,23 +2,23 @@
 //!
 //! There are four types of statics:
 //!
-//! - __Flags__, to be passed to `inotify_init1()`;
+//! - __Flags__, to be passed to [`inotify_init1()`];
 //! - __Events__, that describe which events should be
-//!   watched for (when calling `inotify_add_watch()`),
+//!   watched for (when calling [`inotify_add_watch()`]),
 //!   and which event has occured (when returned by
-//!   `read()`);
+//!   [`read()`]);
 //! - __Options__, which can be added to the bit mask
-//!   passed to `inotify_add_watch()`, to change default
+//!   passed to [`inotify_add_watch()`], to change default
 //!   behavior;
 //! - __Infos__, indicating further details of the event
-//!   that occured (returned by `read()`).
+//!   that occured (returned by [`read()`]).
 //!
 //! When events occur for monitored files and directories, those events
 //! are made available to the application as structured data that can
-//! be read from the inotify file descriptor using `read()`.
+//! be read from the inotify file descriptor using [`read()`].
 //!
 //! When all file descriptors referring to an inotify instance have been
-//! closed (using `close()`), the underlying object and its resources
+//! closed (using [`close()`]), the underlying object and its resources
 //! are freed for reuse by the kernel; all associated watches are
 //! automatically freed.
 //!
@@ -26,6 +26,10 @@
 //! the [inotify(7)] man page, which contains many caveats, warnings, and
 //! recommendations for proper, robust, and efficient usage of inotify.
 //!
+//! [`inotify_init1()`]: fn.inotify_init1.html
+//! [`inotify_add_watch()`]: fn.inotify_add_watch.html
+//! [`read()`]: ../../libc/fn.read.html
+//! [`close()`]: ../../libc/fn.close.html
 //! [inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 use libc::{
@@ -33,9 +37,6 @@ use libc::{
     c_int,
     uint32_t };
 
-
-pub use libc::close;
-pub use libc::read;
 
 /// Flag: Set the FD_CLOEXEC flag
 ///
@@ -95,7 +96,7 @@ pub const IN_MODIFY: uint32_t = 0x00000002;
 /// This can include e.g.
 /// - permissions, see [chmod(2)];
 /// - timestamps, see [utimensat(2)];
-/// - extended attributes, see [setxattr(s)];
+/// - extended attributes, see [setxattr(2)];
 /// - link count, see [link(2)] and [unlink(2)];
 /// - user/group, see [chown(2)].
 ///
@@ -104,10 +105,10 @@ pub const IN_MODIFY: uint32_t = 0x00000002;
 ///
 /// [chmod(2)]: http://man7.org/linux/man-pages/man2/chmod.2.html
 /// [utimensat(2)]: http://man7.org/linux/man-pages/man2/utimensat.2.html
-/// [setxattr(2)]: http://man7.org/linux/man-pages/man2/utimensat.2.html
+/// [setxattr(2)]: http://man7.org/linux/man-pages/man2/fsetxattr.2.html
 /// [link(2)]: http://man7.org/linux/man-pages/man2/link.2.html
-/// [unlink(2)]: http://man7.org/linux/man-pages/man2/link.2.html
-/// [chown(2)]: http://man7.org/linux/man-pages/man2/link.2.html
+/// [unlink(2)]: http://man7.org/linux/man-pages/man2/unlink.2.html
+/// [chown(2)]: http://man7.org/linux/man-pages/man2/lchown.2.html
 pub const IN_ATTRIB: uint32_t = 0x00000004;
 
 /// Event: File opened for writing was closed.
@@ -254,7 +255,7 @@ pub const IN_IGNORED: uint32_t = 0x00008000;
 /// > this structure.
 ///
 /// [read(2)]: http://man7.org/linux/man-pages/man2/read.2.html
-/// [signal(7)]: http://man7.org/linux/man-pages/man2/read.2.html
+/// [signal(7)]: http://man7.org/linux/man-pages/man7/signal.7.html
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -262,7 +263,9 @@ pub struct inotify_event {
     /// Identifies the watch for which this event occurs.
     ///
     /// It is one of the watch descriptors returned by a previous call
-    /// to `inotify_add_watch()`.
+    /// to [`inotify_add_watch()`].
+    ///
+    /// [`inotify_add_watch()`]: fn.inotify_add_watch.html
     pub wd: c_int,
 
     /// Contains bits that describe the event that occurred.
@@ -271,8 +274,11 @@ pub struct inotify_event {
     /// A unique integer that connects related events.
     ///
     /// Currently used only for rename events. A related pair of
-    /// IN_MOVED_FROM and IN_MOVED_TO events will have the same,
+    /// [`IN_MOVED_FROM`] and [`IN_MOVED_TO`] events will have the same,
     /// non-zero, cookie. For all other events, cookie is 0.
+    ///
+    /// [`IN_MOVED_FROM`]: constant.IN_MOVED_FROM.html
+    /// [`IN_MOVED_TO`]: constant.IN_MOVED_TO.html
     pub cookie: uint32_t,
 
     /// The length of `name`.
@@ -317,3 +323,8 @@ extern {
     /// Removes an item from an inotify watch list.
     pub fn inotify_rm_watch(fd: c_int, wd: c_int) -> c_int;
 }
+
+pub use libc::{
+    close,
+    read,
+};
