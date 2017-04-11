@@ -263,7 +263,9 @@ pub struct inotify_event {
     /// Identifies the watch for which this event occurs.
     ///
     /// It is one of the watch descriptors returned by a previous call
-    /// to `inotify_add_watch()`.
+    /// to [`inotify_add_watch()`].
+    ///
+    /// [`inotify_add_watch()`]: fn.inotify_add_watch.html
     pub wd: c_int,
 
     /// Contains bits that describe the event that occurred.
@@ -272,8 +274,11 @@ pub struct inotify_event {
     /// A unique integer that connects related events.
     ///
     /// Currently used only for rename events. A related pair of
-    /// IN_MOVED_FROM and IN_MOVED_TO events will have the same,
+    /// [`IN_MOVED_FROM`] and [`IN_MOVED_TO`] events will have the same,
     /// non-zero, cookie. For all other events, cookie is 0.
+    ///
+    /// [`IN_MOVED_FROM`]: constant.IN_MOVED_FROM.html
+    /// [`IN_MOVED_TO`]: constant.IN_MOVED_TO.html
     pub cookie: uint32_t,
 
     /// The length of `name`.
