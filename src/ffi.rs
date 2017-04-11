@@ -254,7 +254,7 @@ pub const IN_IGNORED: uint32_t = 0x00008000;
 /// > this structure.
 ///
 /// [read(2)]: http://man7.org/linux/man-pages/man2/read.2.html
-/// [signal(7)]: http://man7.org/linux/man-pages/man2/read.2.html
+/// [signal(7)]: http://man7.org/linux/man-pages/man7/signal.7.html
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
