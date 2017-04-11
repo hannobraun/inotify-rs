@@ -38,9 +38,6 @@ use libc::{
     uint32_t };
 
 
-pub use libc::close;
-pub use libc::read;
-
 /// Flag: Set the FD_CLOEXEC flag
 ///
 /// The FD_CLOEXEC flag, or "close-on-exec", changes the
@@ -321,3 +318,8 @@ extern {
     /// Removes an item from an inotify watch list.
     pub fn inotify_rm_watch(fd: c_int, wd: c_int) -> c_int;
 }
+
+pub use libc::{
+    close,
+    read,
+};
