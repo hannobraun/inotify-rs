@@ -96,7 +96,7 @@ pub const IN_MODIFY: uint32_t = 0x00000002;
 /// This can include e.g.
 /// - permissions, see [chmod(2)];
 /// - timestamps, see [utimensat(2)];
-/// - extended attributes, see [setxattr(s)];
+/// - extended attributes, see [setxattr(2)];
 /// - link count, see [link(2)] and [unlink(2)];
 /// - user/group, see [chown(2)].
 ///
@@ -105,10 +105,10 @@ pub const IN_MODIFY: uint32_t = 0x00000002;
 ///
 /// [chmod(2)]: http://man7.org/linux/man-pages/man2/chmod.2.html
 /// [utimensat(2)]: http://man7.org/linux/man-pages/man2/utimensat.2.html
-/// [setxattr(2)]: http://man7.org/linux/man-pages/man2/utimensat.2.html
+/// [setxattr(2)]: http://man7.org/linux/man-pages/man2/fsetxattr.2.html
 /// [link(2)]: http://man7.org/linux/man-pages/man2/link.2.html
-/// [unlink(2)]: http://man7.org/linux/man-pages/man2/link.2.html
-/// [chown(2)]: http://man7.org/linux/man-pages/man2/link.2.html
+/// [unlink(2)]: http://man7.org/linux/man-pages/man2/unlink.2.html
+/// [chown(2)]: http://man7.org/linux/man-pages/man2/lchown.2.html
 pub const IN_ATTRIB: uint32_t = 0x00000004;
 
 /// Event: File opened for writing was closed.
