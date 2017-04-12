@@ -24,6 +24,7 @@
 extern crate bitflags;
 
 extern crate libc;
+extern crate inotify_sys as ffi;
 
 
 pub use wrapper::{
@@ -31,5 +32,5 @@ pub use wrapper::{
     Inotify,
 };
 
-pub mod ffi;
+
 pub mod wrapper;

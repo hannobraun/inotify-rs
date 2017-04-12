@@ -22,8 +22,9 @@ categories = ["api-bindings", "external-ffi-bindings", "filesystem"]
 travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
-bitflags = "^0.8"
-libc     = "^0.2"
+bitflags    = "^0.8"
+inotify-sys = { path = "../inotify-sys" }
+libc        = "^0.2"
 
 [dev-dependencies]
 tempdir = "^0.3"
