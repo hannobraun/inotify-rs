@@ -66,27 +66,22 @@ pub struct Inotify {
 }
 
 impl Inotify {
-    /// Creates an [`Inotify`](struct.Inotify.html) instance
+    /// Creates an [`Inotify`] instance
     ///
-    /// Initializes an inotify instance by calling
-    /// [`inotify_init1`](../ffi/fn.inotify_init1.html).
+    /// Initializes an inotify instance by calling [`inotify_init1`].
     ///
-    /// This method passes both flags accepted by
-    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), and doesn't allow the
-    /// user any choice in the matter, as not passing any of the flags would be
-    /// inappropriate in the context of this wrapper:
+    /// This method passes both flags accepted by [`inotify_init1`], and doesn't
+    /// allow the user any choice in the matter, as not passing any of the flags
+    /// would be inappropriate in the context of this wrapper:
     ///
-    /// - [`IN_CLOEXEC`](../ffi/constant.IN_CLOEXEC.html) prevents leaking file
-    ///   descriptors to other processes.
-    /// - [`IN_NONBLOCK`](../ffi/constant.IN_NONBLOCK.html) controls the
-    ///   blocking behavior of the inotify API, which is entirely managed by
-    ///   this wrapper.
+    /// - [`IN_CLOEXEC`] prevents leaking file descriptors to other processes.
+    /// - [`IN_NONBLOCK`] controls the blocking behavior of the inotify API,
+    ///   which is entirely managed by this wrapper.
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to
-    /// [`inotify_init1`](../ffi/fn.inotify_init1.html), without adding any
-    /// error conditions of its own.
+    /// Directly returns the error from the call to [`inotify_init1`], without
+    /// adding any error conditions of its own.
     ///
     /// # Examples
     ///
@@ -96,6 +91,11 @@ impl Inotify {
     /// let inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     /// ```
+    ///
+    /// [`Inotify`]: struct.Inotify.html
+    /// [`inotify_init1`]: ../../inotify_sys/fn.inotify_init1.html
+    /// [`IN_CLOEXEC`]: ../../inotify_sys/constant.IN_CLOEXEC.html
+    /// [`IN_NONBLOCK`]: ../../inotify_sys/constant.IN_NONBLOCK.html
     pub fn init() -> io::Result<Inotify> {
         let fd = unsafe {
             // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
@@ -128,18 +128,17 @@ impl Inotify {
     /// Watches the file at the given path
     ///
     /// Adds a watch for the file at the given path by calling
-    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html). Returns a watch
-    /// descriptor that can be used to refer to this watch later.
+    /// [`inotify_add_watch`]. Returns a watch descriptor that can be used to
+    /// refer to this watch later.
     ///
     /// The `mask` argument defines what kind of changes the file should be
-    /// watched for, and how to do that. See the documentation of
-    /// [`WatchMask`](struct.WatchMask.html) for details.
+    /// watched for, and how to do that. See the documentation of [`WatchMask`]
+    /// for details.
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to
-    /// [`inotify_add_watch`](../ffi/fn.inotify_add_watch.html), without
-    /// adding any error conditions of its own.
+    /// Directly returns the error from the call to [`inotify_add_watch`],
+    /// without adding any error conditions of its own.
     ///
     /// # Examples
     ///
@@ -158,6 +157,9 @@ impl Inotify {
     ///
     /// // Handle events for the file here
     /// ```
+    ///
+    /// [`inotify_add_watch`]: ../../inotify_sys/fn.inotify_add_watch.html
+    /// [`WatchMask`]: watch_mask/struct.WatchMask.html
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
@@ -180,18 +182,15 @@ impl Inotify {
 
     /// Stops watching a file
     ///
-    /// Removes the watch represented by the provided
-    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by calling
-    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html). You can obtain a
-    /// [`WatchDescriptor`](struct.WatchDescriptor.html) by saving one returned
-    /// by [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from
-    /// the `wd` field of [`Event`](struct.Event.html).
+    /// Removes the watch represented by the provided [`WatchDescriptor`] by
+    /// calling [`inotify_rm_watch`]. You can obtain a [`WatchDescriptor`] by
+    /// saving one returned by [`Inotify::add_watch`] or from the `wd` field of
+    /// [`Event`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to
-    /// [`inotify_rm_watch`](../ffi/fn.inotify_rm_watch.html), without adding
-    /// any error conditions of its own.
+    /// Directly returns the error from the call to [`inotify_rm_watch`],
+    /// without adding any error conditions of its own.
     ///
     /// # Examples
     ///
@@ -215,6 +214,11 @@ impl Inotify {
     ///     inotify.rm_watch(event.wd);
     /// }
     /// ```
+    ///
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
+    /// [`inotify_rm_watch`]: ../../inotify_sys/fn.inotify_rm_watch.html
+    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+    /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
         let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
         match result {
@@ -229,12 +233,15 @@ impl Inotify {
     ///
     /// This method will block the current thread until at least one event is
     /// available. If this is not desirable, please take a look at
-    /// [`available_events`](struct.Inotify.html#method.available_events).
+    /// [`available_events`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to `read`, without adding any
+    /// Directly returns the error from the call to [`read`], without adding any
     /// error conditions of its own.
+    ///
+    /// [`available_events`]: struct.Inotify.html#method.available_events
+    /// [`read`]: ../../libc/fn.read.html
     pub fn wait_for_events(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
@@ -255,12 +262,11 @@ impl Inotify {
     /// events are available, an iterator is still returned.
     ///
     /// If you need a method that will block until at least one event is
-    /// available, please call
-    /// [`wait_for_events`](struct.Inotify.html#wait_for_events).
+    /// available, please call [`wait_for_events`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to `read`, without adding any
+    /// Directly returns the error from the call to [`read`], without adding any
     /// error conditions of its own.
     ///
     /// # Examples
@@ -278,6 +284,9 @@ impl Inotify {
     ///     // Handle event
     /// }
     /// ```
+    ///
+    /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
+    /// [`read`]: ../../libc/fn.read.html
     pub fn available_events(&mut self) -> io::Result<Events> {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
@@ -354,12 +363,11 @@ impl Inotify {
     ///
     /// Closes the file descriptor referring to the inotify instance. The user
     /// usually doesn't have to call this function, as the underlying inotify
-    /// instance is closed automatically, when [`Inotify`](struct.Inotify.html)
-    /// is dropped.
+    /// instance is closed automatically, when [`Inotify`] is dropped.
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to `close`, without adding any
+    /// Directly returns the error from the call to [`close`], without adding any
     /// error conditions of its own.
     ///
     /// # Examples
@@ -373,6 +381,9 @@ impl Inotify {
     /// inotify.close()
     ///     .expect("Failed to close inotify instance");
     /// ```
+    ///
+    /// [`Inotify`]: struct.Inotify.html
+    /// [`close`]: ../../libc/fn.close.html
     pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         self.fd = -1;
@@ -392,21 +403,23 @@ impl Drop for Inotify {
 }
 
 
-/// Contains the [`WatchMask`](struct.WatchMask.html) flags
+/// Contains the [`WatchMask`] flags
 ///
-/// Contains constants for all valid
-/// [`WatchMask`](struct.WatchMask.html) flags, which can be used to
-/// compare against a [`WatchMask`](struct.WatchMask.html) instance
-/// using its [`contains`](struct.WatchMask.html#method.contains) method.
+/// Contains constants for all valid [`WatchMask`] flags, which can be used to
+/// compare against a [`WatchMask`] instance using [`WatchMask::contains`].
+///
+/// [`WatchMask`]: struct.WatchMask.html
+/// [`WatchMask::contains`]: struct.WatchMask.html#method.contains
 pub mod watch_mask {
     use ffi;
 
     bitflags! {
         /// Mask for a file watch
         ///
-        /// Passed to
-        /// [`Inotify::add_watch`](../struct.Inotify.html#method.add_watch), to
-        /// describe what file system events to watch for and how to do that.
+        /// Passed to [`Inotify::add_watch`], to describe what file system
+        /// events to watch for and how to do that.
+        ///
+        /// [`Inotify::add_watch`]: ../struct.Inotify.html#method.add_watch
         pub flags WatchMask: u32 {
             /// File was accessed.
             const ACCESS        = ffi::IN_ACCESS,
@@ -481,20 +494,24 @@ pub use self::watch_mask::WatchMask;
 
 /// Represents a file that inotify is watching
 ///
-/// Can be obtained from
-/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch) or from an
-/// [`Event`](struct.Event.html). A watch descriptor can be used to get inotify
-/// to stop watching a file by passing it to
-/// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch).
+/// Can be obtained from [`Inotify::add_watch`] or from an [`Event`]. A watch
+/// descriptor can be used to get inotify to stop watching a file by passing it
+/// to [`Inotify::rm_watch`].
+///
+/// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+/// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
+/// [`Event`]: struct.Event.html
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WatchDescriptor(c_int);
 
 
 /// Iterates over inotify events
 ///
-/// Iterates over the events returned by
-/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
-/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
+/// Iterates over the events returned by [`Inotify::wait_for_events`] or
+/// [`Inotify::available_events`].
+///
+/// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
+/// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
 pub struct Events<'a>(vec::Drain<'a, Event>);
 
 impl<'a> Iterator for Events<'a> {
@@ -510,39 +527,46 @@ impl<'a> Iterator for Events<'a> {
 /// An inotify event
 ///
 /// A file system event that describes a change that the user previously
-/// registered interest in. To watch for events, call
-/// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch). To retrieve events,
-/// call
-/// [`Inotify::wait_for_events`](struct.Inotify.html#method.wait_for_events) or
-/// [`Inotify::available_events`](struct.Inotify.html#method.available_events).
+/// registered interest in. To watch for events, call [`Inotify::add_watch`]. To
+/// retrieve events, call [`Inotify::wait_for_events`] or
+/// [`Inotify::available_events`].
+///
+/// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+/// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
+/// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
 #[derive(Clone, Debug)]
 pub struct Event {
     /// Identifies the watch this event originates from
     ///
-    /// This is the same [`WatchDescriptor`](struct.WatchDescriptor.html) that
-    /// [`Inotify::add_watch`](struct.Inotify.html#method.add_watch)
+    /// This is the same [`WatchDescriptor`] that [`Inotify::add_watch`]
     /// returned when interest for this event was registered. The
-    /// [`WatchDescriptor`](struct.WatchDescriptor.html) can be used to remove
-    /// the watch using
-    /// [`Inotify::rm_watch`](struct.Inotify.html#method.rm_watch), thereby
-    /// preventing future events of this type from being created.
+    /// [`WatchDescriptor`] can be used to remove the watch using
+    /// [`Inotify::rm_watch`], thereby preventing future events of this type
+    /// from being created.
+    ///
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
+    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+    /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
     pub wd    : WatchDescriptor,
 
     /// Shows what kind of event this is
     ///
     /// The various flags that can be set on this mask are defined in the
-    /// [`event_mask`](event_mask/index.html) module. You can check against any
-    /// flags that are of interest to you using
-    /// [`EventMask::contains`](event_mask/struct.EventMask.html#contains).
+    /// [`event_mask`] module. You can check against any flags that are of
+    /// interest to you by using [`EventMask::contains`].
+    ///
+    /// [`event_mask`]: event_mask/index.html
+    /// [`EventMask::contains`]: event_mask/struct.EventMask.html#contains
     pub mask  : EventMask,
 
     /// Connects related events to each other
     ///
-    /// When a file is renamed, this results two events:
-    /// [`MOVED_FROM`](event_mask/constant.MOVED_FROM.html) and
-    /// [`MOVED_TO`](event_mask/constant.MOVED_TO.html). The `cookie` field
-    /// will be the same for both of them, thereby making is possible to connect
-    /// the event pair.
+    /// When a file is renamed, this results two events: [`MOVED_FROM`] and
+    /// [`MOVED_TO`]. The `cookie` field will be the same for both of them,
+    /// thereby making is possible to connect the event pair.
+    ///
+    /// [`MOVED_FROM`]: event_mask/constant.MOVED_FROM.html
+    /// [`MOVED_TO`]: event_mask/constant.MOVED_TO.html
     pub cookie: u32,
 
     /// The name of the file the event originates from
@@ -564,23 +588,26 @@ impl Event {
 }
 
 
-/// Contains the [`EventMask`](struct.EventMask.html) flags
+/// Contains the [`EventMask`] flags
 ///
-/// Contains constants for all valid
-/// [`EventMask`](struct.EventMask.html) flags, which can be used to
-/// compare against a [`EventMask`](struct.EventMask.html) instance
-/// using its [`contains`](struct.EventMask.html#method.contains) method.
+/// Contains constants for all valid [`EventMask`] flags, which can be used to
+/// compare against a [`EventMask`] instance using [`EventMask::contains`].
+///
+/// [`EventMask`]: struct.EventMask.html
+/// [`EventMask::contains`]: struct.EventMask.html#method.contains
 pub mod event_mask {
     use ffi;
 
     bitflags! {
         /// Mask for an event
         ///
-        /// This struct can be retrieved from an [`Event`](../struct.Event.html)
-        /// via its `mask` field. You can determine the
-        /// [`Event`](../struct.Event.html)'s type by comparing it to the
-        /// constants in the [`event_mask`](index.html) module using
-        /// [`EventMask::contains`](struct.EventMask.html#method.contains).
+        /// This struct can be retrieved from an [`Event`] via its `mask` field.
+        /// You can determine the [`Event`]'s type by comparing it to the
+        /// constants in [this module] module using [`EventMask::contains`].
+        ///
+        /// [`Event`]: ../struct.Event.html
+        /// [this module]: index.html
+        /// [`EventMask::contains`]: struct.EventMask.html#method.contains
         pub flags EventMask: u32 {
             /// File was accessed.
             const ACCESS        = ffi::IN_ACCESS,
