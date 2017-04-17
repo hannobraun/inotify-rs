@@ -119,9 +119,9 @@ impl Inotify {
     /// ```
     ///
     /// [`Inotify`]: struct.Inotify.html
-    /// [`inotify_init1`]: ../../inotify_sys/fn.inotify_init1.html
-    /// [`IN_CLOEXEC`]: ../../inotify_sys/constant.IN_CLOEXEC.html
-    /// [`IN_NONBLOCK`]: ../../inotify_sys/constant.IN_NONBLOCK.html
+    /// [`inotify_init1`]: ../inotify_sys/fn.inotify_init1.html
+    /// [`IN_CLOEXEC`]: ../inotify_sys/constant.IN_CLOEXEC.html
+    /// [`IN_NONBLOCK`]: ../inotify_sys/constant.IN_NONBLOCK.html
     pub fn init() -> io::Result<Inotify> {
         let fd = unsafe {
             // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
@@ -184,7 +184,7 @@ impl Inotify {
     /// // Handle events for the file here
     /// ```
     ///
-    /// [`inotify_add_watch`]: ../../inotify_sys/fn.inotify_add_watch.html
+    /// [`inotify_add_watch`]: ../inotify_sys/fn.inotify_add_watch.html
     /// [`WatchMask`]: watch_mask/struct.WatchMask.html
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
@@ -242,7 +242,7 @@ impl Inotify {
     /// ```
     ///
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
-    /// [`inotify_rm_watch`]: ../../inotify_sys/fn.inotify_rm_watch.html
+    /// [`inotify_rm_watch`]: ../inotify_sys/fn.inotify_rm_watch.html
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
@@ -267,7 +267,7 @@ impl Inotify {
     /// error conditions of its own.
     ///
     /// [`available_events`]: struct.Inotify.html#method.available_events
-    /// [`read`]: ../../libc/fn.read.html
+    /// [`read`]: ../libc/fn.read.html
     pub fn wait_for_events(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
@@ -312,7 +312,7 @@ impl Inotify {
     /// ```
     ///
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
-    /// [`read`]: ../../libc/fn.read.html
+    /// [`read`]: ../libc/fn.read.html
     pub fn available_events(&mut self) -> io::Result<Events> {
         let mut buffer = [0u8; 1024];
         let len = unsafe {
@@ -409,7 +409,7 @@ impl Inotify {
     /// ```
     ///
     /// [`Inotify`]: struct.Inotify.html
-    /// [`close`]: ../../libc/fn.close.html
+    /// [`close`]: ../libc/fn.close.html
     pub fn close(mut self) -> io::Result<()> {
         let result = unsafe { ffi::close(self.fd) };
         self.fd = -1;
