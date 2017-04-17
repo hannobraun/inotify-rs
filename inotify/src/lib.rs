@@ -335,7 +335,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events(self.events.drain(..)));
+                    return Ok(Events::new(self.events.drain(..)));
                 }
                 else {
                     return Err(error);
@@ -383,7 +383,7 @@ impl Inotify {
             }
         }
 
-        Ok(Events(self.events.drain(..)))
+        Ok(Events::new(self.events.drain(..)))
     }
 
     /// Closes the inotify instance
@@ -540,6 +540,12 @@ pub struct WatchDescriptor(c_int);
 /// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
 /// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
 pub struct Events<'a>(vec::Drain<'a, Event>);
+
+impl<'a> Events<'a> {
+    fn new(buffer: vec::Drain<'a, Event>) -> Self {
+        Events(buffer)
+    }
+}
 
 impl<'a> Iterator for Events<'a> {
     type Item = Event;
