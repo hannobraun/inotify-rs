@@ -48,7 +48,6 @@ use libc::{
     size_t,
     ssize_t,
 };
-use ffi::inotify_event;
 
 
 /// Idiomatic Rust wrapper for Linux's inotify API
@@ -345,14 +344,14 @@ impl Inotify {
                 ()
         }
 
-        let event_size = mem::size_of::<inotify_event>();
+        let event_size = mem::size_of::<ffi::inotify_event>();
 
         let mut i = 0;
         while i < len {
             unsafe {
                 let slice = &buffer[i as usize..];
 
-                let event = slice.as_ptr() as *const inotify_event;
+                let event = slice.as_ptr() as *const ffi::inotify_event;
 
                 let name = if (*event).len > 0 {
                     let name_ptr = slice
@@ -601,7 +600,7 @@ pub struct Event {
 }
 
 impl Event {
-    fn new(event: &inotify_event, name: PathBuf) -> Event {
+    fn new(event: &ffi::inotify_event, name: PathBuf) -> Event {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
