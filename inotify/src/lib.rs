@@ -46,7 +46,6 @@ use libc::{
     c_int,
     c_void,
     size_t,
-    ssize_t,
 };
 
 
@@ -324,7 +323,7 @@ impl Inotify {
             )
         };
 
-        match num_bytes {
+        let num_bytes = match num_bytes {
             0 => {
                 panic!(
                     "Call to read returned 0. This should never happen and may \
@@ -351,9 +350,19 @@ impl Inotify {
                     num_bytes,
                 );
             }
-            _ =>
-                ()
-        }
+            _ => {
+                // The value returned by `read` should be `isize`. Let's quickly
+                // verify this with the following assignment, so we can be sure
+                // our cast below is valid.
+                let num_bytes: isize = num_bytes;
+
+                // The type returned by `read` is `isize`, and we've ruled out
+                // all negative values with the match arms above. This means we
+                // can safely cast to `usize`.
+                debug_assert!(num_bytes > 0);
+                num_bytes as usize
+            }
+        };
 
         let event_size = mem::size_of::<ffi::inotify_event>();
 
@@ -389,7 +398,7 @@ impl Inotify {
 
                 self.events.push(Event::new(&*event, name));
 
-                i += (event_size + (*event).len as usize) as ssize_t;
+                i += event_size + (*event).len as usize;
             }
         }
 
