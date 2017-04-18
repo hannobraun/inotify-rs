@@ -77,7 +77,7 @@ use libc::{
 ///     watch_mask::MODIFY | watch_mask::CLOSE,
 /// );
 ///
-/// let events = inotify.available_events()
+/// let events = inotify.read_events()
 ///     .expect("Error while reading events");
 ///
 /// for event in events {
@@ -230,7 +230,7 @@ impl Inotify {
     /// let mut events = Vec::new();
     /// events.extend(
     ///     inotify
-    ///         .available_events()
+    ///         .read_events()
     ///         .expect("Error while waiting for events")
     /// );
     ///
@@ -266,13 +266,13 @@ impl Inotify {
     ///
     /// [`available_events`]: struct.Inotify.html#method.available_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn wait_for_events(&mut self) -> io::Result<Events> {
+    pub fn read_events_blocking(&mut self) -> io::Result<Events> {
         let fd = self.fd;
 
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
         };
-        let result = self.available_events();
+        let result = self.read_events();
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         };
@@ -301,7 +301,7 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// let events = inotify.available_events()
+    /// let events = inotify.read_events()
     ///     .expect("Error while reading events");
     ///
     /// for event in events {
@@ -311,7 +311,7 @@ impl Inotify {
     ///
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn available_events(&mut self) -> io::Result<Events> {
+    pub fn read_events(&mut self) -> io::Result<Events> {
         let num_bytes = unsafe {
             ffi::read(
                 self.fd,
