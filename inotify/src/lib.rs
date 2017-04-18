@@ -36,7 +36,6 @@ use std::ffi::{
     OsStr,
     CString,
 };
-use std::vec;
 
 use libc::{
     F_GETFL,
@@ -88,7 +87,6 @@ use libc::{
 pub struct Inotify {
     fd    : c_int,
     buffer: [u8; 1024],
-    events: Vec<Event>,
 }
 
 impl Inotify {
@@ -147,7 +145,6 @@ impl Inotify {
             _  => Ok(Inotify {
                 fd    : fd,
                 buffer: [0; 1024],
-                events: Vec::new(),
             })
         }
     }
@@ -334,7 +331,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(self.events.drain(..)));
+                    return Ok(Events::new(&self.buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -364,45 +361,7 @@ impl Inotify {
             }
         };
 
-        let event_size = mem::size_of::<ffi::inotify_event>();
-
-        let mut i = 0;
-        while i < num_bytes {
-            unsafe {
-                let slice = &self.buffer[i as usize..];
-
-                let event = slice.as_ptr() as *const ffi::inotify_event;
-
-                let name = if (*event).len > 0 {
-                    let name_ptr = slice
-                        .as_ptr()
-                        .offset(event_size as isize);
-
-                    let name_slice_with_0 = slice::from_raw_parts(
-                        name_ptr,
-                        (*event).len as usize,
-                    );
-
-                    // This split ensures that the slice contains no \0 bytes, as CString
-                    // doesn't like them. It will replace the slice with all bytes before the
-                    // first \0 byte, or just leave the whole slice if the slice doesn't contain
-                    // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
-                    // at least 1 result, even if the original slice contains no instances of \0.
-                    let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
-
-                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
-                }
-                else {
-                    PathBuf::new()
-                };
-
-                self.events.push(Event::new(&*event, name));
-
-                i += event_size + (*event).len as usize;
-            }
-        }
-
-        Ok(Events::new(self.events.drain(..)))
+        Ok(Events::new(&self.buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -558,11 +517,19 @@ pub struct WatchDescriptor(c_int);
 ///
 /// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
 /// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
-pub struct Events<'a>(vec::Drain<'a, Event>);
+pub struct Events<'a> {
+    buffer   : &'a [u8],
+    num_bytes: usize,
+    pos      : usize,
+}
 
 impl<'a> Events<'a> {
-    fn new(buffer: vec::Drain<'a, Event>) -> Self {
-        Events(buffer)
+    fn new(buffer: &'a [u8], num_bytes: usize) -> Self {
+        Events {
+            buffer   : buffer,
+            num_bytes: num_bytes,
+            pos      : 0,
+        }
     }
 }
 
@@ -570,9 +537,46 @@ impl<'a> Iterator for Events<'a> {
     type Item = Event;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
+        let event_size = mem::size_of::<ffi::inotify_event>();
 
+        if self.pos < self.num_bytes {
+            unsafe {
+                let slice = &self.buffer[self.pos..];
+
+                let event = slice.as_ptr() as *const ffi::inotify_event;
+
+                let name = if (*event).len > 0 {
+                    let name_ptr = slice
+                        .as_ptr()
+                        .offset(event_size as isize);
+
+                    let name_slice_with_0 = slice::from_raw_parts(
+                        name_ptr,
+                        (*event).len as usize,
+                    );
+
+                    // This split ensures that the slice contains no \0 bytes, as CString
+                    // doesn't like them. It will replace the slice with all bytes before the
+                    // first \0 byte, or just leave the whole slice if the slice doesn't contain
+                    // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
+                    // at least 1 result, even if the original slice contains no instances of \0.
+                    let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
+
+                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
+                }
+                else {
+                    PathBuf::new()
+                };
+
+                self.pos += event_size + (*event).len as usize;
+
+                Some(Event::new(&*event, name))
+            }
+        }
+        else {
+            None
+        }
+    }
 }
 
 
