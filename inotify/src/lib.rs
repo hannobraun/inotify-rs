@@ -88,6 +88,7 @@ use libc::{
 /// ```
 pub struct Inotify {
     fd    : c_int,
+    buffer: [u8; 1024],
     events: Vec<Event>,
 }
 
@@ -146,6 +147,7 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  => Ok(Inotify {
                 fd    : fd,
+                buffer: [0; 1024],
                 events: Vec::new(),
             })
         }
@@ -314,12 +316,11 @@ impl Inotify {
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
     pub fn available_events(&mut self) -> io::Result<Events> {
-        let mut buffer = [0u8; 1024];
         let len = unsafe {
             ffi::read(
                 self.fd,
-                buffer.as_mut_ptr() as *mut c_void,
-                buffer.len() as size_t
+                self.buffer.as_mut_ptr() as *mut c_void,
+                self.buffer.len() as size_t
             )
         };
 
@@ -349,7 +350,7 @@ impl Inotify {
         let mut i = 0;
         while i < len {
             unsafe {
-                let slice = &buffer[i as usize..];
+                let slice = &self.buffer[i as usize..];
 
                 let event = slice.as_ptr() as *const ffi::inotify_event;
 
