@@ -316,7 +316,7 @@ impl Inotify {
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
     pub fn available_events(&mut self) -> io::Result<Events> {
-        let len = unsafe {
+        let num_bytes = unsafe {
             ffi::read(
                 self.fd,
                 self.buffer.as_mut_ptr() as *mut c_void,
@@ -324,7 +324,7 @@ impl Inotify {
             )
         };
 
-        match len {
+        match num_bytes {
             0 => {
                 panic!(
                     "Call to read returned 0. This should never happen and may \
@@ -348,7 +348,7 @@ impl Inotify {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         let mut i = 0;
-        while i < len {
+        while i < num_bytes {
             unsafe {
                 let slice = &self.buffer[i as usize..];
 
