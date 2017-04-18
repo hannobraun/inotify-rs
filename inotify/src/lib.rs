@@ -341,6 +341,16 @@ impl Inotify {
                     return Err(error);
                 }
             },
+            _ if num_bytes < 0 => {
+                panic!("{} {} {} {} {} {}",
+                    "Unexpected return value from `read`. Received a negative",
+                    "value that was not `-1`. According to the `read` man page",
+                    "this shouldn't happen, as either `-1` is returned on",
+                    "error, `0` on end-of-file, or a positive value for the",
+                    "number of bytes read. Returned value:",
+                    num_bytes,
+                );
+            }
             _ =>
                 ()
         }
