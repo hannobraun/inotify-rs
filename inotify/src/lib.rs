@@ -290,8 +290,9 @@ impl Inotify {
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`read`], without adding any
-    /// error conditions of its own.
+    /// This function directly returns all errors from the call to [`read`]. In
+    /// addition, [`ErrorKind`]`::UnexpectedEof` is returned, if the call to
+    /// [`read`] returns `0`, signaling end-of-file.
     ///
     /// # Examples
     ///
@@ -311,6 +312,7 @@ impl Inotify {
     ///
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
+    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn read_events(&mut self) -> io::Result<Events> {
         let num_bytes = unsafe {
             ffi::read(
@@ -322,10 +324,11 @@ impl Inotify {
 
         let num_bytes = match num_bytes {
             0 => {
-                panic!(
-                    "Call to read returned 0. This should never happen and may \
-                    indicate a bug in inotify-rs. For example, the buffer used \
-                    to read into might be too small."
+                return Err(
+                    io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "`read` return `0`, signaling end-of-file"
+                    )
                 );
             }
             -1 => {
