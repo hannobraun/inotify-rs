@@ -223,16 +223,10 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// // Move the events into a buffer of our own. If we don't do this, we'll
-    /// // have a mutable borrow on `inotify`, which prevents us from calling
-    /// // `rm_watch` in the event handling loop below.
-    /// let mut events = Vec::new();
     /// let mut buffer = [0; 1024];
-    /// events.extend(
-    ///     inotify
-    ///         .read_events(&mut buffer)
-    ///         .expect("Error while waiting for events")
-    /// );
+    /// let events = inotify
+    ///     .read_events(&mut buffer)
+    ///     .expect("Error while waiting for events");
     ///
     /// for event in events {
     ///     inotify.rm_watch(event.wd);
