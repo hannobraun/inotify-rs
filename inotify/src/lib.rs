@@ -85,9 +85,7 @@ use libc::{
 ///     // Handle event
 /// }
 /// ```
-pub struct Inotify {
-    fd: c_int,
-}
+pub struct Inotify(c_int);
 
 impl Inotify {
     /// Creates an [`Inotify`] instance
@@ -142,9 +140,7 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(Inotify {
-                fd: fd,
-            })
+            _  => Ok(Inotify(fd)),
         }
     }
 
@@ -191,7 +187,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                self.fd,
+                self.0,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -238,7 +234,7 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
+        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.0) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -263,7 +259,7 @@ impl Inotify {
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let fd = self.fd;
+        let fd = self.0;
 
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
@@ -322,7 +318,7 @@ impl Inotify {
     {
         let num_bytes = unsafe {
             ffi::read(
-                self.fd,
+                self.0,
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -399,8 +395,8 @@ impl Inotify {
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
     pub fn close(mut self) -> io::Result<()> {
-        let result = unsafe { ffi::close(self.fd) };
-        self.fd = -1;
+        let result = unsafe { ffi::close(self.0) };
+        self.0 = -1;
         match result {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
@@ -410,8 +406,8 @@ impl Inotify {
 
 impl Drop for Inotify {
     fn drop(&mut self) {
-        if self.fd != -1 {
-            unsafe { ffi::close(self.fd); }
+        if self.0 != -1 {
+            unsafe { ffi::close(self.0); }
         }
     }
 }
