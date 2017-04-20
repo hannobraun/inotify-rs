@@ -77,7 +77,8 @@ use libc::{
 ///     watch_mask::MODIFY | watch_mask::CLOSE,
 /// );
 ///
-/// let events = inotify.read_events()
+/// let mut buffer = [0; 1024];
+/// let events = inotify.read_events(&mut buffer)
 ///     .expect("Error while reading events");
 ///
 /// for event in events {
@@ -85,8 +86,7 @@ use libc::{
 /// }
 /// ```
 pub struct Inotify {
-    fd    : c_int,
-    buffer: [u8; 1024],
+    fd: c_int,
 }
 
 impl Inotify {
@@ -143,8 +143,7 @@ impl Inotify {
         match fd {
             -1 => Err(io::Error::last_os_error()),
             _  => Ok(Inotify {
-                fd    : fd,
-                buffer: [0; 1024],
+                fd: fd,
             })
         }
     }
@@ -228,9 +227,10 @@ impl Inotify {
     /// // have a mutable borrow on `inotify`, which prevents us from calling
     /// // `rm_watch` in the event handling loop below.
     /// let mut events = Vec::new();
+    /// let mut buffer = [0; 1024];
     /// events.extend(
     ///     inotify
-    ///         .read_events()
+    ///         .read_events(&mut buffer)
     ///         .expect("Error while waiting for events")
     /// );
     ///
@@ -266,13 +266,15 @@ impl Inotify {
     ///
     /// [`available_events`]: struct.Inotify.html#method.available_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn read_events_blocking(&mut self) -> io::Result<Events> {
+    pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
+        -> io::Result<Events<'a>>
+    {
         let fd = self.fd;
 
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
         };
-        let result = self.read_events();
+        let result = self.read_events(buffer);
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         };
@@ -285,6 +287,9 @@ impl Inotify {
     /// Returns an iterator over all events that are currently available. If no
     /// events are available, an iterator is still returned.
     ///
+    /// The `buffer` argument, as the name indicates, is used as a buffer for
+    /// the inotify events. Its contents may be overwritten.
+    ///
     /// If you need a method that will block until at least one event is
     /// available, please call [`wait_for_events`].
     ///
@@ -294,6 +299,10 @@ impl Inotify {
     /// addition, [`ErrorKind`]`::UnexpectedEof` is returned, if the call to
     /// [`read`] returns `0`, signaling end-of-file.
     ///
+    /// If `buffer` is too small, this will result in an error with
+    /// [`ErrorKind`]`::InvalidInput`. On very old Linux kernels,
+    /// [`ErrorKind`]`::UnexpectedEof` will be returned instead.
+    ///
     /// # Examples
     ///
     /// ```
@@ -302,7 +311,8 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// let events = inotify.read_events()
+    /// let mut buffer = [0; 1024];
+    /// let events = inotify.read_events(&mut buffer)
     ///     .expect("Error while reading events");
     ///
     /// for event in events {
@@ -313,12 +323,14 @@ impl Inotify {
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
     /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
-    pub fn read_events(&mut self) -> io::Result<Events> {
+    pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
+        -> io::Result<Events<'a>>
+    {
         let num_bytes = unsafe {
             ffi::read(
                 self.fd,
-                self.buffer.as_mut_ptr() as *mut c_void,
-                self.buffer.len() as size_t
+                buffer.as_mut_ptr() as *mut c_void,
+                buffer.len() as size_t
             )
         };
 
@@ -334,7 +346,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(&self.buffer, 0));
+                    return Ok(Events::new(buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -364,7 +376,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(&self.buffer, num_bytes))
+        Ok(Events::new(buffer, num_bytes))
     }
 
     /// Closes the inotify instance
