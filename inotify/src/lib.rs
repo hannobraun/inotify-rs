@@ -30,13 +30,12 @@ extern crate inotify_sys as ffi;
 use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::slice;
 use std::ffi::{
     OsStr,
     CString,
 };
-use std::vec;
 
 use libc::{
     F_GETFL,
@@ -46,7 +45,6 @@ use libc::{
     c_int,
     c_void,
     size_t,
-    ssize_t,
 };
 
 
@@ -79,17 +77,15 @@ use libc::{
 ///     watch_mask::MODIFY | watch_mask::CLOSE,
 /// );
 ///
-/// let events = inotify.available_events()
+/// let mut buffer = [0; 1024];
+/// let events = inotify.read_events(&mut buffer)
 ///     .expect("Error while reading events");
 ///
 /// for event in events {
 ///     // Handle event
 /// }
 /// ```
-pub struct Inotify {
-    fd    : c_int,
-    events: Vec<Event>,
-}
+pub struct Inotify(c_int);
 
 impl Inotify {
     /// Creates an [`Inotify`] instance
@@ -144,10 +140,7 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(Inotify {
-                fd    : fd,
-                events: Vec::new(),
-            })
+            _  => Ok(Inotify(fd)),
         }
     }
 
@@ -194,7 +187,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                self.fd,
+                self.0,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -226,15 +219,10 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// // Move the events into a buffer of our own. If we don't do this, we'll
-    /// // have a mutable borrow on `inotify`, which prevents us from calling
-    /// // `rm_watch` in the event handling loop below.
-    /// let mut events = Vec::new();
-    /// events.extend(
-    ///     inotify
-    ///         .available_events()
-    ///         .expect("Error while waiting for events")
-    /// );
+    /// let mut buffer = [0; 1024];
+    /// let events = inotify
+    ///     .read_events(&mut buffer)
+    ///     .expect("Error while waiting for events");
     ///
     /// for event in events {
     ///     inotify.rm_watch(event.wd);
@@ -246,7 +234,7 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.0) };
+        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.0) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -268,13 +256,15 @@ impl Inotify {
     ///
     /// [`available_events`]: struct.Inotify.html#method.available_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn wait_for_events(&mut self) -> io::Result<Events> {
-        let fd = self.fd;
+    pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
+        -> io::Result<Events<'a>>
+    {
+        let fd = self.0;
 
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
         };
-        let result = self.available_events();
+        let result = self.read_events(buffer);
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         };
@@ -287,13 +277,21 @@ impl Inotify {
     /// Returns an iterator over all events that are currently available. If no
     /// events are available, an iterator is still returned.
     ///
+    /// The `buffer` argument, as the name indicates, is used as a buffer for
+    /// the inotify events. Its contents may be overwritten.
+    ///
     /// If you need a method that will block until at least one event is
     /// available, please call [`wait_for_events`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`read`], without adding any
-    /// error conditions of its own.
+    /// This function directly returns all errors from the call to [`read`]. In
+    /// addition, [`ErrorKind`]`::UnexpectedEof` is returned, if the call to
+    /// [`read`] returns `0`, signaling end-of-file.
+    ///
+    /// If `buffer` is too small, this will result in an error with
+    /// [`ErrorKind`]`::InvalidInput`. On very old Linux kernels,
+    /// [`ErrorKind`]`::UnexpectedEof` will be returned instead.
     ///
     /// # Examples
     ///
@@ -303,7 +301,8 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// let events = inotify.available_events()
+    /// let mut buffer = [0; 1024];
+    /// let events = inotify.read_events(&mut buffer)
     ///     .expect("Error while reading events");
     ///
     /// for event in events {
@@ -313,76 +312,61 @@ impl Inotify {
     ///
     /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn available_events(&mut self) -> io::Result<Events> {
-        let mut buffer = [0u8; 1024];
-        let len = unsafe {
+    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
+    pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
+        -> io::Result<Events<'a>>
+    {
+        let num_bytes = unsafe {
             ffi::read(
-                self.fd,
+                self.0,
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
         };
 
-        match len {
+        let num_bytes = match num_bytes {
             0 => {
-                panic!(
-                    "Call to read returned 0. This should never happen and may \
-                    indicate a bug in inotify-rs. For example, the buffer used \
-                    to read into might be too small."
+                return Err(
+                    io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "`read` return `0`, signaling end-of-file"
+                    )
                 );
             }
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events(self.events.drain(..)));
+                    return Ok(Events::new(buffer, 0));
                 }
                 else {
                     return Err(error);
                 }
             },
-            _ =>
-                ()
-        }
-
-        let event_size = mem::size_of::<ffi::inotify_event>();
-
-        let mut i = 0;
-        while i < len {
-            unsafe {
-                let slice = &buffer[i as usize..];
-
-                let event = slice.as_ptr() as *const ffi::inotify_event;
-
-                let name = if (*event).len > 0 {
-                    let name_ptr = slice
-                        .as_ptr()
-                        .offset(event_size as isize);
-
-                    let name_slice_with_0 = slice::from_raw_parts(
-                        name_ptr,
-                        (*event).len as usize,
-                    );
-
-                    // This split ensures that the slice contains no \0 bytes, as CString
-                    // doesn't like them. It will replace the slice with all bytes before the
-                    // first \0 byte, or just leave the whole slice if the slice doesn't contain
-                    // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
-                    // at least 1 result, even if the original slice contains no instances of \0.
-                    let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
-
-                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
-                }
-                else {
-                    PathBuf::new()
-                };
-
-                self.events.push(Event::new(&*event, name));
-
-                i += (event_size + (*event).len as usize) as ssize_t;
+            _ if num_bytes < 0 => {
+                panic!("{} {} {} {} {} {}",
+                    "Unexpected return value from `read`. Received a negative",
+                    "value that was not `-1`. According to the `read` man page",
+                    "this shouldn't happen, as either `-1` is returned on",
+                    "error, `0` on end-of-file, or a positive value for the",
+                    "number of bytes read. Returned value:",
+                    num_bytes,
+                );
             }
-        }
+            _ => {
+                // The value returned by `read` should be `isize`. Let's quickly
+                // verify this with the following assignment, so we can be sure
+                // our cast below is valid.
+                let num_bytes: isize = num_bytes;
 
-        Ok(Events(self.events.drain(..)))
+                // The type returned by `read` is `isize`, and we've ruled out
+                // all negative values with the match arms above. This means we
+                // can safely cast to `usize`.
+                debug_assert!(num_bytes > 0);
+                num_bytes as usize
+            }
+        };
+
+        Ok(Events::new(buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -411,8 +395,8 @@ impl Inotify {
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
     pub fn close(mut self) -> io::Result<()> {
-        let result = unsafe { ffi::close(self.fd) };
-        self.fd = -1;
+        let result = unsafe { ffi::close(self.0) };
+        self.0 = -1;
         match result {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
@@ -422,8 +406,8 @@ impl Inotify {
 
 impl Drop for Inotify {
     fn drop(&mut self) {
-        if self.fd != -1 {
-            unsafe { ffi::close(self.fd); }
+        if self.0 != -1 {
+            unsafe { ffi::close(self.0); }
         }
     }
 }
@@ -538,15 +522,70 @@ pub struct WatchDescriptor(c_int);
 ///
 /// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
 /// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
-pub struct Events<'a>(vec::Drain<'a, Event>);
+pub struct Events<'a> {
+    buffer   : &'a [u8],
+    num_bytes: usize,
+    pos      : usize,
+}
+
+impl<'a> Events<'a> {
+    fn new(buffer: &'a [u8], num_bytes: usize) -> Self {
+        Events {
+            buffer   : buffer,
+            num_bytes: num_bytes,
+            pos      : 0,
+        }
+    }
+}
 
 impl<'a> Iterator for Events<'a> {
-    type Item = Event;
+    type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
+        let event_size = mem::size_of::<ffi::inotify_event>();
 
+        if self.pos < self.num_bytes {
+            let slice = &self.buffer[self.pos..];
+
+            let event = slice.as_ptr() as *const ffi::inotify_event;
+            let event = unsafe { *event };
+
+            let name = unsafe {
+                slice
+                    .as_ptr()
+                    .offset(event_size as isize)
+            };
+            let name = unsafe {
+                slice::from_raw_parts(
+                    name,
+                    event.len as usize,
+                )
+            };
+
+            // Remove trailing \0 bytes
+            //
+            // The events in the buffer are aligned, and `name` is filled up
+            // with '\0' up to the alignment boundary. Here we remove those
+            // additional bytes.
+            //
+            // The `unwrap` here is safe, because `splitn` always returns at
+            // least one result, even if the original slice contains no '\0'.
+            let name = name
+                .splitn(2, |b| b == &0u8)
+                .next()
+                .unwrap();
+
+            self.pos += event_size + event.len as usize;
+
+            Some(Event::new(
+                &event,
+                OsStr::from_bytes(name),
+            ))
+        }
+        else {
+            None
+        }
+    }
 }
 
 
@@ -561,7 +600,7 @@ impl<'a> Iterator for Events<'a> {
 /// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
 /// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
 #[derive(Clone, Debug)]
-pub struct Event {
+pub struct Event<'a> {
     /// Identifies the watch this event originates from
     ///
     /// This is the same [`WatchDescriptor`] that [`Inotify::add_watch`]
@@ -596,11 +635,11 @@ pub struct Event {
     pub cookie: u32,
 
     /// The name of the file the event originates from
-    pub name  : PathBuf,
+    pub name  : &'a OsStr,
 }
 
-impl Event {
-    fn new(event: &ffi::inotify_event, name: PathBuf) -> Event {
+impl<'a> Event<'a> {
+    fn new(event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 

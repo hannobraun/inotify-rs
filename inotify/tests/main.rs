@@ -24,7 +24,8 @@ fn it_should_watch_a_file() {
 
     write_to(&mut file);
 
-    let events = inotify.wait_for_events().unwrap();
+    let mut buffer = [0; 1024];
+    let events = inotify.read_events_blocking(&mut buffer).unwrap();
 
     let mut num_events = 0;
     for event in events {
@@ -38,7 +39,8 @@ fn it_should_watch_a_file() {
 fn it_should_return_immediately_if_no_events_are_available() {
     let mut inotify = Inotify::init().unwrap();
 
-    assert_eq!(0, inotify.available_events().unwrap().count());
+    let mut buffer = [0; 1024];
+    assert_eq!(0, inotify.read_events(&mut buffer).unwrap().count());
 }
 
 #[test]
@@ -49,10 +51,12 @@ fn it_should_not_return_duplicate_events() {
     let mut inotify = Inotify::init().unwrap();
     inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
 
-    write_to(&mut file);
-    inotify.wait_for_events().unwrap();
+    let mut buffer = [0; 1024];
 
-    assert_eq!(0, inotify.available_events().unwrap().count());
+    write_to(&mut file);
+    inotify.read_events_blocking(&mut buffer).unwrap();
+
+    assert_eq!(0, inotify.read_events(&mut buffer).unwrap().count());
 }
 
 #[test]
@@ -70,7 +74,8 @@ fn it_should_handle_file_names_correctly() {
 
     write_to(&mut file);
 
-    let events = inotify.wait_for_events().unwrap();
+    let mut buffer = [0; 1024];
+    let events = inotify.read_events_blocking(&mut buffer).unwrap();
 
     let mut num_events = 0;
     for event in events {
