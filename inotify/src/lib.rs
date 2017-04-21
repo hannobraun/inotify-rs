@@ -562,11 +562,14 @@ impl<'a> Iterator for Events<'a> {
                 )
             };
 
-            // This split ensures that the slice contains no \0 bytes, as CString
-            // doesn't like them. It will replace the slice with all bytes before the
-            // first \0 byte, or just leave the whole slice if the slice doesn't contain
-            // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
-            // at least 1 result, even if the original slice contains no instances of \0.
+            // Remove trailing \0 bytes
+            //
+            // The events in the buffer are aligned, and `name` is filled up
+            // with '\0' up to the alignment boundary. Here we remove those
+            // additional bytes.
+            //
+            // The `unwrap` here is safe, because `splitn` always returns at
+            // least one result, even if the original slice contains no '\0'.
             let name = name
                 .splitn(2, |b| b == &0u8)
                 .next()
