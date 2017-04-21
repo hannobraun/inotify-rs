@@ -635,7 +635,7 @@ pub struct Event {
 }
 
 impl Event {
-    fn new(event: &ffi::inotify_event, name: PathBuf) -> Event {
+    fn new(event: &ffi::inotify_event, name: PathBuf) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
