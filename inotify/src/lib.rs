@@ -30,7 +30,7 @@ extern crate inotify_sys as ffi;
 use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::slice;
 use std::ffi::{
     OsStr,
@@ -539,7 +539,7 @@ impl<'a> Events<'a> {
 }
 
 impl<'a> Iterator for Events<'a> {
-    type Item = Event;
+    type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let event_size = mem::size_of::<ffi::inotify_event>();
@@ -550,7 +550,7 @@ impl<'a> Iterator for Events<'a> {
 
                 let event = slice.as_ptr() as *const ffi::inotify_event;
 
-                let name = if (*event).len > 0 {
+                let name = {
                     let name_ptr = slice
                         .as_ptr()
                         .offset(event_size as isize);
@@ -567,10 +567,7 @@ impl<'a> Iterator for Events<'a> {
                     // at least 1 result, even if the original slice contains no instances of \0.
                     let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
 
-                    Path::new(OsStr::from_bytes(name_slice)).to_path_buf()
-                }
-                else {
-                    PathBuf::new()
+                    OsStr::from_bytes(name_slice)
                 };
 
                 self.pos += event_size + (*event).len as usize;
@@ -596,7 +593,7 @@ impl<'a> Iterator for Events<'a> {
 /// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
 /// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
 #[derive(Clone, Debug)]
-pub struct Event {
+pub struct Event<'a> {
     /// Identifies the watch this event originates from
     ///
     /// This is the same [`WatchDescriptor`] that [`Inotify::add_watch`]
@@ -631,11 +628,11 @@ pub struct Event {
     pub cookie: u32,
 
     /// The name of the file the event originates from
-    pub name  : PathBuf,
+    pub name  : &'a OsStr,
 }
 
-impl Event {
-    fn new(event: &ffi::inotify_event, name: PathBuf) -> Self {
+impl<'a> Event<'a> {
+    fn new(event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
