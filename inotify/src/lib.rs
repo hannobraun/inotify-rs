@@ -545,35 +545,38 @@ impl<'a> Iterator for Events<'a> {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         if self.pos < self.num_bytes {
-            unsafe {
-                let slice = &self.buffer[self.pos..];
+            let slice = &self.buffer[self.pos..];
 
-                let event = slice.as_ptr() as *const ffi::inotify_event;
+            let event = slice.as_ptr() as *const ffi::inotify_event;
+            let event = unsafe { *event };
 
-                let name = {
-                    let name_ptr = slice
+            let name = {
+                let name_ptr = unsafe {
+                    slice
                         .as_ptr()
-                        .offset(event_size as isize);
-
-                    let name_slice_with_0 = slice::from_raw_parts(
-                        name_ptr,
-                        (*event).len as usize,
-                    );
-
-                    // This split ensures that the slice contains no \0 bytes, as CString
-                    // doesn't like them. It will replace the slice with all bytes before the
-                    // first \0 byte, or just leave the whole slice if the slice doesn't contain
-                    // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
-                    // at least 1 result, even if the original slice contains no instances of \0.
-                    let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
-
-                    OsStr::from_bytes(name_slice)
+                        .offset(event_size as isize)
                 };
 
-                self.pos += event_size + (*event).len as usize;
+                let name_slice_with_0 = unsafe {
+                    slice::from_raw_parts(
+                        name_ptr,
+                        event.len as usize,
+                    )
+                };
 
-                Some(Event::new(&*event, name))
-            }
+                // This split ensures that the slice contains no \0 bytes, as CString
+                // doesn't like them. It will replace the slice with all bytes before the
+                // first \0 byte, or just leave the whole slice if the slice doesn't contain
+                // any \0 bytes. Using .unwrap() here is safe because .splitn() always returns
+                // at least 1 result, even if the original slice contains no instances of \0.
+                let name_slice = name_slice_with_0.splitn(2, |b| b == &0u8).next().unwrap();
+
+                OsStr::from_bytes(name_slice)
+            };
+
+            self.pos += event_size + event.len as usize;
+
+            Some(Event::new(&event, name))
         }
         else {
             None
