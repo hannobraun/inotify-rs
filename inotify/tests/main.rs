@@ -44,22 +44,6 @@ fn it_should_return_immediately_if_no_events_are_available() {
 }
 
 #[test]
-fn it_should_not_return_duplicate_events() {
-    let mut testdir = TestDir::new();
-    let (path, mut file) = testdir.new_file();
-
-    let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
-
-    let mut buffer = [0; 1024];
-
-    write_to(&mut file);
-    inotify.read_events_blocking(&mut buffer).unwrap();
-
-    assert_eq!(0, inotify.read_events(&mut buffer).unwrap().count());
-}
-
-#[test]
 fn it_should_handle_file_names_correctly() {
     let mut testdir = TestDir::new();
     let (mut path, mut file) = testdir.new_file();
