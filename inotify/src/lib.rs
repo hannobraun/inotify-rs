@@ -69,16 +69,27 @@ use libc::{
 /// let mut inotify = Inotify::init()
 ///     .expect("Error while initializing inotify instance");
 ///
+/// # // Create a temporary file, so `add_watch` won't return an error.
+/// # use std::fs::File;
+/// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
+/// #     .expect("Failed to create test file");
+/// #
 /// // Watch for modify and close events.
-/// // Ignore returned error, as this is an example, and the file we're trying
-/// // to watch here doesn't actually exist.
-/// let _ = inotify.add_watch(
-///     "path/to/file",
-///     watch_mask::MODIFY | watch_mask::CLOSE,
-/// );
+/// inotify
+///     .add_watch(
+///         "/tmp/inotify-rs-test-file",
+///         watch_mask::MODIFY | watch_mask::CLOSE,
+///     )
+///     .expect("Failed to add file watch");
 ///
+/// # // Modify file, so the following `read_events_blocking` won't block.
+/// # use std::io::Write;
+/// # write!(&mut test_file, "something\n")
+/// #     .expect("Failed to write something to test file");
+/// #
+/// // Read events that were added with `add_watch` above.
 /// let mut buffer = [0; 1024];
-/// let events = inotify.read_events(&mut buffer)
+/// let events = inotify.read_events_blocking(&mut buffer)
 ///     .expect("Error while reading events");
 ///
 /// for event in events {
@@ -170,9 +181,13 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// // Ignore any errors, as this is an example and the file we're trying to
-    /// // watch here doesn't actually exist.
-    /// let _ = inotify.add_watch("path/to/file", watch_mask::MODIFY);
+    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # use std::fs::File;
+    /// # File::create("/tmp/inotify-rs-test-file")
+    /// #     .expect("Failed to create test file");
+    /// #
+    /// inotify.add_watch("/tmp/inotify-rs-test-file", watch_mask::MODIFY)
+    ///     .expect("Failed to add file watch");
     ///
     /// // Handle events for the file here
     /// ```
@@ -219,9 +234,23 @@ impl Inotify {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
+    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # use std::fs::File;
+    /// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
+    /// #     .expect("Failed to create test file");
+    /// #
+    /// # // Add a watch and modify the file, so the code below doesn't block
+    /// # // forever.
+    /// # use inotify::watch_mask;
+    /// # inotify.add_watch("/tmp/inotify-rs-test-file", watch_mask::MODIFY)
+    /// #     .expect("Failed to add file watch");
+    /// # use std::io::Write;
+    /// # write!(&mut test_file, "something\n")
+    /// #     .expect("Failed to write something to test file");
+    /// #
     /// let mut buffer = [0; 1024];
     /// let events = inotify
-    ///     .read_events(&mut buffer)
+    ///     .read_events_blocking(&mut buffer)
     ///     .expect("Error while waiting for events");
     ///
     /// for event in events {
