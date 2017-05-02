@@ -30,6 +30,7 @@ extern crate inotify_sys as ffi;
 use std::mem;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::io::RawFd;
 use std::path::Path;
 use std::slice;
 use std::ffi::{
@@ -42,7 +43,6 @@ use libc::{
     F_SETFL,
     O_NONBLOCK,
     fcntl,
-    c_int,
     c_void,
     size_t,
 };
@@ -96,7 +96,7 @@ use libc::{
 ///     // Handle event
 /// }
 /// ```
-pub struct Inotify(c_int);
+pub struct Inotify(RawFd);
 
 impl Inotify {
     /// Creates an [`Inotify`] instance
@@ -541,7 +541,7 @@ pub use self::watch_mask::WatchMask;
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
 /// [`Event`]: struct.Event.html
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct WatchDescriptor(c_int);
+pub struct WatchDescriptor(RawFd);
 
 
 /// Iterates over inotify events
