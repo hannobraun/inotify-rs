@@ -23,7 +23,7 @@ travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
 bitflags    = "0.8"
-inotify-sys = { path = "../inotify-sys" }
+inotify-sys = { version = "0.1", path = "../inotify-sys" }
 libc        = "0.2"
 
 [dev-dependencies]
