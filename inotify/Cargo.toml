@@ -13,7 +13,7 @@ description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
 repository    = "https://github.com/hannobraun/inotify-rs"
 license       = "ISC"
-readme        = "README.md"
+readme        = "../README.md"
 
 keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
