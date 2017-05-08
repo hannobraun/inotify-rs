@@ -1,62 +1,60 @@
 # inotify-rs [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify)
 
-## What is inotify-rs?
+[inotify] bindings for the [Rust programming language]
 
-It consists of two things:
-- [inotify](http://en.wikipedia.org/wiki/Inotify) bindings for the
-  [Rust programming language](http://rust-lang.org/)
-- An idiomatic Rust wrapper for those bindings
-
-
-## Is it any good?
-
-Yes.
-
-The bindings are complete (after all, inotify isn't that big of an API). The
-idiomatic wrapper needs some work, but is already useful as it is.
-
-
-## How do I use it?
-
-Include it in your Cargo.toml:
-```toml
-[dependencies]
-inotify = "*"
-```
-
-And here's a little example:
 ```Rust
 extern crate inotify;
 
-use inotify::INotify;
-use inotify::ffi::*;
-use std::path::Path;
+
+use std::env;
+
+use inotify::{
+    event_mask,
+    watch_mask,
+    Inotify,
+};
+
 
 fn main() {
-    let mut ino = INotify::init().unwrap();
+    let mut inotify = Inotify::init()
+        .expect("Failed to initialize inotify");
 
-    ino.add_watch(Path::new("/home"), IN_MODIFY | IN_CREATE | IN_DELETE).unwrap();
+    let current_dir = env::current_dir()
+        .expect("Failed to determine current directory");
+
+    inotify
+        .add_watch(
+            current_dir,
+            watch_mask::MODIFY | watch_mask::CREATE | watch_mask::DELETE,
+        )
+        .expect("Failed to add inotify watch");
+
+    println!("Watching current directory for activity...");
+
+    let mut buffer = [0u8; 4096];
     loop {
-        let events = ino.wait_for_events().unwrap();
+        let events = inotify
+            .read_events_blocking(&mut buffer)
+            .expect("Failed to read inotify events");
 
-        for event in events.iter() {
-            if event.is_create() {
-                if event.is_dir() {
-                    println!("The directory \"{}\" was created.", event.name);       
+        for event in events {
+            if event.mask.contains(event_mask::CREATE) {
+                if event.mask.contains(event_mask::ISDIR) {
+                    println!("Directory created: {:?}", event.name);
                 } else {
-                    println!("The file \"{}\" was created.", event.name);
+                    println!("File created: {:?}", event.name);
                 }
-            } else if event.is_delete() {
-                if event.is_dir() {
-                    println!("The directory \"{}\" was deleted.", event.name);       
+            } else if event.mask.contains(event_mask::DELETE) {
+                if event.mask.contains(event_mask::ISDIR) {
+                    println!("Directory deleted: {:?}", event.name);
                 } else {
-                    println!("The file \"{}\" was deleted.", event.name);
+                    println!("File deleted: {:?}", event.name);
                 }
-            } else if event.is_modify() {
-                if event.is_dir() {
-                    println!("The directory \"{}\" was modified.", event.name);
+            } else if event.mask.contains(event_mask::MODIFY) {
+                if event.mask.contains(event_mask::ISDIR) {
+                    println!("Directory modified: {:?}", event.name);
                 } else {
-                    println!("The file \"{}\" was modified.", event.name);
+                    println!("File modified: {:?}", event.name);
                 }
             }
         }
@@ -64,21 +62,35 @@ fn main() {
 }
 ```
 
-## Any documentation?
-
-The binding is fully documented, but because inotify usage is subject to
-various caveats, warnings, and recommendations to build a robust and
-efficient application, programmers should read through the [inotify(7)]
-man page.
-
-The wrapper is not documented at this time. (But pull requests are appreciated!)
-
-[inotify(7)]: http://man7.org/linux/man-pages/man7/inotify.7.html
+Both an [idiomatic wrapper] and [FFI bindings] for inotify are included in this repository.
 
 
-## What's the license?
+## Usage
 
-Copyright (c) 2014, Hanno Braun and contributors
+Inlude it in your `Cargo.toml`:
+
+```toml
+[dependencies]
+inotify = "0.4"
+```
+
+Please refer to the [documentation] and the example above, for information on how to use it in your code.
+
+Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you're looking for a higher-level and platform independent file system notification library, please consider [notify].
+
+
+## Documentation
+
+The most important piece of documentation for inotify-rs is the **[API reference]**, as it contains a thorough description of the complete API, as well as examples.
+
+Additional examples can be found in the **[examples directory]**.
+
+Please also make sure to read the **[inotify man page]**. Inotify use can be hard to get right, and this low-level wrapper won't protect you from all mistakes.
+
+
+## License
+
+Copyright (c) 2014-2017, Hanno Braun and contributors
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -91,3 +103,14 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
+
+
+[inotify]: http://en.wikipedia.org/wiki/Inotify
+[Rust programming language]: http://rust-lang.org/
+[idiomatic wrapper]: https://crates.io/crates/inotify
+[FFI bindings]: https://crates.io/crates/inotify-sys
+[documentation]: https://docs.rs/inotify
+[notify]: https://crates.io/crates/notify
+[API reference]: https://docs.rs/inotify
+[examples directory]: https://github.com/hannobraun/inotify-rs/tree/master/inotify/examples
+[inotify man page]: http://man7.org/linux/man-pages/man7/inotify.7.html
