@@ -276,14 +276,14 @@ impl Inotify {
     ///
     /// This method will block the current thread until at least one event is
     /// available. If this is not desirable, please take a look at
-    /// [`available_events`].
+    /// [`read_events`].
     ///
     /// # Errors
     ///
     /// Directly returns the error from the call to [`read`], without adding any
     /// error conditions of its own.
     ///
-    /// [`available_events`]: struct.Inotify.html#method.available_events
+    /// [`read_events`]: struct.Inotify.html#method.read_events
     /// [`read`]: ../libc/fn.read.html
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
@@ -310,7 +310,7 @@ impl Inotify {
     /// the inotify events. Its contents may be overwritten.
     ///
     /// If you need a method that will block until at least one event is
-    /// available, please call [`wait_for_events`].
+    /// available, please call [`read_events_blocking`].
     ///
     /// # Errors
     ///
@@ -339,7 +339,7 @@ impl Inotify {
     /// }
     /// ```
     ///
-    /// [`wait_for_events`]: struct.Inotify.html#method.wait_for_events
+    /// [`read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
     /// [`read`]: ../libc/fn.read.html
     /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
@@ -563,11 +563,11 @@ pub struct WatchDescriptor(RawFd);
 
 /// Iterates over inotify events
 ///
-/// Iterates over the events returned by [`Inotify::wait_for_events`] or
-/// [`Inotify::available_events`].
+/// Iterates over the events returned by [`Inotify::read_events_blocking`] or
+/// [`Inotify::read_events`].
 ///
-/// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
-/// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
+/// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
+/// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 pub struct Events<'a> {
     buffer   : &'a [u8],
     num_bytes: usize,
@@ -639,12 +639,12 @@ impl<'a> Iterator for Events<'a> {
 ///
 /// A file system event that describes a change that the user previously
 /// registered interest in. To watch for events, call [`Inotify::add_watch`]. To
-/// retrieve events, call [`Inotify::wait_for_events`] or
-/// [`Inotify::available_events`].
+/// retrieve events, call [`Inotify::read_events_blocking`] or
+/// [`Inotify::read_events`].
 ///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
-/// [`Inotify::wait_for_events`]: struct.Inotify.html#method.wait_for_events
-/// [`Inotify::available_events`]: struct.Inotify.html#method.available_events
+/// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
+/// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 #[derive(Clone, Debug)]
 pub struct Event<'a> {
     /// Identifies the watch this event originates from
