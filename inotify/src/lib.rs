@@ -33,7 +33,6 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::RawFd;
 use std::path::Path;
 use std::slice;
-use std::collections::HashMap;
 use std::ffi::{
     OsStr,
     CString,
