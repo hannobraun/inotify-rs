@@ -1,7 +1,7 @@
 [package]
 
 name    = "inotify"
-version = "0.3.0"
+version = "0.4.1"
 authors = [
   "Hanno Braun <mail@hannobraun.de>",
   "Félix Saparelli <me@passcod.name>",
@@ -9,22 +9,22 @@ authors = [
   "Frank Denis <github@pureftpd.org>"
 ]
 
-description   = "Bindings and an idiomatic wrapper for inotify"
+description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
 repository    = "https://github.com/hannobraun/inotify-rs"
 license       = "ISC"
-readme        = "README.md"
+readme        = "../README.md"
 
-keywords   = ["linux"]
-categories = ["api-bindings", "external-ffi-bindings", "filesystem"]
+keywords   = ["inotify", "linux"]
+categories = ["api-bindings", "filesystem"]
 
 [badges]
 travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
-bitflags    = "^0.8"
-inotify-sys = { path = "../inotify-sys" }
-libc        = "^0.2"
+bitflags    = "0.8"
+inotify-sys = { version = "0.1", path = "../inotify-sys" }
+libc        = "0.2"
 
 [dev-dependencies]
-tempdir = "^0.3"
+tempdir = "0.3"

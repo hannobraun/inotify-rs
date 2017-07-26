@@ -3,5 +3,17 @@ name    = "inotify-sys"
 version = "0.1.0"
 authors = ["Hanno Braun <hb@hannobraun.de>"]
 
+description   = "Rust bindings for inotify"
+documentation = "https://docs.rs/inotify-sys"
+repository    = "https://github.com/hannobraun/inotify-rs"
+license       = "ISC"
+readme        = "../README.md"
+
+keywords   = ["inotify", "linux"]
+categories = ["external-ffi-bindings", "filesystem"]
+
+[badges]
+travis-ci = { repository = "hannobraun/inotify-rs" }
+
 [dependencies]
 libc = "0.2"
