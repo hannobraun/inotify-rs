@@ -558,7 +558,7 @@ pub use self::watch_mask::WatchMask;
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
 /// [`Event`]: struct.Event.html
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct WatchDescriptor(RawFd);
+pub struct WatchDescriptor(pub RawFd);
 
 
 /// Iterates over inotify events
