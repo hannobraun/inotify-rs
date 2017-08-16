@@ -22,7 +22,7 @@ categories = ["api-bindings", "filesystem"]
 travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
-bitflags    = "0.8"
+bitflags    = "0.9"
 inotify-sys = { version = "0.1", path = "../inotify-sys" }
 libc        = "0.2"
 
