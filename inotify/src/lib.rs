@@ -477,71 +477,71 @@ pub mod watch_mask {
         /// events to watch for and how to do that.
         ///
         /// [`Inotify::add_watch`]: ../struct.Inotify.html#method.add_watch
-        pub flags WatchMask: u32 {
+        pub struct WatchMask: u32 {
             /// File was accessed.
-            const ACCESS        = ffi::IN_ACCESS,
+            const ACCESS        = ffi::IN_ACCESS;
 
             /// Metadata changed.
-            const ATTRIB        = ffi::IN_ATTRIB,
+            const ATTRIB        = ffi::IN_ATTRIB;
 
             /// File opened for writing was closed.
-            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
 
             /// File or directory not opened for writing was closed.
-            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
             /// File/directory created in watched directory.
-            const CREATE        = ffi::IN_CREATE,
+            const CREATE        = ffi::IN_CREATE;
 
             /// File/directory deleted from watched directory.
-            const DELETE        = ffi::IN_DELETE,
+            const DELETE        = ffi::IN_DELETE;
 
             /// Watched file/directory was itself deleted.
-            const DELETE_SELF   = ffi::IN_DELETE_SELF,
+            const DELETE_SELF   = ffi::IN_DELETE_SELF;
 
             /// File was modified.
-            const MODIFY        = ffi::IN_MODIFY,
+            const MODIFY        = ffi::IN_MODIFY;
 
             /// Watched file/directory was itself moved.
-            const MOVE_SELF     = ffi::IN_MOVE_SELF,
+            const MOVE_SELF     = ffi::IN_MOVE_SELF;
 
             /// Generated for the directory containing the old filename when a
             /// file is renamend.
-            const MOVED_FROM    = ffi::IN_MOVED_FROM,
+            const MOVED_FROM    = ffi::IN_MOVED_FROM;
 
             /// Generated for the directory containing the new filename when a
             /// file is renamed.
-            const MOVED_TO      = ffi::IN_MOVED_TO,
+            const MOVED_TO      = ffi::IN_MOVED_TO;
 
             /// File or directory was opened.
-            const OPEN          = ffi::IN_OPEN,
+            const OPEN          = ffi::IN_OPEN;
 
             /// Watch for all events.
-            const ALL_EVENTS    = ffi::IN_ALL_EVENTS,
+            const ALL_EVENTS    = ffi::IN_ALL_EVENTS;
 
             /// Watch for both `MOVED_FROM` and `MOVED_TO`.
-            const MOVE          = ffi::IN_MOVE,
+            const MOVE          = ffi::IN_MOVE;
 
             /// Watch for both `IN_CLOSE_WRITE` and `IN_CLOSE_NOWRITE`.
-            const CLOSE         = ffi::IN_CLOSE,
+            const CLOSE         = ffi::IN_CLOSE;
 
             /// Don't dereference the path if it is a symbolic link
-            const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW,
+            const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW;
 
             /// Don't watch events for children that have been unlinked from
             /// watched directory.
-            const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK,
+            const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK;
 
             /// If a watch instance already exists for the inode corresponding
             /// to the given path, amend the existing watch mask instead of
             /// replacing it.
-            const MASK_ADD      = ffi::IN_MASK_ADD,
+            const MASK_ADD      = ffi::IN_MASK_ADD;
 
             /// Only monitor for one event, then remove the watch
-            const ONESHOT       = ffi::IN_ONESHOT,
+            const ONESHOT       = ffi::IN_ONESHOT;
 
             /// Only watch path, if it is a directory.
-            const ONLYDIR       = ffi::IN_ONLYDIR,
+            const ONLYDIR       = ffi::IN_ONLYDIR;
         }
     }
 }
@@ -720,56 +720,56 @@ pub mod event_mask {
         /// [`Event`]: ../struct.Event.html
         /// [this module]: index.html
         /// [`EventMask::contains`]: struct.EventMask.html#method.contains
-        pub flags EventMask: u32 {
+        pub struct EventMask: u32 {
             /// File was accessed.
-            const ACCESS        = ffi::IN_ACCESS,
+            const ACCESS        = ffi::IN_ACCESS;
 
             /// Metadata changed.
-            const ATTRIB        = ffi::IN_ATTRIB,
+            const ATTRIB        = ffi::IN_ATTRIB;
 
             /// File opened for writing was closed.
-            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE,
+            const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
 
             /// File or directory not opened for writing was closed.
-            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE,
+            const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
             /// File/directory created in watched directory.
-            const CREATE        = ffi::IN_CREATE,
+            const CREATE        = ffi::IN_CREATE;
 
             /// File/directory deleted from watched directory.
-            const DELETE        = ffi::IN_DELETE,
+            const DELETE        = ffi::IN_DELETE;
 
             /// Watched file/directory was itself deleted.
-            const DELETE_SELF   = ffi::IN_DELETE_SELF,
+            const DELETE_SELF   = ffi::IN_DELETE_SELF;
 
             /// File was modified.
-            const MODIFY        = ffi::IN_MODIFY,
+            const MODIFY        = ffi::IN_MODIFY;
 
             /// Watched file/directory was itself moved.
-            const MOVE_SELF     = ffi::IN_MOVE_SELF,
+            const MOVE_SELF     = ffi::IN_MOVE_SELF;
 
             /// Generated for the directory containing the old filename when a
             /// file is renamend.
-            const MOVED_FROM    = ffi::IN_MOVED_FROM,
+            const MOVED_FROM    = ffi::IN_MOVED_FROM;
 
             /// Generated for the directory containing the new filename when a
             /// file is renamed.
-            const MOVED_TO      = ffi::IN_MOVED_TO,
+            const MOVED_TO      = ffi::IN_MOVED_TO;
 
             /// File or directory was opened.
-            const OPEN          = ffi::IN_OPEN,
+            const OPEN          = ffi::IN_OPEN;
 
             /// Watch was removed.
-            const IGNORED       = ffi::IN_IGNORED,
+            const IGNORED       = ffi::IN_IGNORED;
 
             /// Subject of this event is a directory.
-            const ISDIR         = ffi::IN_ISDIR,
+            const ISDIR         = ffi::IN_ISDIR;
 
             /// Event queue overflowed.
-            const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW,
+            const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW;
 
             /// File system containing watched object was unmounted.
-            const UNMOUNT       = ffi::IN_UNMOUNT,
+            const UNMOUNT       = ffi::IN_UNMOUNT;
         }
     }
 }
