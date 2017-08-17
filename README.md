@@ -1,4 +1,4 @@
-# inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify)
+# inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify) [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs)
 
 [inotify] bindings for the [Rust programming language]
 
