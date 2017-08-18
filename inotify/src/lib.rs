@@ -29,6 +29,7 @@ extern crate inotify_sys as ffi;
 
 use std::mem;
 use std::io;
+use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::RawFd;
 use std::path::Path;
@@ -211,7 +212,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor(wd)),
+            _  => Ok(WatchDescriptor{id: wd, fd: self.0}),
         }
     }
 
@@ -264,7 +265,10 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.0) };
+        if self.0 != wd.fd {
+            return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid WatchDescriptor"))
+        }
+        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.id) }; 
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -366,7 +370,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(buffer, 0));
+                    return Ok(Events::new(self.0, buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -396,7 +400,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(buffer, num_bytes))
+        Ok(Events::new(self.0, buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -559,8 +563,10 @@ pub use self::watch_mask::WatchMask;
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
 /// [`Event`]: struct.Event.html
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct WatchDescriptor(c_int);
-
+pub struct WatchDescriptor{
+    id: c_int,
+    fd: RawFd,
+}
 
 /// Iterates over inotify events
 ///
@@ -570,14 +576,16 @@ pub struct WatchDescriptor(c_int);
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 pub struct Events<'a> {
+    fd       : RawFd,
     buffer   : &'a [u8],
     num_bytes: usize,
     pos      : usize,
 }
 
 impl<'a> Events<'a> {
-    fn new(buffer: &'a [u8], num_bytes: usize) -> Self {
+    fn new(fd: RawFd, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
+            fd       : fd,
             buffer   : buffer,
             num_bytes: num_bytes,
             pos      : 0,
@@ -625,6 +633,7 @@ impl<'a> Iterator for Events<'a> {
             self.pos += event_size + event.len as usize;
 
             Some(Event::new(
+                self.fd,
                 &event,
                 OsStr::from_bytes(name),
             ))
@@ -686,12 +695,17 @@ pub struct Event<'a> {
 }
 
 impl<'a> Event<'a> {
-    fn new(event: &ffi::inotify_event, name: &'a OsStr) -> Self {
+    fn new(fd: RawFd, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
+        let wd = ::WatchDescriptor {
+            id: event.wd,
+            fd: fd,
+        };
+
         Event {
-            wd    : WatchDescriptor(event.wd),
+            wd    : wd,
             mask  : mask,
             cookie: event.cookie,
             name  : name,
