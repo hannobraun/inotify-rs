@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 2 ]
+then
+	echo "Usage: $(basename $0) <crate> <level>"
+	exit 1
+fi
+
+CRATE=$1
+LEVEL=$2
+
+cd $CRATE
+
+BOLD=$(tput bold)
+NORMAL=$(tput sgr0)
+
+function release {
+	cargo release -l $1 --tag-prefix ${2}_v $3
+}
+
+echo
+echo "${BOLD}Starting cargo release dry run...${NORMAL}"
+echo
+
+release $LEVEL $CRATE --dry-run
+
+# cargo-release requires its own confirmation, so we don't have to build one
+# into this script.
+release $LEVEL $CRATE
