@@ -1,4 +1,4 @@
-/Cargo.lock
+Cargo.lock
 /**/target
 *.sublime-workspace
 *.swp
