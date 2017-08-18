@@ -17,3 +17,8 @@ travis-ci = { repository = "hannobraun/inotify-rs" }
 
 [dependencies]
 libc = "0.2"
+
+[package.metadata.release]
+pre-release-commit-message = "Release inotify-sys {{version}}"
+pro-release-commit-message = "Bump inotify-sys version to {{version}}"
+tag-message                = "inotify-sys version {{version}}"
