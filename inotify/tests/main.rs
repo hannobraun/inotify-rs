@@ -9,7 +9,10 @@ use inotify::{
     Inotify,
 };
 use std::fs::File;
-use std::io::Write;
+use std::io::{
+    Write,
+    ErrorKind,
+};
 use std::path::PathBuf;
 use tempdir::TempDir;
 
@@ -67,6 +70,21 @@ fn it_should_handle_file_names_correctly() {
         num_events += 1;
     }
     assert!(num_events > 0);
+}
+
+#[test]
+fn it_should_not_accept_watchdescriptors_from_other_instances() {
+    let mut testdir = TestDir::new();
+    let (path, file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    let wd1 = inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
+
+    let mut second_inotify = Inotify::init().unwrap();
+    let wd2 = second_inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
+
+    assert!(wd1 != wd2);
+    assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
 }
 
 
