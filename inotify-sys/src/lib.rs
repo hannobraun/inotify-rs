@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![deny(warnings)]
 
 
 //! Bindings for inotify
