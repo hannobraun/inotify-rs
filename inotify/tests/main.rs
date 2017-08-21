@@ -1,3 +1,6 @@
+#![deny(warnings)]
+
+
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
@@ -75,7 +78,7 @@ fn it_should_handle_file_names_correctly() {
 #[test]
 fn it_should_not_accept_watchdescriptors_from_other_instances() {
     let mut testdir = TestDir::new();
-    let (path, file) = testdir.new_file();
+    let (path, _) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
     let wd1 = inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
