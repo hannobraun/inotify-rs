@@ -452,10 +452,8 @@ impl Inotify {
     ///
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
-    pub fn close(mut self) -> io::Result<()> {
-        let result = unsafe { ffi::close(self.0) };
-        self.0 = -1;
-        match result {
+    pub fn close(self) -> io::Result<()> {
+        match unsafe { ffi::close(self.0) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
