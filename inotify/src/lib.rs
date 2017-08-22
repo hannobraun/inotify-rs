@@ -463,23 +463,6 @@ impl Inotify {
             _ => Err(io::Error::last_os_error()),
         }
     }
-
-
-    /// Access inotify file descriptor
-    ///
-    /// This method provides access to the inotify file descriptor. While this
-    /// is not required for any of the tasks that are covered by this API, it
-    /// might be necessary for providing additional features on top of it.
-    ///
-    /// # Safety
-    ///
-    /// This function is marked `unsafe`, as direct access to the file
-    /// descriptor allows for all kinds of actions that could cause `Inotify` to
-    /// no longer work correctly. Please be aware of what you're doing, and how
-    /// this might affect the inotify-rs code.
-    pub unsafe fn fd(&mut self) -> &mut RawFd {
-        &mut self.0
-    }
 }
 
 impl Drop for Inotify {
