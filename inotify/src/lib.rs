@@ -32,7 +32,12 @@ use std::mem;
 use std::io;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{
+    AsRawFd,
+    FromRawFd,
+    IntoRawFd,
+    RawFd,
+};
 use std::path::Path;
 use std::slice;
 use std::ffi::{
@@ -458,23 +463,6 @@ impl Inotify {
             _ => Err(io::Error::last_os_error()),
         }
     }
-
-
-    /// Access inotify file descriptor
-    ///
-    /// This method provides access to the inotify file descriptor. While this
-    /// is not required for any of the tasks that are covered by this API, it
-    /// might be necessary for providing additional features on top of it.
-    ///
-    /// # Safety
-    ///
-    /// This function is marked `unsafe`, as direct access to the file
-    /// descriptor allows for all kinds of actions that could cause `Inotify` to
-    /// no longer work correctly. Please be aware of what you're doing, and how
-    /// this might affect the inotify-rs code.
-    pub unsafe fn fd(&mut self) -> &mut RawFd {
-        &mut self.0
-    }
 }
 
 impl Drop for Inotify {
@@ -482,6 +470,26 @@ impl Drop for Inotify {
         if self.0 != -1 {
             unsafe { ffi::close(self.0); }
         }
+    }
+}
+
+impl AsRawFd for Inotify {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0
+    }
+}
+
+impl FromRawFd for Inotify {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        Inotify(fd)
+    }
+}
+
+impl IntoRawFd for Inotify {
+    fn into_raw_fd(self) -> RawFd {
+        let fd = self.0;
+        mem::forget(self);
+        fd
     }
 }
 
