@@ -90,6 +90,29 @@ fn it_should_not_accept_watchdescriptors_from_other_instances() {
     assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
 }
 
+#[test]
+fn it_should_implement_raw_fd_traits_correctly() {
+    use std::os::unix::io::{
+        FromRawFd,
+        IntoRawFd,
+    };
+
+
+    let fd = Inotify::init()
+        .expect("Failed to initialize inotify instance")
+        .into_raw_fd();
+
+    // If `IntoRawFd` has been implemented naively, `Inotify`'s `Drop`
+    // implementation will have closed the inotify instance at this point. Let's
+    // make sure this didn't happen.
+    let mut inotify = unsafe { <Inotify as FromRawFd>::from_raw_fd(fd) };
+
+    let mut buffer = [0; 1024];
+    if let Err(error) = inotify.read_events(&mut buffer) {
+        panic!("Failed to add watch: {}", error);
+    }
+}
+
 
 struct TestDir {
     dir: TempDir,

@@ -32,7 +32,12 @@ use std::mem;
 use std::io;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{
+    AsRawFd,
+    FromRawFd,
+    IntoRawFd,
+    RawFd,
+};
 use std::path::Path;
 use std::slice;
 use std::ffi::{
@@ -482,6 +487,26 @@ impl Drop for Inotify {
         if self.0 != -1 {
             unsafe { ffi::close(self.0); }
         }
+    }
+}
+
+impl AsRawFd for Inotify {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0
+    }
+}
+
+impl FromRawFd for Inotify {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        Inotify(fd)
+    }
+}
+
+impl IntoRawFd for Inotify {
+    fn into_raw_fd(self) -> RawFd {
+        let fd = self.0;
+        mem::forget(self);
+        fd
     }
 }
 
