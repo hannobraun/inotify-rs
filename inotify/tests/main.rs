@@ -63,7 +63,28 @@ fn it_should_convert_the_name_into_an_os_str() {
     let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
 
     if let Some(event) = events.next() {
-        assert_eq!(path.file_name().unwrap(), event.name);
+        assert_eq!(path.file_name(), event.name);
+    }
+    else {
+        panic!("Expected inotify event");
+    }
+}
+
+#[test]
+fn it_should_set_name_to_none_if_it_is_empty() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
+
+    write_to(&mut file);
+
+    let mut buffer = [0; 1024];
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
+
+    if let Some(event) = events.next() {
+        assert_eq!(event.name, None);
     }
     else {
         panic!("Expected inotify event");

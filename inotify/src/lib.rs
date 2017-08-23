@@ -721,7 +721,7 @@ pub struct Event<'a> {
     pub cookie: u32,
 
     /// The name of the file the event originates from
-    pub name  : &'a OsStr,
+    pub name  : Option<&'a OsStr>,
 }
 
 impl<'a> Event<'a> {
@@ -732,6 +732,13 @@ impl<'a> Event<'a> {
         let wd = ::WatchDescriptor {
             id: event.wd,
             fd: fd,
+        };
+
+        let name = if name == "" {
+            None
+        }
+        else {
+            Some(name)
         };
 
         Event {
