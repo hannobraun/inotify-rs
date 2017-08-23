@@ -50,7 +50,7 @@ fn it_should_return_immediately_if_no_events_are_available() {
 }
 
 #[test]
-fn it_should_handle_file_names_correctly() {
+fn it_should_convert_the_name_into_an_os_str() {
     let mut testdir = TestDir::new();
     let (path, mut file) = testdir.new_file();
 
