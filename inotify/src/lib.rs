@@ -721,6 +721,10 @@ pub struct Event<'a> {
     pub cookie: u32,
 
     /// The name of the file the event originates from
+    ///
+    /// This field is set only, if the subject of the event is a file in a
+    /// wacthed directory. If the event concerns a file or directory that is
+    /// watched directly, `name` will be `None`.
     pub name  : Option<&'a OsStr>,
 }
 
