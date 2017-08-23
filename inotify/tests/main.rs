@@ -65,14 +65,14 @@ fn it_should_handle_file_names_correctly() {
     write_to(&mut file);
 
     let mut buffer = [0; 1024];
-    let events = inotify.read_events_blocking(&mut buffer).unwrap();
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
 
-    let mut num_events = 0;
-    for event in events {
+    if let Some(event) = events.next() {
         assert_eq!(file_name, event.name.to_str().unwrap());
-        num_events += 1;
     }
-    assert!(num_events > 0);
+    else {
+        panic!("Expected inotify event");
+    }
 }
 
 #[test]
