@@ -53,10 +53,6 @@ fn it_should_return_immediately_if_no_events_are_available() {
 fn it_should_handle_file_names_correctly() {
     let mut testdir = TestDir::new();
     let (path, mut file) = testdir.new_file();
-    let file_name = path
-        .file_name().unwrap()
-        .to_str().unwrap()
-        .to_string();
 
     let mut inotify = Inotify::init().unwrap();
     inotify.add_watch(&path.parent().unwrap(), watch_mask::MODIFY).unwrap();
@@ -67,7 +63,7 @@ fn it_should_handle_file_names_correctly() {
     let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
 
     if let Some(event) = events.next() {
-        assert_eq!(file_name, event.name.to_str().unwrap());
+        assert_eq!(path.file_name().unwrap(), event.name);
     }
     else {
         panic!("Expected inotify event");
