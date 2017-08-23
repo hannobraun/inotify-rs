@@ -50,14 +50,30 @@ fn it_should_return_immediately_if_no_events_are_available() {
 }
 
 #[test]
-fn it_should_handle_file_names_correctly() {
+fn it_should_convert_the_name_into_an_os_str() {
     let mut testdir = TestDir::new();
-    let (mut path, mut file) = testdir.new_file();
-    let file_name = path
-        .file_name().unwrap()
-        .to_str().unwrap()
-        .to_string();
-    path.pop(); // Get path to the directory the file is in
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    inotify.add_watch(&path.parent().unwrap(), watch_mask::MODIFY).unwrap();
+
+    write_to(&mut file);
+
+    let mut buffer = [0; 1024];
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
+
+    if let Some(event) = events.next() {
+        assert_eq!(path.file_name(), event.name);
+    }
+    else {
+        panic!("Expected inotify event");
+    }
+}
+
+#[test]
+fn it_should_set_name_to_none_if_it_is_empty() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
     inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
@@ -65,14 +81,14 @@ fn it_should_handle_file_names_correctly() {
     write_to(&mut file);
 
     let mut buffer = [0; 1024];
-    let events = inotify.read_events_blocking(&mut buffer).unwrap();
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
 
-    let mut num_events = 0;
-    for event in events {
-        assert_eq!(file_name, event.name.to_str().unwrap());
-        num_events += 1;
+    if let Some(event) = events.next() {
+        assert_eq!(event.name, None);
     }
-    assert!(num_events > 0);
+    else {
+        panic!("Expected inotify event");
+    }
 }
 
 #[test]

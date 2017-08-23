@@ -721,7 +721,11 @@ pub struct Event<'a> {
     pub cookie: u32,
 
     /// The name of the file the event originates from
-    pub name  : &'a OsStr,
+    ///
+    /// This field is set only, if the subject of the event is a file in a
+    /// wacthed directory. If the event concerns a file or directory that is
+    /// watched directly, `name` will be `None`.
+    pub name  : Option<&'a OsStr>,
 }
 
 impl<'a> Event<'a> {
@@ -732,6 +736,13 @@ impl<'a> Event<'a> {
         let wd = ::WatchDescriptor {
             id: event.wd,
             fd: fd,
+        };
+
+        let name = if name == "" {
+            None
+        }
+        else {
+            Some(name)
         };
 
         Event {
