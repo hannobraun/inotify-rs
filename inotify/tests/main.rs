@@ -52,15 +52,14 @@ fn it_should_return_immediately_if_no_events_are_available() {
 #[test]
 fn it_should_handle_file_names_correctly() {
     let mut testdir = TestDir::new();
-    let (mut path, mut file) = testdir.new_file();
+    let (path, mut file) = testdir.new_file();
     let file_name = path
         .file_name().unwrap()
         .to_str().unwrap()
         .to_string();
-    path.pop(); // Get path to the directory the file is in
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
+    inotify.add_watch(&path.parent().unwrap(), watch_mask::MODIFY).unwrap();
 
     write_to(&mut file);
 
