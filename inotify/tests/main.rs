@@ -97,13 +97,36 @@ fn it_should_not_accept_watchdescriptors_from_other_instances() {
     let (path, _) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    let wd1 = inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
+    let _ = inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
 
     let mut second_inotify = Inotify::init().unwrap();
     let wd2 = second_inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
 
-    assert!(wd1 != wd2);
     assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
+}
+
+#[test]
+fn watch_descriptors_from_different_inotify_instances_should_not_be_equal() {
+    let mut testdir = TestDir::new();
+    let (path, _) = testdir.new_file();
+
+    let mut inotify_1 = Inotify::init()
+        .unwrap();
+    let mut inotify_2 = Inotify::init()
+        .unwrap();
+
+    let wd_1 = inotify_1
+        .add_watch(&path, watch_mask::ACCESS)
+        .unwrap();
+    let wd_2 = inotify_2
+        .add_watch(&path, watch_mask::ACCESS)
+        .unwrap();
+
+    // As far as inotify is concerned, watch descriptors are just integers that
+    // are scoped per inotify instance. This means that multiple instances will
+    // produce the same watch descriptor number, a case we want inotify-rs to
+    // detect.
+    assert!(wd_1 != wd_2);
 }
 
 #[test]
