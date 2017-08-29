@@ -16,6 +16,10 @@ use std::io::{
     Write,
     ErrorKind,
 };
+use std::os::unix::io::{
+    FromRawFd,
+    IntoRawFd,
+};
 use std::path::PathBuf;
 use tempdir::TempDir;
 
@@ -131,12 +135,6 @@ fn watch_descriptors_from_different_inotify_instances_should_not_be_equal() {
 
 #[test]
 fn it_should_implement_raw_fd_traits_correctly() {
-    use std::os::unix::io::{
-        FromRawFd,
-        IntoRawFd,
-    };
-
-
     let fd = Inotify::init()
         .expect("Failed to initialize inotify instance")
         .into_raw_fd();
