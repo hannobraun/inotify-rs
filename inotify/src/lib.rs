@@ -43,7 +43,10 @@ use std::os::unix::io::{
     RawFd,
 };
 use std::path::Path;
-use std::rc::Rc;
+use std::rc::{
+    Rc,
+    Weak,
+};
 use std::slice;
 use std::ffi::{
     OsStr,
@@ -253,7 +256,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{id: wd, fd: *self.fd}),
+            _  => Ok(WatchDescriptor{ id: wd, fd: Rc::downgrade(&self.fd) }),
         }
     }
 
@@ -306,9 +309,13 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if *self.fd != wd.fd {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid WatchDescriptor"))
+        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+            return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid WatchDescriptor",
+            ));
         }
+
         let result = unsafe { ffi::inotify_rm_watch(*self.fd, wd.id) };
         match result {
             0  => Ok(()),
@@ -409,7 +416,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(*self.fd, buffer, 0));
+                    return Ok(Events::new(Rc::downgrade(&self.fd), buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -439,7 +446,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(*self.fd, buffer, num_bytes))
+        Ok(Events::new(Rc::downgrade(&self.fd), buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -612,21 +619,30 @@ pub use self::watch_mask::WatchMask;
 #[derive(Clone, Debug)]
 pub struct WatchDescriptor{
     id: c_int,
-    fd: RawFd,
+    fd: Weak<RawFd>,
 }
 
 impl Eq for WatchDescriptor {}
 
 impl PartialEq for WatchDescriptor {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.fd == other.fd
+        let self_fd  = self.fd.upgrade();
+        let other_fd = other.fd.upgrade();
+
+        self.id == other.id && self_fd.is_some() && self_fd == other_fd
     }
 }
 
 impl Hash for WatchDescriptor {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        // This function only takes `self.id` into account, as `self.fd` is a
+        // weak pointer that might no longer be available. Since neither
+        // panicking nor changing the hash depending on whether it's available
+        // is acceptable, we just don't look at it at all.
+        // I don't think that this influences storage in a `HashMap` or
+        // `HashSet` negatively, as storing `WatchDescriptor`s from different
+        // `Inotify` instances seems like something of an antipattern anyway.
         self.id.hash(state);
-        self.fd.hash(state);
     }
 }
 
@@ -639,14 +655,14 @@ impl Hash for WatchDescriptor {
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 pub struct Events<'a> {
-    fd       : RawFd,
+    fd       : Weak<RawFd>,
     buffer   : &'a [u8],
     num_bytes: usize,
     pos      : usize,
 }
 
 impl<'a> Events<'a> {
-    fn new(fd: RawFd, buffer: &'a [u8], num_bytes: usize) -> Self {
+    fn new(fd: Weak<RawFd>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd       : fd,
             buffer   : buffer,
@@ -696,7 +712,7 @@ impl<'a> Iterator for Events<'a> {
             self.pos += event_size + event.len as usize;
 
             Some(Event::new(
-                self.fd,
+                self.fd.clone(),
                 &event,
                 OsStr::from_bytes(name),
             ))
@@ -762,7 +778,9 @@ pub struct Event<'a> {
 }
 
 impl<'a> Event<'a> {
-    fn new(fd: RawFd, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
+    fn new(fd: Weak<RawFd>, event: &ffi::inotify_event, name: &'a OsStr)
+        -> Self
+    {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
