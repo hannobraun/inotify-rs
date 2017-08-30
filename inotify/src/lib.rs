@@ -29,6 +29,10 @@ extern crate inotify_sys as ffi;
 
 
 use std::mem;
+use std::hash::{
+    Hash,
+    Hasher,
+};
 use std::io;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
@@ -605,11 +609,27 @@ pub use self::watch_mask::WatchMask;
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
 /// [`Event`]: struct.Event.html
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug)]
 pub struct WatchDescriptor{
     id: c_int,
     fd: RawFd,
 }
+
+impl Eq for WatchDescriptor {}
+
+impl PartialEq for WatchDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.fd == other.fd
+    }
+}
+
+impl Hash for WatchDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.fd.hash(state);
+    }
+}
+
 
 /// Iterates over inotify events
 ///
