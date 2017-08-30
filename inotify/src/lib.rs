@@ -29,6 +29,10 @@ extern crate inotify_sys as ffi;
 
 
 use std::mem;
+use std::hash::{
+    Hash,
+    Hasher,
+};
 use std::io;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
@@ -39,6 +43,10 @@ use std::os::unix::io::{
     RawFd,
 };
 use std::path::Path;
+use std::rc::{
+    Rc,
+    Weak,
+};
 use std::slice;
 use std::ffi::{
     OsStr,
@@ -104,7 +112,10 @@ use libc::{
 ///     // Handle event
 /// }
 /// ```
-pub struct Inotify(RawFd);
+pub struct Inotify {
+    fd           : Rc<RawFd>,
+    close_on_drop: bool,
+}
 
 impl Inotify {
     /// Creates an [`Inotify`] instance
@@ -159,7 +170,11 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(Inotify(fd)),
+            _  =>
+                Ok(Inotify {
+                    fd           : Rc::new(fd),
+                    close_on_drop: true,
+                }),
         }
     }
 
@@ -233,7 +248,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                self.0,
+                *self.fd,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -241,7 +256,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{id: wd, fd: self.0}),
+            _  => Ok(WatchDescriptor{ id: wd, fd: Rc::downgrade(&self.fd) }),
         }
     }
 
@@ -294,10 +309,14 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if self.0 != wd.fd {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid WatchDescriptor"))
+        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+            return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid WatchDescriptor",
+            ));
         }
-        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.id) }; 
+
+        let result = unsafe { ffi::inotify_rm_watch(*self.fd, wd.id) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -322,14 +341,12 @@ impl Inotify {
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let fd = self.0;
-
         unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
+            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) & !O_NONBLOCK)
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) | O_NONBLOCK)
         };
 
         result
@@ -381,7 +398,7 @@ impl Inotify {
     {
         let num_bytes = unsafe {
             ffi::read(
-                self.0,
+                *self.fd,
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -399,7 +416,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(self.0, buffer, 0));
+                    return Ok(Events::new(Rc::downgrade(&self.fd), buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -429,7 +446,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(self.0, buffer, num_bytes))
+        Ok(Events::new(Rc::downgrade(&self.fd), buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -457,8 +474,13 @@ impl Inotify {
     ///
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
-    pub fn close(self) -> io::Result<()> {
-        match unsafe { ffi::close(self.0) } {
+    pub fn close(mut self) -> io::Result<()> {
+        // `self` will be dropped when this method returns. The `Drop`
+        // implementation will attempt to close the file descriptor again,
+        // unless this flag here is cleared.
+        self.close_on_drop = false;
+
+        match unsafe { ffi::close(*self.fd) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
@@ -467,29 +489,31 @@ impl Inotify {
 
 impl Drop for Inotify {
     fn drop(&mut self) {
-        if self.0 != -1 {
-            unsafe { ffi::close(self.0); }
+        if self.close_on_drop {
+            unsafe { ffi::close(*self.fd); }
         }
     }
 }
 
 impl AsRawFd for Inotify {
     fn as_raw_fd(&self) -> RawFd {
-        self.0
+        *self.fd
     }
 }
 
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        Inotify(fd)
+        Inotify {
+            fd           : Rc::new(fd),
+            close_on_drop: true,
+        }
     }
 }
 
 impl IntoRawFd for Inotify {
-    fn into_raw_fd(self) -> RawFd {
-        let fd = self.0;
-        mem::forget(self);
-        fd
+    fn into_raw_fd(mut self) -> RawFd {
+        self.close_on_drop = false;
+        *self.fd
     }
 }
 
@@ -592,11 +616,36 @@ pub use self::watch_mask::WatchMask;
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
 /// [`Event`]: struct.Event.html
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug)]
 pub struct WatchDescriptor{
     id: c_int,
-    fd: RawFd,
+    fd: Weak<RawFd>,
 }
+
+impl Eq for WatchDescriptor {}
+
+impl PartialEq for WatchDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        let self_fd  = self.fd.upgrade();
+        let other_fd = other.fd.upgrade();
+
+        self.id == other.id && self_fd.is_some() && self_fd == other_fd
+    }
+}
+
+impl Hash for WatchDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // This function only takes `self.id` into account, as `self.fd` is a
+        // weak pointer that might no longer be available. Since neither
+        // panicking nor changing the hash depending on whether it's available
+        // is acceptable, we just don't look at it at all.
+        // I don't think that this influences storage in a `HashMap` or
+        // `HashSet` negatively, as storing `WatchDescriptor`s from different
+        // `Inotify` instances seems like something of an antipattern anyway.
+        self.id.hash(state);
+    }
+}
+
 
 /// Iterates over inotify events
 ///
@@ -606,14 +655,14 @@ pub struct WatchDescriptor{
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 pub struct Events<'a> {
-    fd       : RawFd,
+    fd       : Weak<RawFd>,
     buffer   : &'a [u8],
     num_bytes: usize,
     pos      : usize,
 }
 
 impl<'a> Events<'a> {
-    fn new(fd: RawFd, buffer: &'a [u8], num_bytes: usize) -> Self {
+    fn new(fd: Weak<RawFd>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd       : fd,
             buffer   : buffer,
@@ -663,7 +712,7 @@ impl<'a> Iterator for Events<'a> {
             self.pos += event_size + event.len as usize;
 
             Some(Event::new(
-                self.fd,
+                self.fd.clone(),
                 &event,
                 OsStr::from_bytes(name),
             ))
@@ -729,7 +778,9 @@ pub struct Event<'a> {
 }
 
 impl<'a> Event<'a> {
-    fn new(fd: RawFd, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
+    fn new(fd: Weak<RawFd>, event: &ffi::inotify_event, name: &'a OsStr)
+        -> Self
+    {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
