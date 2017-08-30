@@ -327,14 +327,12 @@ impl Inotify {
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let fd = self.fd;
-
         unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
+            fcntl(self.fd, F_SETFL, fcntl(self.fd, F_GETFL) & !O_NONBLOCK)
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+            fcntl(self.fd, F_SETFL, fcntl(self.fd, F_GETFL) | O_NONBLOCK)
         };
 
         result
