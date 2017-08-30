@@ -105,7 +105,8 @@ use libc::{
 /// }
 /// ```
 pub struct Inotify {
-    fd: RawFd,
+    fd           : RawFd,
+    close_on_drop: bool,
 }
 
 impl Inotify {
@@ -163,7 +164,8 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  =>
                 Ok(Inotify {
-                    fd: fd,
+                    fd           : fd,
+                    close_on_drop: true,
                 }),
         }
     }
@@ -460,7 +462,12 @@ impl Inotify {
     ///
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
-    pub fn close(self) -> io::Result<()> {
+    pub fn close(mut self) -> io::Result<()> {
+        // `self` will be dropped when this method returns. The `Drop`
+        // implementation will attempt to close the file descriptor again,
+        // unless this flag here is cleared.
+        self.close_on_drop = false;
+
         match unsafe { ffi::close(self.fd) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
@@ -470,7 +477,7 @@ impl Inotify {
 
 impl Drop for Inotify {
     fn drop(&mut self) {
-        if self.fd != -1 {
+        if self.close_on_drop {
             unsafe { ffi::close(self.fd); }
         }
     }
@@ -485,7 +492,8 @@ impl AsRawFd for Inotify {
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd: fd,
+            fd           : fd,
+            close_on_drop: true,
         }
     }
 }
