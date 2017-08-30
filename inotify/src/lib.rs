@@ -39,6 +39,7 @@ use std::os::unix::io::{
     RawFd,
 };
 use std::path::Path;
+use std::rc::Rc;
 use std::slice;
 use std::ffi::{
     OsStr,
@@ -105,7 +106,7 @@ use libc::{
 /// }
 /// ```
 pub struct Inotify {
-    fd           : RawFd,
+    fd           : Rc<RawFd>,
     close_on_drop: bool,
 }
 
@@ -164,7 +165,7 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  =>
                 Ok(Inotify {
-                    fd           : fd,
+                    fd           : Rc::new(fd),
                     close_on_drop: true,
                 }),
         }
@@ -240,7 +241,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                self.fd,
+                *self.fd,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -248,7 +249,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{id: wd, fd: self.fd}),
+            _  => Ok(WatchDescriptor{id: wd, fd: *self.fd}),
         }
     }
 
@@ -301,10 +302,10 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if self.fd != wd.fd {
+        if *self.fd != wd.fd {
             return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid WatchDescriptor"))
         }
-        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.id) };
+        let result = unsafe { ffi::inotify_rm_watch(*self.fd, wd.id) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -330,11 +331,11 @@ impl Inotify {
         -> io::Result<Events<'a>>
     {
         unsafe {
-            fcntl(self.fd, F_SETFL, fcntl(self.fd, F_GETFL) & !O_NONBLOCK)
+            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) & !O_NONBLOCK)
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(self.fd, F_SETFL, fcntl(self.fd, F_GETFL) | O_NONBLOCK)
+            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) | O_NONBLOCK)
         };
 
         result
@@ -386,7 +387,7 @@ impl Inotify {
     {
         let num_bytes = unsafe {
             ffi::read(
-                self.fd,
+                *self.fd,
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -404,7 +405,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(self.fd, buffer, 0));
+                    return Ok(Events::new(*self.fd, buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -434,7 +435,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(self.fd, buffer, num_bytes))
+        Ok(Events::new(*self.fd, buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -468,7 +469,7 @@ impl Inotify {
         // unless this flag here is cleared.
         self.close_on_drop = false;
 
-        match unsafe { ffi::close(self.fd) } {
+        match unsafe { ffi::close(*self.fd) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
@@ -478,31 +479,30 @@ impl Inotify {
 impl Drop for Inotify {
     fn drop(&mut self) {
         if self.close_on_drop {
-            unsafe { ffi::close(self.fd); }
+            unsafe { ffi::close(*self.fd); }
         }
     }
 }
 
 impl AsRawFd for Inotify {
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        *self.fd
     }
 }
 
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd           : fd,
+            fd           : Rc::new(fd),
             close_on_drop: true,
         }
     }
 }
 
 impl IntoRawFd for Inotify {
-    fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
-        mem::forget(self);
-        fd
+    fn into_raw_fd(mut self) -> RawFd {
+        self.close_on_drop = false;
+        *self.fd
     }
 }
 
