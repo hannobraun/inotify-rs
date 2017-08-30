@@ -104,7 +104,9 @@ use libc::{
 ///     // Handle event
 /// }
 /// ```
-pub struct Inotify(RawFd);
+pub struct Inotify {
+    fd: RawFd,
+}
 
 impl Inotify {
     /// Creates an [`Inotify`] instance
@@ -159,7 +161,10 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(Inotify(fd)),
+            _  =>
+                Ok(Inotify {
+                    fd: fd,
+                }),
         }
     }
 
@@ -233,7 +238,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                self.0,
+                self.fd,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -241,7 +246,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{id: wd, fd: self.0}),
+            _  => Ok(WatchDescriptor{id: wd, fd: self.fd}),
         }
     }
 
@@ -294,10 +299,10 @@ impl Inotify {
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if self.0 != wd.fd {
+        if self.fd != wd.fd {
             return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid WatchDescriptor"))
         }
-        let result = unsafe { ffi::inotify_rm_watch(self.0, wd.id) }; 
+        let result = unsafe { ffi::inotify_rm_watch(self.fd, wd.id) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -322,7 +327,7 @@ impl Inotify {
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let fd = self.0;
+        let fd = self.fd;
 
         unsafe {
             fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & !O_NONBLOCK)
@@ -381,7 +386,7 @@ impl Inotify {
     {
         let num_bytes = unsafe {
             ffi::read(
-                self.0,
+                self.fd,
                 buffer.as_mut_ptr() as *mut c_void,
                 buffer.len() as size_t
             )
@@ -399,7 +404,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(self.0, buffer, 0));
+                    return Ok(Events::new(self.fd, buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -429,7 +434,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(self.0, buffer, num_bytes))
+        Ok(Events::new(self.fd, buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -458,7 +463,7 @@ impl Inotify {
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
     pub fn close(self) -> io::Result<()> {
-        match unsafe { ffi::close(self.0) } {
+        match unsafe { ffi::close(self.fd) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
@@ -467,27 +472,29 @@ impl Inotify {
 
 impl Drop for Inotify {
     fn drop(&mut self) {
-        if self.0 != -1 {
-            unsafe { ffi::close(self.0); }
+        if self.fd != -1 {
+            unsafe { ffi::close(self.fd); }
         }
     }
 }
 
 impl AsRawFd for Inotify {
     fn as_raw_fd(&self) -> RawFd {
-        self.0
+        self.fd
     }
 }
 
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        Inotify(fd)
+        Inotify {
+            fd: fd,
+        }
     }
 }
 
 impl IntoRawFd for Inotify {
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.0;
+        let fd = self.fd;
         mem::forget(self);
         fd
     }
