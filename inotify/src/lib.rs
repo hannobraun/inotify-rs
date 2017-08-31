@@ -679,16 +679,49 @@ impl<'a> Iterator for Events<'a> {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         if self.pos < self.num_bytes {
-            let slice = &self.buffer[self.pos..];
+            // `self.buffer` contains the data that was read from the inotify
+            // instance. `self.num_bytes` is the number of bytes that were read.
+            // And as per the if condition above, `self.pos < self.num_bytes`,
+            // so our current position is still within the bounds of the buffer.
+            // This means, unless inotify lied to us, or we did something
+            // horribly wrong, there should be at least another event worth of
+            // bytes in the buffer.
+            debug_assert!(self.num_bytes - self.pos >= event_size);
 
+            let slice = &self.buffer[self.pos..];
             let event = slice.as_ptr() as *const ffi::inotify_event;
+
+            // We have a pointer to an `inotify_event` that points into the
+            // buffer at offset `self.pos`. Since we know, as per the assertion
+            // above, that there are enough bytes for at least one more event in
+            // the buffer, dereferencing that pointer is safe.
             let event = unsafe { *event };
 
+            // The call to `offset` is safe, as long as the starting and the
+            // resulting pointer are either in bounds or one byte past the end
+            // of an allocated object. As we've established above, there are
+            // enough bytes for the `inotify_event` left in the buffer. If there
+            // is anything else in the buffer, the new pointer will be within an
+            // allocated object. If there is nothing else, it will be exactly
+            // one byte past it.
             let name = unsafe {
                 slice
                     .as_ptr()
                     .offset(event_size as isize)
             };
+
+            // Right behind the `inotify_event` struct is the event's name. The
+            // name's length is given by `event.len`. There should always be
+            // enough bytes left in the buffer to fit the name.
+            let name_pos = self.pos + event_size;
+            debug_assert!(self.num_bytes - name_pos >= event.len as usize);
+
+            // As we've established above, the name fits within the buffer. This
+            // means that there's either an actual name in there, with enough
+            // bytes to make the created slice valid, or `event.len` is `0`, in
+            // which case the function call is safe in any case, as long as
+            // `name` is not null. We know it's not, because we created it from
+            // a slice right above.
             let name = unsafe {
                 slice::from_raw_parts(
                     name,
