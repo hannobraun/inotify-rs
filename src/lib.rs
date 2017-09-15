@@ -79,7 +79,7 @@ use libc::{
 /// ```
 /// use inotify::{
 ///     Inotify,
-///     watch_mask,
+///     WatchMask,
 /// };
 ///
 /// let mut inotify = Inotify::init()
@@ -94,7 +94,7 @@ use libc::{
 /// inotify
 ///     .add_watch(
 ///         "/tmp/inotify-rs-test-file",
-///         watch_mask::MODIFY | watch_mask::CLOSE,
+///         WatchMask::MODIFY | WatchMask::CLOSE,
 ///     )
 ///     .expect("Failed to add file watch");
 ///
@@ -221,7 +221,7 @@ impl Inotify {
     /// ```
     /// use inotify::{
     ///     Inotify,
-    ///     watch_mask,
+    ///     WatchMask,
     /// };
     ///
     /// let mut inotify = Inotify::init()
@@ -232,7 +232,7 @@ impl Inotify {
     /// # File::create("/tmp/inotify-rs-test-file")
     /// #     .expect("Failed to create test file");
     /// #
-    /// inotify.add_watch("/tmp/inotify-rs-test-file", watch_mask::MODIFY)
+    /// inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
     ///     .expect("Failed to add file watch");
     ///
     /// // Handle events for the file here
@@ -287,8 +287,8 @@ impl Inotify {
     /// #
     /// # // Add a watch and modify the file, so the code below doesn't block
     /// # // forever.
-    /// # use inotify::watch_mask;
-    /// # inotify.add_watch("/tmp/inotify-rs-test-file", watch_mask::MODIFY)
+    /// # use inotify::WatchMask;
+    /// # inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
     /// #     .expect("Failed to add file watch");
     /// # use std::io::Write;
     /// # write!(&mut test_file, "something\n")

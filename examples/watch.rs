@@ -4,9 +4,9 @@ extern crate inotify;
 use std::env;
 
 use inotify::{
-    event_mask,
-    watch_mask,
+    EventMask,
     Inotify,
+    WatchMask,
 };
 
 
@@ -20,7 +20,7 @@ fn main() {
     inotify
         .add_watch(
             current_dir,
-            watch_mask::MODIFY | watch_mask::CREATE | watch_mask::DELETE,
+            WatchMask::MODIFY | WatchMask::CREATE | WatchMask::DELETE,
         )
         .expect("Failed to add inotify watch");
 
@@ -33,20 +33,20 @@ fn main() {
             .expect("Failed to read inotify events");
 
         for event in events {
-            if event.mask.contains(event_mask::CREATE) {
-                if event.mask.contains(event_mask::ISDIR) {
+            if event.mask.contains(EventMask::CREATE) {
+                if event.mask.contains(EventMask::ISDIR) {
                     println!("Directory created: {:?}", event.name);
                 } else {
                     println!("File created: {:?}", event.name);
                 }
-            } else if event.mask.contains(event_mask::DELETE) {
-                if event.mask.contains(event_mask::ISDIR) {
+            } else if event.mask.contains(EventMask::DELETE) {
+                if event.mask.contains(EventMask::ISDIR) {
                     println!("Directory deleted: {:?}", event.name);
                 } else {
                     println!("File deleted: {:?}", event.name);
                 }
-            } else if event.mask.contains(event_mask::MODIFY) {
-                if event.mask.contains(event_mask::ISDIR) {
+            } else if event.mask.contains(EventMask::MODIFY) {
+                if event.mask.contains(EventMask::ISDIR) {
                     println!("Directory modified: {:?}", event.name);
                 } else {
                     println!("File modified: {:?}", event.name);

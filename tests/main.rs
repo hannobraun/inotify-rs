@@ -8,8 +8,8 @@ extern crate inotify;
 extern crate tempdir;
 
 use inotify::{
-    watch_mask,
     Inotify,
+    WatchMask,
 };
 use std::fs::File;
 use std::io::{
@@ -31,7 +31,7 @@ fn it_should_watch_a_file() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    let watch = inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
+    let watch = inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -60,7 +60,7 @@ fn it_should_convert_the_name_into_an_os_str() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path.parent().unwrap(), watch_mask::MODIFY).unwrap();
+    inotify.add_watch(&path.parent().unwrap(), WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -81,7 +81,7 @@ fn it_should_set_name_to_none_if_it_is_empty() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path, watch_mask::MODIFY).unwrap();
+    inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -102,10 +102,10 @@ fn it_should_not_accept_watchdescriptors_from_other_instances() {
     let (path, _) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    let _ = inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
+    let _ = inotify.add_watch(&path, WatchMask::ACCESS).unwrap();
 
     let mut second_inotify = Inotify::init().unwrap();
-    let wd2 = second_inotify.add_watch(&path, watch_mask::ACCESS).unwrap();
+    let wd2 = second_inotify.add_watch(&path, WatchMask::ACCESS).unwrap();
 
     assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
 }
@@ -121,10 +121,10 @@ fn watch_descriptors_from_different_inotify_instances_should_not_be_equal() {
         .unwrap();
 
     let wd_1 = inotify_1
-        .add_watch(&path, watch_mask::ACCESS)
+        .add_watch(&path, WatchMask::ACCESS)
         .unwrap();
     let wd_2 = inotify_2
-        .add_watch(&path, watch_mask::ACCESS)
+        .add_watch(&path, WatchMask::ACCESS)
         .unwrap();
 
     // As far as inotify is concerned, watch descriptors are just integers that
@@ -150,7 +150,7 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
             .unwrap();
 
         let wd_1 = inotify_1
-            .add_watch(&path, watch_mask::ACCESS)
+            .add_watch(&path, WatchMask::ACCESS)
             .unwrap();
         let fd_1 = inotify_1.as_raw_fd();
 
@@ -166,7 +166,7 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
     };
 
     let wd_2 = inotify_2
-        .add_watch(&path, watch_mask::ACCESS)
+        .add_watch(&path, WatchMask::ACCESS)
         .unwrap();
 
     // The way we engineered this situation, both `WatchDescriptor` instances
