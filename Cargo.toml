@@ -1,4 +1,35 @@
-[workspace]
-members = [
-	"inotify"
+[package]
+
+name    = "inotify"
+version = "0.4.3-pre"
+authors = [
+  "Hanno Braun <mail@hannobraun.de>",
+  "Félix Saparelli <me@passcod.name>",
+  "Cristian Kubis <cristian.kubis@tsunix.de>",
+  "Frank Denis <github@pureftpd.org>"
 ]
+
+description   = "Idiomatic wrapper for inotify"
+documentation = "https://docs.rs/inotify"
+repository    = "https://github.com/hannobraun/inotify-rs"
+license       = "ISC"
+readme        = "../README.md"
+
+keywords   = ["inotify", "linux"]
+categories = ["api-bindings", "filesystem"]
+
+[badges]
+travis-ci = { repository = "hannobraun/inotify-rs" }
+
+[dependencies]
+bitflags    = "0.9"
+inotify-sys = "0.1.1"
+libc        = "0.2"
+
+[dev-dependencies]
+tempdir = "0.3"
+
+[package.metadata.release]
+pre-release-commit-message = "Release inotify {{version}}"
+pro-release-commit-message = "Bump inotify version to {{version}}"
+tag-message                = "inotify version {{version}}"
