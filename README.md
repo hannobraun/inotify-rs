@@ -1,6 +1,6 @@
-# inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify) [![Build Status](https://travis-ci.org/hannobraun/inotify-rs.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs)
+# inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify) [![Build Status](https://travis-ci.org/inotify-rs/inotify.svg?branch=master)](https://travis-ci.org/hannobraun/inotify-rs)
 
-[inotify] bindings for the [Rust programming language]
+Idiomatic [inotify] wrapper for the [Rust programming language].
 
 ```Rust
 extern crate inotify;
@@ -62,8 +62,6 @@ fn main() {
 }
 ```
 
-Both an [idiomatic wrapper] and [FFI bindings] for inotify are included in this repository.
-
 
 ## Usage
 
@@ -76,7 +74,9 @@ inotify = "0.4"
 
 Please refer to the [documentation] and the example above, for information on how to use it in your code.
 
-Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you're looking for a higher-level and platform independent file system notification library, please consider [notify].
+Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you are looking for a higher-level and platform-independent file system notification library, please consider [notify].
+
+If you need to access inotify in a way that this wrapper doesn't support, consider using [inotify-sys] instead.
 
 
 ## Documentation
@@ -107,10 +107,9 @@ THIS SOFTWARE.
 
 [inotify]: http://en.wikipedia.org/wiki/Inotify
 [Rust programming language]: http://rust-lang.org/
-[idiomatic wrapper]: https://crates.io/crates/inotify
-[FFI bindings]: https://crates.io/crates/inotify-sys
 [documentation]: https://docs.rs/inotify
 [notify]: https://crates.io/crates/notify
+[inotify-sys]: https://crates.io/crates/inotify-sys
 [API reference]: https://docs.rs/inotify
-[examples directory]: https://github.com/hannobraun/inotify-rs/tree/master/inotify/examples
+[examples directory]: https://github.com/inotify-rs/inotify/tree/master/inotify/examples
 [inotify man page]: http://man7.org/linux/man-pages/man7/inotify.7.html
