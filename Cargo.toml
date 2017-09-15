@@ -30,6 +30,8 @@ libc        = "0.2"
 tempdir = "0.3"
 
 [package.metadata.release]
-pre-release-commit-message = "Release inotify {{version}}"
-pro-release-commit-message = "Bump inotify version to {{version}}"
-tag-message                = "inotify version {{version}}"
+pre-release-commit-message = "Release {{version}}"
+pro-release-commit-message = "Bump version to {{version}}"
+tag-prefix                 = "v"
+tag-message                = "Version {{version}}"
+dev-version-ext            = "dev"
