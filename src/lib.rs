@@ -3,22 +3,72 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-//! Binding and wrapper for inotify.
+//! Idiomatic inotify wrapper for the Rust programming language
 //!
-//! [Inotify][wiki] is a linux kernel mechanism for monitoring
-//! changes to filesystems' contents.
+//! # About
 //!
-//! > The inotify API provides a mechanism for monitoring filesystem
-//! > events. Inotify can be used to monitor individual files, or to
-//! > monitor directories. When a directory is monitored, inotify will
-//! > return events for the directory itself, and for files inside the
-//! > directory.
+//! [inotify-rs] is an idiomatic wrapper around the Linux kernel's [inotify] API
+//! for the Rust programming language. It can be used for monitoring changes to
+//! files or directories.
 //!
-//! See the [man page][inotify7] for usage information
-//! of the C version, which this package follows closely.
+//! The [`Inotify`] struct is the main entry point into the API.
 //!
-//! [wiki]: https://en.wikipedia.org/wiki/Inotify
-//! [inotify7]: http://man7.org/linux/man-pages/man7/inotify.7.html
+//! # Example
+//!
+//! ```
+//! use inotify::{
+//!     Inotify,
+//!     WatchMask,
+//! };
+//!
+//! let mut inotify = Inotify::init()
+//!     .expect("Error while initializing inotify instance");
+//!
+//! # // Create a temporary file, so `add_watch` won't return an error.
+//! # use std::fs::File;
+//! # let mut test_file = File::create("/tmp/inotify-rs-test-file")
+//! #     .expect("Failed to create test file");
+//! #
+//! // Watch for modify and close events.
+//! inotify
+//!     .add_watch(
+//!         "/tmp/inotify-rs-test-file",
+//!         WatchMask::MODIFY | WatchMask::CLOSE,
+//!     )
+//!     .expect("Failed to add file watch");
+//!
+//! # // Modify file, so the following `read_events_blocking` won't block.
+//! # use std::io::Write;
+//! # write!(&mut test_file, "something\n")
+//! #     .expect("Failed to write something to test file");
+//! #
+//! // Read events that were added with `add_watch` above.
+//! let mut buffer = [0; 1024];
+//! let events = inotify.read_events_blocking(&mut buffer)
+//!     .expect("Error while reading events");
+//!
+//! for event in events {
+//!     // Handle event
+//! }
+//! ```
+//!
+//! # Attention: inotify gotchas
+//!
+//! inotify (as in, the Linux API, not this wrapper) has many edge cases, making
+//! it hard to use correctly. This can lead to weird and hard to find bugs in
+//! applications that are based on it. inotify-rs does its best to fix these
+//! issues, but sometimes this would require an amount of runtime overhead that
+//! is just unacceptable for a low-level wrapper such as this.
+//!
+//! We've documented any issues that inotify-rs has inherited from inotify, as
+//! far as we are aware of them. Please watch out for any further warnings
+//! throughout this documentation. If you want to be on the safe side, in case
+//! we have missed something, please read the [inotify man pages] carefully.
+//!
+//! [inotify-rs]: https://crates.io/crates/inotify
+//! [inotify]: https://en.wikipedia.org/wiki/Inotify
+//! [`Inotify`]: struct.Inotify.html
+//! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 
 #[macro_use]
@@ -64,54 +114,16 @@ use libc::{
 };
 
 
-/// Idiomatic Rust wrapper for Linux's inotify API
+/// Idiomatic Rust wrapper around Linux's inotify API
 ///
 /// `Inotify` is a wrapper around an inotify instance. It generally tries to
-/// adhere to the underlying inotify API as closely as possible, while at the
-/// same time making access to it safe and convenient.
+/// adhere to the underlying inotify API closely, while making access to it
+/// safe and convenient.
 ///
-/// Please note that using inotify correctly is not always trivial, and while
-/// this wrapper tries to alleviate that, it is not perfect. Please refer to the
-/// inotify man pages for potential problems to watch out for.
+/// Please refer to the [top-level documentation] for further details and a
+/// usage example.
 ///
-/// # Examples
-///
-/// ```
-/// use inotify::{
-///     Inotify,
-///     WatchMask,
-/// };
-///
-/// let mut inotify = Inotify::init()
-///     .expect("Error while initializing inotify instance");
-///
-/// # // Create a temporary file, so `add_watch` won't return an error.
-/// # use std::fs::File;
-/// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
-/// #     .expect("Failed to create test file");
-/// #
-/// // Watch for modify and close events.
-/// inotify
-///     .add_watch(
-///         "/tmp/inotify-rs-test-file",
-///         WatchMask::MODIFY | WatchMask::CLOSE,
-///     )
-///     .expect("Failed to add file watch");
-///
-/// # // Modify file, so the following `read_events_blocking` won't block.
-/// # use std::io::Write;
-/// # write!(&mut test_file, "something\n")
-/// #     .expect("Failed to write something to test file");
-/// #
-/// // Read events that were added with `add_watch` above.
-/// let mut buffer = [0; 1024];
-/// let events = inotify.read_events_blocking(&mut buffer)
-///     .expect("Error while reading events");
-///
-/// for event in events {
-///     // Handle event
-/// }
-/// ```
+/// [top-level documentation]: index.html
 pub struct Inotify {
     fd           : Rc<RawFd>,
     close_on_drop: bool,
