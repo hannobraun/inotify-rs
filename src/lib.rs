@@ -134,9 +134,9 @@ impl Inotify {
     ///
     /// Initializes an inotify instance by calling [`inotify_init1`].
     ///
-    /// This method passes both flags accepted by [`inotify_init1`], and doesn't
-    /// allow the user any choice in the matter, as not passing any of the flags
-    /// would be inappropriate in the context of this wrapper:
+    /// This method passes both flags accepted by [`inotify_init1`], not giving
+    /// the user any choice in the matter, as not passing the flags would be
+    /// inappropriate in the context of this wrapper:
     ///
     /// - [`IN_CLOEXEC`] prevents leaking file descriptors to other processes.
     /// - [`IN_NONBLOCK`] controls the blocking behavior of the inotify API,
@@ -200,9 +200,10 @@ impl Inotify {
     /// watched for, and how to do that. See the documentation of [`WatchMask`]
     /// for details.
     ///
-    /// If this method is used to add a new watch, a new `WatchDescriptor` is
-    /// returned. If it is used to update an existing watch, the same
-    /// `WatchDescriptor` for that existing watch is returned.
+    /// If this method is used to add a new watch, a new [`WatchDescriptor`] is
+    /// returned. If it is used to update an existing watch, a
+    /// [`WatchDescriptor`] that equals the previously returned
+    /// [`WatchDescriptor`] for that watch is returned intead.
     ///
     /// Under the hood, this method just calls [`inotify_add_watch`] and does
     /// some trivial translation between the types on the Rust side and the C
@@ -216,16 +217,17 @@ impl Inotify {
     /// also happen if the method is called with a different path that happens
     /// to link to the same inode.
     ///
-    /// You can detect this by keeping track of `WatchDescriptor`s and the paths
-    /// they have been returned for. If the same `WatchDescriptor` is returned
-    /// for a different path (and you haven't freed the `WatchDescriptor` by
-    /// removing the watch), you know you have two paths pointing to the same
-    /// inode, and therefore being watched by the same watch.
+    /// You can detect this by keeping track of [`WatchDescriptor`]s and the
+    /// paths they have been returned for. If the same [`WatchDescriptor`] is
+    /// returned for a different path (and you haven't freed the
+    /// [`WatchDescriptor`] by removing the watch), you know you have two paths
+    /// pointing to the same inode, being watched by the same watch.
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`inotify_add_watch`]
-    /// (translated into an `io::Error`), without adding any error conditions of
+    /// Directly returns the error from the call to
+    /// [`inotify_add_watch`][`inotify_add_watch`] (translated into an
+    /// `io::Error`), without adding any error conditions of
     /// its own.
     ///
     /// # Examples
@@ -251,7 +253,8 @@ impl Inotify {
     /// ```
     ///
     /// [`inotify_add_watch`]: ../inotify_sys/fn.inotify_add_watch.html
-    /// [`WatchMask`]: watch_mask/struct.WatchMask.html
+    /// [`WatchMask`]: struct.WatchMask.html
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
@@ -275,14 +278,14 @@ impl Inotify {
     /// Stops watching a file
     ///
     /// Removes the watch represented by the provided [`WatchDescriptor`] by
-    /// calling [`inotify_rm_watch`]. You can obtain a [`WatchDescriptor`] by
-    /// saving one returned by [`Inotify::add_watch`] or from the `wd` field of
-    /// [`Event`].
+    /// calling [`inotify_rm_watch`]. [`WatchDescriptor`]s can be obtained via
+    /// [`Inotify::add_watch`], or from the `wd` field of [`Event`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`inotify_rm_watch`],
-    /// without adding any error conditions of its own.
+    /// Directly returns the error from the call to [`inotify_rm_watch`].
+    /// Returns an [`io::Error`] with [`ErrorKind`]`::InvalidInput`, if the given
+    /// [`WatchDescriptor`] did not originate from this [`Inotify`] instance.
     ///
     /// # Examples
     ///
@@ -320,6 +323,9 @@ impl Inotify {
     /// [`inotify_rm_watch`]: ../inotify_sys/fn.inotify_rm_watch.html
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
+    /// [`Inotify`]: struct.Inotify.html
+    /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
+    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
         if wd.fd.upgrade().as_ref() != Some(&self.fd) {
             return Err(io::Error::new(
@@ -340,8 +346,7 @@ impl Inotify {
     /// Waits until events are available, then returns them
     ///
     /// This method will block the current thread until at least one event is
-    /// available. If this is not desirable, please take a look at
-    /// [`read_events`].
+    /// available. If this is not desirable, please consider [`read_events`].
     ///
     /// # Errors
     ///
@@ -373,7 +378,7 @@ impl Inotify {
     /// the inotify events. Its contents may be overwritten.
     ///
     /// If you need a method that will block until at least one event is
-    /// available, please call [`read_events_blocking`].
+    /// available, please consider [`read_events_blocking`].
     ///
     /// # Errors
     ///
@@ -534,7 +539,7 @@ bitflags! {
     /// Mask for a file watch
     ///
     /// Passed to [`Inotify::add_watch`], to describe what file system
-    /// events to watch for and how to do that.
+    /// events to watch for, and how to do that.
     ///
     /// [`Inotify::add_watch`]: ../struct.Inotify.html#method.add_watch
     pub struct WatchMask: u32 {
