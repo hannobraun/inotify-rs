@@ -837,10 +837,10 @@ impl Hash for WatchDescriptor {
 }
 
 
-/// Iterates over inotify events
+/// Iterator over inotify events
 ///
-/// Iterates over the events returned by [`Inotify::read_events_blocking`] or
-/// [`Inotify::read_events`].
+/// Allows for iteration over the events returned by
+/// [`Inotify::read_events_blocking`] or [`Inotify::read_events`].
 ///
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
