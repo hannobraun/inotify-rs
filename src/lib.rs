@@ -797,11 +797,11 @@ bitflags! {
 }
 
 
-/// Represents a file that inotify is watching
+/// Represents a watch on an inode
 ///
 /// Can be obtained from [`Inotify::add_watch`] or from an [`Event`]. A watch
-/// descriptor can be used to get inotify to stop watching a file by passing it
-/// to [`Inotify::rm_watch`].
+/// descriptor can be used to get inotify to stop watching an inode by passing
+/// it to [`Inotify::rm_watch`].
 ///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
