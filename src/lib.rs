@@ -588,7 +588,7 @@ bitflags! {
         /// See [`inotify_sys::IN_ACCESS`].
         ///
         /// [`inotify_sys::IN_ACCESS`]: ../inotify_sys/constant.IN_ACCESS.html
-        const ACCESS        = ffi::IN_ACCESS;
+        const ACCESS = ffi::IN_ACCESS;
 
         /// Metadata (permissions, timestamps, ...) changed
         ///
@@ -598,7 +598,7 @@ bitflags! {
         /// See [`inotify_sys::IN_ATTRIB`].
         ///
         /// [`inotify_sys::IN_ATTRIB`]: ../inotify_sys/constant.IN_ATTRIB.html
-        const ATTRIB        = ffi::IN_ATTRIB;
+        const ATTRIB = ffi::IN_ATTRIB;
 
         /// File opened for writing was closed
         ///
@@ -608,7 +608,7 @@ bitflags! {
         /// See [`inotify_sys::IN_CLOSE_WRITE`].
         ///
         /// [`inotify_sys::IN_CLOSE_WRITE`]: ../inotify_sys/constant.IN_CLOSE_WRITE.html
-        const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
+        const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
         /// File or directory not opened for writing was closed
         ///
@@ -628,7 +628,7 @@ bitflags! {
         /// See [`inotify_sys::IN_CREATE`].
         ///
         /// [`inotify_sys::IN_CREATE`]: ../inotify_sys/constant.IN_CREATE.html
-        const CREATE        = ffi::IN_CREATE;
+        const CREATE = ffi::IN_CREATE;
 
         /// File/directory deleted from watched directory
         ///
@@ -638,14 +638,14 @@ bitflags! {
         /// See [`inotify_sys::IN_DELETE`].
         ///
         /// [`inotify_sys::IN_DELETE`]: ../inotify_sys/constant.IN_DELETE.html
-        const DELETE        = ffi::IN_DELETE;
+        const DELETE = ffi::IN_DELETE;
 
         /// Watched file/directory was deleted
         ///
         /// See [`inotify_sys::IN_DELETE_SELF`].
         ///
         /// [`inotify_sys::IN_DELETE_SELF`]: ../inotify_sys/constant.IN_DELETE_SELF.html
-        const DELETE_SELF   = ffi::IN_DELETE_SELF;
+        const DELETE_SELF = ffi::IN_DELETE_SELF;
 
         /// File was modified
         ///
@@ -655,14 +655,14 @@ bitflags! {
         /// See [`inotify_sys::IN_MODIFY`].
         ///
         /// [`inotify_sys::IN_MODIFY`]: ../inotify_sys/constant.IN_MODIFY.html
-        const MODIFY        = ffi::IN_MODIFY;
+        const MODIFY = ffi::IN_MODIFY;
 
         /// Watched file/directory was moved
         ///
         /// See [`inotify_sys::IN_MOVE_SELF`].
         ///
         /// [`inotify_sys::IN_MOVE_SELF`]: ../inotify_sys/constant.IN_MOVE_SELF.html
-        const MOVE_SELF     = ffi::IN_MOVE_SELF;
+        const MOVE_SELF = ffi::IN_MOVE_SELF;
 
         /// File was renamed/moved; watched directory contained old name
         ///
@@ -672,7 +672,7 @@ bitflags! {
         /// See [`inotify_sys::IN_MOVED_FROM`].
         ///
         /// [`inotify_sys::IN_MOVED_FROM`]: ../inotify_sys/constant.IN_MOVED_FROM.html
-        const MOVED_FROM    = ffi::IN_MOVED_FROM;
+        const MOVED_FROM = ffi::IN_MOVED_FROM;
 
         /// File was renamed/moved; watched directory contains new name
         ///
@@ -682,7 +682,7 @@ bitflags! {
         /// See [`inotify_sys::IN_MOVED_TO`].
         ///
         /// [`inotify_sys::IN_MOVED_TO`]: ../inotify_sys/constant.IN_MOVED_TO.html
-        const MOVED_TO      = ffi::IN_MOVED_TO;
+        const MOVED_TO = ffi::IN_MOVED_TO;
 
         /// File or directory was opened
         ///
@@ -692,7 +692,7 @@ bitflags! {
         /// See [`inotify_sys::IN_OPEN`].
         ///
         /// [`inotify_sys::IN_OPEN`]: ../inotify_sys/constant.IN_OPEN.html
-        const OPEN          = ffi::IN_OPEN;
+        const OPEN = ffi::IN_OPEN;
 
         /// Watch for all events
         ///
@@ -727,7 +727,7 @@ bitflags! {
         /// [`MOVED_TO`]: #associatedconstant.MOVED_TO
         /// [`OPEN`]: #associatedconstant.OPEN
         /// [`inotify_sys::IN_ALL_EVENTS`]: ../inotify_sys/constant.IN_ALL_EVENTS.html
-        const ALL_EVENTS    = ffi::IN_ALL_EVENTS;
+        const ALL_EVENTS = ffi::IN_ALL_EVENTS;
 
         /// Watch for all move events
         ///
@@ -742,7 +742,7 @@ bitflags! {
         /// [`MOVED_FROM`]: #associatedconstant.MOVED_FROM
         /// [`MOVED_TO`]: #associatedconstant.MOVED_TO
         /// [`inotify_sys::IN_MOVE`]: ../inotify_sys/constant.IN_MOVE.html
-        const MOVE          = ffi::IN_MOVE;
+        const MOVE = ffi::IN_MOVE;
 
         /// Watch for all close events
         ///
@@ -757,42 +757,42 @@ bitflags! {
         /// [`CLOSE_WRITE`]: #associatedconstant.CLOSE_WRITE
         /// [`CLOSE_NOWRITE`]: #associatedconstant.CLOSE_NOWRITE
         /// [`inotify_sys::IN_CLOSE`]: ../inotify_sys/constant.IN_CLOSE.html
-        const CLOSE         = ffi::IN_CLOSE;
+        const CLOSE = ffi::IN_CLOSE;
 
         /// Don't dereference the path if it is a symbolic link
         ///
         /// See [`inotify_sys::IN_DONT_FOLLOW`].
         ///
         /// [`inotify_sys::IN_DONT_FOLLOW`]: ../inotify_sys/constant.IN_DONT_FOLLOW.html
-        const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW;
+        const DONT_FOLLOW = ffi::IN_DONT_FOLLOW;
 
         /// Filter events for directory entries that have been unlinked
         ///
         /// See [`inotify_sys::IN_EXCL_UNLINK`].
         ///
         /// [`inotify_sys::IN_EXCL_UNLINK`]: ../inotify_sys/constant.IN_EXCL_UNLINK.html
-        const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK;
+        const EXCL_UNLINK = ffi::IN_EXCL_UNLINK;
 
         /// If a watch for the inode exists, amend it instead of replacing it
         ///
         /// See [`inotify_sys::IN_MASK_ADD`].
         ///
         /// [`inotify_sys::IN_MASK_ADD`]: ../inotify_sys/constant.IN_MASK_ADD.html
-        const MASK_ADD      = ffi::IN_MASK_ADD;
+        const MASK_ADD = ffi::IN_MASK_ADD;
 
         /// Only receive one event, then remove the watch
         ///
         /// See [`inotify_sys::IN_ONESHOT`].
         ///
         /// [`inotify_sys::IN_ONESHOT`]: ../inotify_sys/constant.IN_ONESHOT.html
-        const ONESHOT       = ffi::IN_ONESHOT;
+        const ONESHOT = ffi::IN_ONESHOT;
 
         /// Only watch path, if it is a directory
         ///
         /// See [`inotify_sys::IN_ONLYDIR`].
         ///
         /// [`inotify_sys::IN_ONLYDIR`]: ../inotify_sys/constant.IN_ONLYDIR.html
-        const ONLYDIR       = ffi::IN_ONLYDIR;
+        const ONLYDIR = ffi::IN_ONLYDIR;
     }
 }
 
@@ -1041,53 +1041,53 @@ bitflags! {
     /// [`EventMask::contains`]: struct.EventMask.html#method.contains
     pub struct EventMask: u32 {
         /// File was accessed.
-        const ACCESS        = ffi::IN_ACCESS;
+        const ACCESS = ffi::IN_ACCESS;
 
         /// Metadata changed.
-        const ATTRIB        = ffi::IN_ATTRIB;
+        const ATTRIB = ffi::IN_ATTRIB;
 
         /// File opened for writing was closed.
-        const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
+        const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
         /// File or directory not opened for writing was closed.
         const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
         /// File/directory created in watched directory.
-        const CREATE        = ffi::IN_CREATE;
+        const CREATE = ffi::IN_CREATE;
 
         /// File/directory deleted from watched directory.
-        const DELETE        = ffi::IN_DELETE;
+        const DELETE = ffi::IN_DELETE;
 
         /// Watched file/directory was itself deleted.
-        const DELETE_SELF   = ffi::IN_DELETE_SELF;
+        const DELETE_SELF = ffi::IN_DELETE_SELF;
 
         /// File was modified.
-        const MODIFY        = ffi::IN_MODIFY;
+        const MODIFY = ffi::IN_MODIFY;
 
         /// Watched file/directory was itself moved.
-        const MOVE_SELF     = ffi::IN_MOVE_SELF;
+        const MOVE_SELF = ffi::IN_MOVE_SELF;
 
         /// Generated for the directory containing the old filename when a
         /// file is renamend.
-        const MOVED_FROM    = ffi::IN_MOVED_FROM;
+        const MOVED_FROM = ffi::IN_MOVED_FROM;
 
         /// Generated for the directory containing the new filename when a
         /// file is renamed.
-        const MOVED_TO      = ffi::IN_MOVED_TO;
+        const MOVED_TO = ffi::IN_MOVED_TO;
 
         /// File or directory was opened.
-        const OPEN          = ffi::IN_OPEN;
+        const OPEN = ffi::IN_OPEN;
 
         /// Watch was removed.
-        const IGNORED       = ffi::IN_IGNORED;
+        const IGNORED = ffi::IN_IGNORED;
 
         /// Subject of this event is a directory.
-        const ISDIR         = ffi::IN_ISDIR;
+        const ISDIR = ffi::IN_ISDIR;
 
         /// Event queue overflowed.
-        const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW;
+        const Q_OVERFLOW = ffi::IN_Q_OVERFLOW;
 
         /// File system containing watched object was unmounted.
-        const UNMOUNT       = ffi::IN_UNMOUNT;
+        const UNMOUNT = ffi::IN_UNMOUNT;
     }
 }
