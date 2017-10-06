@@ -954,6 +954,33 @@ impl<'a> Iterator for Events<'a> {
 /// retrieve events, call [`Inotify::read_events_blocking`] or
 /// [`Inotify::read_events`].
 ///
+/// # Examples
+///
+/// Here's how to determine if this event indicates that a file was modified:
+///
+/// ``` rust
+/// # use std::mem;
+/// # use std::os::unix::io::RawFd;
+/// # use std::rc::Weak;
+/// #
+/// # use inotify::{
+/// #     Event,
+/// #     EventMask,
+/// # };
+/// #
+/// # // Construct a fake event for the sake of this example
+/// # let event: Event = Event {
+/// #     wd    : unsafe { mem::transmute((0, Weak::<RawFd>::new())) },
+/// #     mask  : EventMask::MODIFY,
+/// #     cookie: 0,
+/// #     name  : None,
+/// # };
+/// #
+/// if event.mask.contains(EventMask::MODIFY) {
+///     // do something
+/// }
+/// ```
+///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
@@ -961,7 +988,7 @@ impl<'a> Iterator for Events<'a> {
 pub struct Event<'a> {
     /// Identifies the watch this event originates from
     ///
-    /// This is the same [`WatchDescriptor`] that [`Inotify::add_watch`]
+    /// This [`WatchDescriptor`] is equal to the one that [`Inotify::add_watch`]
     /// returned when interest for this event was registered. The
     /// [`WatchDescriptor`] can be used to remove the watch using
     /// [`Inotify::rm_watch`], thereby preventing future events of this type
@@ -972,14 +999,7 @@ pub struct Event<'a> {
     /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
     pub wd    : WatchDescriptor,
 
-    /// Shows what kind of event this is
-    ///
-    /// The various flags that can be set on this mask are defined in the
-    /// [`event_mask`] module. You can check against any flags that are of
-    /// interest to you by using [`EventMask::contains`].
-    ///
-    /// [`event_mask`]: event_mask/index.html
-    /// [`EventMask::contains`]: event_mask/struct.EventMask.html#contains
+    /// Indicates what kind of event this is
     pub mask  : EventMask,
 
     /// Connects related events to each other
