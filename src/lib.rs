@@ -997,10 +997,10 @@ pub struct Event<'a> {
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
-    pub wd    : WatchDescriptor,
+    pub wd: WatchDescriptor,
 
     /// Indicates what kind of event this is
-    pub mask  : EventMask,
+    pub mask: EventMask,
 
     /// Connects related events to each other
     ///
@@ -1017,7 +1017,7 @@ pub struct Event<'a> {
     /// This field is set only, if the subject of the event is a file in a
     /// wacthed directory. If the event concerns a file or directory that is
     /// watched directly, `name` will be `None`.
-    pub name  : Option<&'a OsStr>,
+    pub name: Option<&'a OsStr>,
 }
 
 impl<'a> Event<'a> {
