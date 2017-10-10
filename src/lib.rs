@@ -1050,64 +1050,170 @@ impl<'a> Event<'a> {
 
 
 bitflags! {
-    /// Mask for an event
+    /// Indicates the type of an event
     ///
     /// This struct can be retrieved from an [`Event`] via its `mask` field.
-    /// You can determine the [`Event`]'s type by comparing it to the
-    /// constants in [this module] module using [`EventMask::contains`].
+    /// You can determine the [`Event`]'s type by comparing the `EventMask` to
+    /// its associated constants.
     ///
-    /// [`Event`]: ../struct.Event.html
-    /// [this module]: index.html
-    /// [`EventMask::contains`]: struct.EventMask.html#method.contains
+    /// Please refer to the documentation of [`Event`] for a usage example.
+    ///
+    /// [`Event`]: struct.Event.html
     pub struct EventMask: u32 {
-        /// File was accessed.
+        /// File was accessed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_ACCESS`].
+        ///
+        /// [`inotify_sys::IN_ACCESS`]: ../inotify_sys/constant.IN_ACCESS.html
         const ACCESS = ffi::IN_ACCESS;
 
-        /// Metadata changed.
+        /// Metadata (permissions, timestamps, ...) changed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_ATTRIB`].
+        ///
+        /// [`inotify_sys::IN_ATTRIB`]: ../inotify_sys/constant.IN_ATTRIB.html
         const ATTRIB = ffi::IN_ATTRIB;
 
-        /// File opened for writing was closed.
+        /// File opened for writing was closed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_WRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_WRITE`]: ../inotify_sys/constant.IN_CLOSE_WRITE.html
         const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
-        /// File or directory not opened for writing was closed.
+        /// File or directory not opened for writing was closed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_NOWRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_NOWRITE`]: ../inotify_sys/constant.IN_CLOSE_NOWRITE.html
         const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
-        /// File/directory created in watched directory.
+        /// File/directory created in watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CREATE`].
+        ///
+        /// [`inotify_sys::IN_CREATE`]: ../inotify_sys/constant.IN_CREATE.html
         const CREATE = ffi::IN_CREATE;
 
-        /// File/directory deleted from watched directory.
+        /// File/directory deleted from watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_DELETE`].
+        ///
+        /// [`inotify_sys::IN_DELETE`]: ../inotify_sys/constant.IN_DELETE.html
         const DELETE = ffi::IN_DELETE;
 
-        /// Watched file/directory was itself deleted.
+        /// Watched file/directory was deleted
+        ///
+        /// See [`inotify_sys::IN_DELETE_SELF`].
+        ///
+        /// [`inotify_sys::IN_DELETE_SELF`]: ../inotify_sys/constant.IN_DELETE_SELF.html
         const DELETE_SELF = ffi::IN_DELETE_SELF;
 
-        /// File was modified.
+        /// File was modified
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MODIFY`].
+        ///
+        /// [`inotify_sys::IN_MODIFY`]: ../inotify_sys/constant.IN_MODIFY.html
         const MODIFY = ffi::IN_MODIFY;
 
-        /// Watched file/directory was itself moved.
+        /// Watched file/directory was moved
+        ///
+        /// See [`inotify_sys::IN_MOVE_SELF`].
+        ///
+        /// [`inotify_sys::IN_MOVE_SELF`]: ../inotify_sys/constant.IN_MOVE_SELF.html
         const MOVE_SELF = ffi::IN_MOVE_SELF;
 
-        /// Generated for the directory containing the old filename when a
-        /// file is renamend.
+        /// File was renamed/moved; watched directory contained old name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_FROM`].
+        ///
+        /// [`inotify_sys::IN_MOVED_FROM`]: ../inotify_sys/constant.IN_MOVED_FROM.html
         const MOVED_FROM = ffi::IN_MOVED_FROM;
 
-        /// Generated for the directory containing the new filename when a
-        /// file is renamed.
+        /// File was renamed/moved; watched directory contains new name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_TO`].
+        ///
+        /// [`inotify_sys::IN_MOVED_TO`]: ../inotify_sys/constant.IN_MOVED_TO.html
         const MOVED_TO = ffi::IN_MOVED_TO;
 
-        /// File or directory was opened.
+        /// File or directory was opened
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_OPEN`].
+        ///
+        /// [`inotify_sys::IN_OPEN`]: ../inotify_sys/constant.IN_OPEN.html
         const OPEN = ffi::IN_OPEN;
 
-        /// Watch was removed.
+        /// Watch was removed
+        ///
+        /// This event will be generated, if the watch was removed explicitely
+        /// (via [`Inotify::rm_watch`]), or automatically (because the file was
+        /// deleted or the file system was unmounted).
+        ///
+        /// See [`inotify_sys::IN_IGNORED`].
+        ///
+        /// [`inotify_sys::IN_IGNORED`]: ../inotify_sys/constant.IN_IGNORED.html
         const IGNORED = ffi::IN_IGNORED;
 
-        /// Subject of this event is a directory.
+        /// Event related to a directory
+        ///
+        /// The subject of the event is a directory.
+        ///
+        /// See [`inotify_sys::IN_ISDIR`].
+        ///
+        /// [`inotify_sys::IN_ISDIR`]: ../inotify_sys/constant.IN_ISDIR.html
         const ISDIR = ffi::IN_ISDIR;
 
-        /// Event queue overflowed.
+        /// Event queue overflowed
+        ///
+        /// The event queue has overflowed and events have presumably been lost.
+        ///
+        /// See [`inotify_sys::IN_Q_OVERFLOW`].
+        ///
+        /// [`inotify_sys::IN_Q_OVERFLOW`]: ../inotify_sys/constant.IN_Q_OVERFLOW.html
         const Q_OVERFLOW = ffi::IN_Q_OVERFLOW;
 
         /// File system containing watched object was unmounted.
+        /// File system was unmounted
+        ///
+        /// The file system that contained the watched object has been
+        /// unmounted. An event with [`WatchMask::IGNORED`] will subsequently be
+        /// generated for the same watch descriptor.
+        ///
+        /// See [`inotify_sys::IN_UNMOUNT`].
+        ///
+        /// [`WatchMask::IGNORED`]: #associatedconstant.IGNORED
+        /// [`inotify_sys::IN_UNMOUNT`]: ../inotify_sys/constant.IN_UNMOUNT.html
         const UNMOUNT = ffi::IN_UNMOUNT;
     }
 }
