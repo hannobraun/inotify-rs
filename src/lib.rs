@@ -3,22 +3,72 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-//! Binding and wrapper for inotify.
+//! Idiomatic inotify wrapper for the Rust programming language
 //!
-//! [Inotify][wiki] is a linux kernel mechanism for monitoring
-//! changes to filesystems' contents.
+//! # About
 //!
-//! > The inotify API provides a mechanism for monitoring filesystem
-//! > events. Inotify can be used to monitor individual files, or to
-//! > monitor directories. When a directory is monitored, inotify will
-//! > return events for the directory itself, and for files inside the
-//! > directory.
+//! [inotify-rs] is an idiomatic wrapper around the Linux kernel's [inotify] API
+//! for the Rust programming language. It can be used for monitoring changes to
+//! files or directories.
 //!
-//! See the [man page][inotify7] for usage information
-//! of the C version, which this package follows closely.
+//! The [`Inotify`] struct is the main entry point into the API.
 //!
-//! [wiki]: https://en.wikipedia.org/wiki/Inotify
-//! [inotify7]: http://man7.org/linux/man-pages/man7/inotify.7.html
+//! # Example
+//!
+//! ```
+//! use inotify::{
+//!     Inotify,
+//!     WatchMask,
+//! };
+//!
+//! let mut inotify = Inotify::init()
+//!     .expect("Error while initializing inotify instance");
+//!
+//! # // Create a temporary file, so `add_watch` won't return an error.
+//! # use std::fs::File;
+//! # let mut test_file = File::create("/tmp/inotify-rs-test-file")
+//! #     .expect("Failed to create test file");
+//! #
+//! // Watch for modify and close events.
+//! inotify
+//!     .add_watch(
+//!         "/tmp/inotify-rs-test-file",
+//!         WatchMask::MODIFY | WatchMask::CLOSE,
+//!     )
+//!     .expect("Failed to add file watch");
+//!
+//! # // Modify file, so the following `read_events_blocking` won't block.
+//! # use std::io::Write;
+//! # write!(&mut test_file, "something\n")
+//! #     .expect("Failed to write something to test file");
+//! #
+//! // Read events that were added with `add_watch` above.
+//! let mut buffer = [0; 1024];
+//! let events = inotify.read_events_blocking(&mut buffer)
+//!     .expect("Error while reading events");
+//!
+//! for event in events {
+//!     // Handle event
+//! }
+//! ```
+//!
+//! # Attention: inotify gotchas
+//!
+//! inotify (as in, the Linux API, not this wrapper) has many edge cases, making
+//! it hard to use correctly. This can lead to weird and hard to find bugs in
+//! applications that are based on it. inotify-rs does its best to fix these
+//! issues, but sometimes this would require an amount of runtime overhead that
+//! is just unacceptable for a low-level wrapper such as this.
+//!
+//! We've documented any issues that inotify-rs has inherited from inotify, as
+//! far as we are aware of them. Please watch out for any further warnings
+//! throughout this documentation. If you want to be on the safe side, in case
+//! we have missed something, please read the [inotify man pages] carefully.
+//!
+//! [inotify-rs]: https://crates.io/crates/inotify
+//! [inotify]: https://en.wikipedia.org/wiki/Inotify
+//! [`Inotify`]: struct.Inotify.html
+//! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
 
 #[macro_use]
@@ -64,54 +114,16 @@ use libc::{
 };
 
 
-/// Idiomatic Rust wrapper for Linux's inotify API
+/// Idiomatic Rust wrapper around Linux's inotify API
 ///
 /// `Inotify` is a wrapper around an inotify instance. It generally tries to
-/// adhere to the underlying inotify API as closely as possible, while at the
-/// same time making access to it safe and convenient.
+/// adhere to the underlying inotify API closely, while making access to it
+/// safe and convenient.
 ///
-/// Please note that using inotify correctly is not always trivial, and while
-/// this wrapper tries to alleviate that, it is not perfect. Please refer to the
-/// inotify man pages for potential problems to watch out for.
+/// Please refer to the [top-level documentation] for further details and a
+/// usage example.
 ///
-/// # Examples
-///
-/// ```
-/// use inotify::{
-///     Inotify,
-///     WatchMask,
-/// };
-///
-/// let mut inotify = Inotify::init()
-///     .expect("Error while initializing inotify instance");
-///
-/// # // Create a temporary file, so `add_watch` won't return an error.
-/// # use std::fs::File;
-/// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
-/// #     .expect("Failed to create test file");
-/// #
-/// // Watch for modify and close events.
-/// inotify
-///     .add_watch(
-///         "/tmp/inotify-rs-test-file",
-///         WatchMask::MODIFY | WatchMask::CLOSE,
-///     )
-///     .expect("Failed to add file watch");
-///
-/// # // Modify file, so the following `read_events_blocking` won't block.
-/// # use std::io::Write;
-/// # write!(&mut test_file, "something\n")
-/// #     .expect("Failed to write something to test file");
-/// #
-/// // Read events that were added with `add_watch` above.
-/// let mut buffer = [0; 1024];
-/// let events = inotify.read_events_blocking(&mut buffer)
-///     .expect("Error while reading events");
-///
-/// for event in events {
-///     // Handle event
-/// }
-/// ```
+/// [top-level documentation]: index.html
 pub struct Inotify {
     fd           : Rc<RawFd>,
     close_on_drop: bool,
@@ -122,9 +134,9 @@ impl Inotify {
     ///
     /// Initializes an inotify instance by calling [`inotify_init1`].
     ///
-    /// This method passes both flags accepted by [`inotify_init1`], and doesn't
-    /// allow the user any choice in the matter, as not passing any of the flags
-    /// would be inappropriate in the context of this wrapper:
+    /// This method passes both flags accepted by [`inotify_init1`], not giving
+    /// the user any choice in the matter, as not passing the flags would be
+    /// inappropriate in the context of this wrapper:
     ///
     /// - [`IN_CLOEXEC`] prevents leaking file descriptors to other processes.
     /// - [`IN_NONBLOCK`] controls the blocking behavior of the inotify API,
@@ -188,9 +200,10 @@ impl Inotify {
     /// watched for, and how to do that. See the documentation of [`WatchMask`]
     /// for details.
     ///
-    /// If this method is used to add a new watch, a new `WatchDescriptor` is
-    /// returned. If it is used to update an existing watch, the same
-    /// `WatchDescriptor` for that existing watch is returned.
+    /// If this method is used to add a new watch, a new [`WatchDescriptor`] is
+    /// returned. If it is used to update an existing watch, a
+    /// [`WatchDescriptor`] that equals the previously returned
+    /// [`WatchDescriptor`] for that watch is returned intead.
     ///
     /// Under the hood, this method just calls [`inotify_add_watch`] and does
     /// some trivial translation between the types on the Rust side and the C
@@ -204,16 +217,17 @@ impl Inotify {
     /// also happen if the method is called with a different path that happens
     /// to link to the same inode.
     ///
-    /// You can detect this by keeping track of `WatchDescriptor`s and the paths
-    /// they have been returned for. If the same `WatchDescriptor` is returned
-    /// for a different path (and you haven't freed the `WatchDescriptor` by
-    /// removing the watch), you know you have two paths pointing to the same
-    /// inode, and therefore being watched by the same watch.
+    /// You can detect this by keeping track of [`WatchDescriptor`]s and the
+    /// paths they have been returned for. If the same [`WatchDescriptor`] is
+    /// returned for a different path (and you haven't freed the
+    /// [`WatchDescriptor`] by removing the watch), you know you have two paths
+    /// pointing to the same inode, being watched by the same watch.
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`inotify_add_watch`]
-    /// (translated into an `io::Error`), without adding any error conditions of
+    /// Directly returns the error from the call to
+    /// [`inotify_add_watch`][`inotify_add_watch`] (translated into an
+    /// `io::Error`), without adding any error conditions of
     /// its own.
     ///
     /// # Examples
@@ -239,7 +253,8 @@ impl Inotify {
     /// ```
     ///
     /// [`inotify_add_watch`]: ../inotify_sys/fn.inotify_add_watch.html
-    /// [`WatchMask`]: watch_mask/struct.WatchMask.html
+    /// [`WatchMask`]: struct.WatchMask.html
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
@@ -263,14 +278,14 @@ impl Inotify {
     /// Stops watching a file
     ///
     /// Removes the watch represented by the provided [`WatchDescriptor`] by
-    /// calling [`inotify_rm_watch`]. You can obtain a [`WatchDescriptor`] by
-    /// saving one returned by [`Inotify::add_watch`] or from the `wd` field of
-    /// [`Event`].
+    /// calling [`inotify_rm_watch`]. [`WatchDescriptor`]s can be obtained via
+    /// [`Inotify::add_watch`], or from the `wd` field of [`Event`].
     ///
     /// # Errors
     ///
-    /// Directly returns the error from the call to [`inotify_rm_watch`],
-    /// without adding any error conditions of its own.
+    /// Directly returns the error from the call to [`inotify_rm_watch`].
+    /// Returns an [`io::Error`] with [`ErrorKind`]`::InvalidInput`, if the given
+    /// [`WatchDescriptor`] did not originate from this [`Inotify`] instance.
     ///
     /// # Examples
     ///
@@ -308,6 +323,9 @@ impl Inotify {
     /// [`inotify_rm_watch`]: ../inotify_sys/fn.inotify_rm_watch.html
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Event`]: struct.Event.html
+    /// [`Inotify`]: struct.Inotify.html
+    /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
+    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
         if wd.fd.upgrade().as_ref() != Some(&self.fd) {
             return Err(io::Error::new(
@@ -328,8 +346,7 @@ impl Inotify {
     /// Waits until events are available, then returns them
     ///
     /// This method will block the current thread until at least one event is
-    /// available. If this is not desirable, please take a look at
-    /// [`read_events`].
+    /// available. If this is not desirable, please consider [`read_events`].
     ///
     /// # Errors
     ///
@@ -361,7 +378,7 @@ impl Inotify {
     /// the inotify events. Its contents may be overwritten.
     ///
     /// If you need a method that will block until at least one event is
-    /// available, please call [`read_events_blocking`].
+    /// available, please consider [`read_events_blocking`].
     ///
     /// # Errors
     ///
@@ -519,86 +536,272 @@ impl IntoRawFd for Inotify {
 
 
 bitflags! {
-    /// Mask for a file watch
+    /// Describes a file system watch
     ///
-    /// Passed to [`Inotify::add_watch`], to describe what file system
-    /// events to watch for and how to do that.
+    /// Passed to [`Inotify::add_watch`], to describe what file system events
+    /// to watch for, and how to do that.
     ///
-    /// [`Inotify::add_watch`]: ../struct.Inotify.html#method.add_watch
+    /// # Examples
+    ///
+    /// `WatchMask` constants can be passed to [`Inotify::add_watch`] as is. For
+    /// example, here's how to create a watch that triggers an event when a file
+    /// is accessed:
+    ///
+    /// ``` rust
+    /// # use inotify::{
+    /// #     Inotify,
+    /// #     WatchMask,
+    /// # };
+    /// #
+    /// # let mut inotify = Inotify::init().unwrap();
+    /// #
+    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # use std::fs::File;
+    /// # File::create("/tmp/inotify-rs-test-file")
+    /// #     .expect("Failed to create test file");
+    /// #
+    /// inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::ACCESS)
+    ///    .expect("Error adding watch");
+    /// ```
+    ///
+    /// You can also combine multiple `WatchMask` constants. Here we add a watch
+    /// this is triggered both when files are created or deleted in a directory:
+    ///
+    /// ``` rust
+    /// # use inotify::{
+    /// #     Inotify,
+    /// #     WatchMask,
+    /// # };
+    /// #
+    /// # let mut inotify = Inotify::init().unwrap();
+    /// inotify.add_watch("/tmp/", WatchMask::CREATE | WatchMask::DELETE)
+    ///    .expect("Error adding watch");
+    /// ```
+    ///
+    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     pub struct WatchMask: u32 {
-        /// File was accessed.
-        const ACCESS        = ffi::IN_ACCESS;
+        /// File was accessed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_ACCESS`].
+        ///
+        /// [`inotify_sys::IN_ACCESS`]: ../inotify_sys/constant.IN_ACCESS.html
+        const ACCESS = ffi::IN_ACCESS;
 
-        /// Metadata changed.
-        const ATTRIB        = ffi::IN_ATTRIB;
+        /// Metadata (permissions, timestamps, ...) changed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_ATTRIB`].
+        ///
+        /// [`inotify_sys::IN_ATTRIB`]: ../inotify_sys/constant.IN_ATTRIB.html
+        const ATTRIB = ffi::IN_ATTRIB;
 
-        /// File opened for writing was closed.
-        const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
+        /// File opened for writing was closed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_WRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_WRITE`]: ../inotify_sys/constant.IN_CLOSE_WRITE.html
+        const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
-        /// File or directory not opened for writing was closed.
+        /// File or directory not opened for writing was closed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_NOWRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_NOWRITE`]: ../inotify_sys/constant.IN_CLOSE_NOWRITE.html
         const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
-        /// File/directory created in watched directory.
-        const CREATE        = ffi::IN_CREATE;
+        /// File/directory created in watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CREATE`].
+        ///
+        /// [`inotify_sys::IN_CREATE`]: ../inotify_sys/constant.IN_CREATE.html
+        const CREATE = ffi::IN_CREATE;
 
-        /// File/directory deleted from watched directory.
-        const DELETE        = ffi::IN_DELETE;
+        /// File/directory deleted from watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_DELETE`].
+        ///
+        /// [`inotify_sys::IN_DELETE`]: ../inotify_sys/constant.IN_DELETE.html
+        const DELETE = ffi::IN_DELETE;
 
-        /// Watched file/directory was itself deleted.
-        const DELETE_SELF   = ffi::IN_DELETE_SELF;
+        /// Watched file/directory was deleted
+        ///
+        /// See [`inotify_sys::IN_DELETE_SELF`].
+        ///
+        /// [`inotify_sys::IN_DELETE_SELF`]: ../inotify_sys/constant.IN_DELETE_SELF.html
+        const DELETE_SELF = ffi::IN_DELETE_SELF;
 
-        /// File was modified.
-        const MODIFY        = ffi::IN_MODIFY;
+        /// File was modified
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MODIFY`].
+        ///
+        /// [`inotify_sys::IN_MODIFY`]: ../inotify_sys/constant.IN_MODIFY.html
+        const MODIFY = ffi::IN_MODIFY;
 
-        /// Watched file/directory was itself moved.
-        const MOVE_SELF     = ffi::IN_MOVE_SELF;
+        /// Watched file/directory was moved
+        ///
+        /// See [`inotify_sys::IN_MOVE_SELF`].
+        ///
+        /// [`inotify_sys::IN_MOVE_SELF`]: ../inotify_sys/constant.IN_MOVE_SELF.html
+        const MOVE_SELF = ffi::IN_MOVE_SELF;
 
-        /// Generated for the directory containing the old filename when a
-        /// file is renamend.
-        const MOVED_FROM    = ffi::IN_MOVED_FROM;
+        /// File was renamed/moved; watched directory contained old name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_FROM`].
+        ///
+        /// [`inotify_sys::IN_MOVED_FROM`]: ../inotify_sys/constant.IN_MOVED_FROM.html
+        const MOVED_FROM = ffi::IN_MOVED_FROM;
 
-        /// Generated for the directory containing the new filename when a
-        /// file is renamed.
-        const MOVED_TO      = ffi::IN_MOVED_TO;
+        /// File was renamed/moved; watched directory contains new name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_TO`].
+        ///
+        /// [`inotify_sys::IN_MOVED_TO`]: ../inotify_sys/constant.IN_MOVED_TO.html
+        const MOVED_TO = ffi::IN_MOVED_TO;
 
-        /// File or directory was opened.
-        const OPEN          = ffi::IN_OPEN;
+        /// File or directory was opened
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_OPEN`].
+        ///
+        /// [`inotify_sys::IN_OPEN`]: ../inotify_sys/constant.IN_OPEN.html
+        const OPEN = ffi::IN_OPEN;
 
-        /// Watch for all events.
-        const ALL_EVENTS    = ffi::IN_ALL_EVENTS;
+        /// Watch for all events
+        ///
+        /// This constant is simply a conventient combination of the following
+        /// other constants:
+        ///
+        /// - [`ACCESS`]
+        /// - [`ATTRIB`]
+        /// - [`CLOSE_WRITE`]
+        /// - [`CLOSE_NOWRITE`]
+        /// - [`CREATE`]
+        /// - [`DELETE`]
+        /// - [`DELETE_SELF`]
+        /// - [`MODIFY`]
+        /// - [`MOVE_SELF`]
+        /// - [`MOVED_FROM`]
+        /// - [`MOVED_TO`]
+        /// - [`OPEN`]
+        ///
+        /// See [`inotify_sys::IN_ALL_EVENTS`].
+        ///
+        /// [`ACCESS`]: #associatedconstant.ACCESS
+        /// [`ATTRIB`]: #associatedconstant.ATTRIB
+        /// [`CLOSE_WRITE`]: #associatedconstant.CLOSE_WRITE
+        /// [`CLOSE_NOWRITE`]: #associatedconstant.CLOSE_NOWRITE
+        /// [`CREATE`]: #associatedconstant.CREATE
+        /// [`DELETE`]: #associatedconstant.DELETE
+        /// [`DELETE_SELF`]: #associatedconstant.DELETE_SELF
+        /// [`MODIFY`]: #associatedconstant.MODIFY
+        /// [`MOVE_SELF`]: #associatedconstant.MOVE_SELF
+        /// [`MOVED_FROM`]: #associatedconstant.MOVED_FROM
+        /// [`MOVED_TO`]: #associatedconstant.MOVED_TO
+        /// [`OPEN`]: #associatedconstant.OPEN
+        /// [`inotify_sys::IN_ALL_EVENTS`]: ../inotify_sys/constant.IN_ALL_EVENTS.html
+        const ALL_EVENTS = ffi::IN_ALL_EVENTS;
 
-        /// Watch for both `MOVED_FROM` and `MOVED_TO`.
-        const MOVE          = ffi::IN_MOVE;
+        /// Watch for all move events
+        ///
+        /// This constant is simply a conventient combination of the following
+        /// other constants:
+        ///
+        /// - [`MOVED_FROM`]
+        /// - [`MOVED_TO`]
+        ///
+        /// See [`inotify_sys::IN_MOVE`].
+        ///
+        /// [`MOVED_FROM`]: #associatedconstant.MOVED_FROM
+        /// [`MOVED_TO`]: #associatedconstant.MOVED_TO
+        /// [`inotify_sys::IN_MOVE`]: ../inotify_sys/constant.IN_MOVE.html
+        const MOVE = ffi::IN_MOVE;
 
-        /// Watch for both `IN_CLOSE_WRITE` and `IN_CLOSE_NOWRITE`.
-        const CLOSE         = ffi::IN_CLOSE;
+        /// Watch for all close events
+        ///
+        /// This constant is simply a conventient combination of the following
+        /// other constants:
+        ///
+        /// - [`CLOSE_WRITE`]
+        /// - [`CLOSE_NOWRITE`]
+        ///
+        /// See [`inotify_sys::IN_CLOSE`].
+        ///
+        /// [`CLOSE_WRITE`]: #associatedconstant.CLOSE_WRITE
+        /// [`CLOSE_NOWRITE`]: #associatedconstant.CLOSE_NOWRITE
+        /// [`inotify_sys::IN_CLOSE`]: ../inotify_sys/constant.IN_CLOSE.html
+        const CLOSE = ffi::IN_CLOSE;
 
         /// Don't dereference the path if it is a symbolic link
-        const DONT_FOLLOW   = ffi::IN_DONT_FOLLOW;
+        ///
+        /// See [`inotify_sys::IN_DONT_FOLLOW`].
+        ///
+        /// [`inotify_sys::IN_DONT_FOLLOW`]: ../inotify_sys/constant.IN_DONT_FOLLOW.html
+        const DONT_FOLLOW = ffi::IN_DONT_FOLLOW;
 
-        /// Don't watch events for children that have been unlinked from
-        /// watched directory.
-        const EXCL_UNLINK   = ffi::IN_EXCL_UNLINK;
+        /// Filter events for directory entries that have been unlinked
+        ///
+        /// See [`inotify_sys::IN_EXCL_UNLINK`].
+        ///
+        /// [`inotify_sys::IN_EXCL_UNLINK`]: ../inotify_sys/constant.IN_EXCL_UNLINK.html
+        const EXCL_UNLINK = ffi::IN_EXCL_UNLINK;
 
-        /// If a watch instance already exists for the inode corresponding
-        /// to the given path, amend the existing watch mask instead of
-        /// replacing it.
-        const MASK_ADD      = ffi::IN_MASK_ADD;
+        /// If a watch for the inode exists, amend it instead of replacing it
+        ///
+        /// See [`inotify_sys::IN_MASK_ADD`].
+        ///
+        /// [`inotify_sys::IN_MASK_ADD`]: ../inotify_sys/constant.IN_MASK_ADD.html
+        const MASK_ADD = ffi::IN_MASK_ADD;
 
-        /// Only monitor for one event, then remove the watch
-        const ONESHOT       = ffi::IN_ONESHOT;
+        /// Only receive one event, then remove the watch
+        ///
+        /// See [`inotify_sys::IN_ONESHOT`].
+        ///
+        /// [`inotify_sys::IN_ONESHOT`]: ../inotify_sys/constant.IN_ONESHOT.html
+        const ONESHOT = ffi::IN_ONESHOT;
 
-        /// Only watch path, if it is a directory.
-        const ONLYDIR       = ffi::IN_ONLYDIR;
+        /// Only watch path, if it is a directory
+        ///
+        /// See [`inotify_sys::IN_ONLYDIR`].
+        ///
+        /// [`inotify_sys::IN_ONLYDIR`]: ../inotify_sys/constant.IN_ONLYDIR.html
+        const ONLYDIR = ffi::IN_ONLYDIR;
     }
 }
 
 
-/// Represents a file that inotify is watching
+/// Represents a watch on an inode
 ///
 /// Can be obtained from [`Inotify::add_watch`] or from an [`Event`]. A watch
-/// descriptor can be used to get inotify to stop watching a file by passing it
-/// to [`Inotify::rm_watch`].
+/// descriptor can be used to get inotify to stop watching an inode by passing
+/// it to [`Inotify::rm_watch`].
 ///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
@@ -634,10 +837,10 @@ impl Hash for WatchDescriptor {
 }
 
 
-/// Iterates over inotify events
+/// Iterator over inotify events
 ///
-/// Iterates over the events returned by [`Inotify::read_events_blocking`] or
-/// [`Inotify::read_events`].
+/// Allows for iteration over the events returned by
+/// [`Inotify::read_events_blocking`] or [`Inotify::read_events`].
 ///
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
@@ -751,6 +954,33 @@ impl<'a> Iterator for Events<'a> {
 /// retrieve events, call [`Inotify::read_events_blocking`] or
 /// [`Inotify::read_events`].
 ///
+/// # Examples
+///
+/// Here's how to determine if this event indicates that a file was modified:
+///
+/// ``` rust
+/// # use std::mem;
+/// # use std::os::unix::io::RawFd;
+/// # use std::rc::Weak;
+/// #
+/// # use inotify::{
+/// #     Event,
+/// #     EventMask,
+/// # };
+/// #
+/// # // Construct a fake event for the sake of this example
+/// # let event: Event = Event {
+/// #     wd    : unsafe { mem::transmute((0, Weak::<RawFd>::new())) },
+/// #     mask  : EventMask::MODIFY,
+/// #     cookie: 0,
+/// #     name  : None,
+/// # };
+/// #
+/// if event.mask.contains(EventMask::MODIFY) {
+///     // do something
+/// }
+/// ```
+///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
@@ -758,7 +988,7 @@ impl<'a> Iterator for Events<'a> {
 pub struct Event<'a> {
     /// Identifies the watch this event originates from
     ///
-    /// This is the same [`WatchDescriptor`] that [`Inotify::add_watch`]
+    /// This [`WatchDescriptor`] is equal to the one that [`Inotify::add_watch`]
     /// returned when interest for this event was registered. The
     /// [`WatchDescriptor`] can be used to remove the watch using
     /// [`Inotify::rm_watch`], thereby preventing future events of this type
@@ -767,17 +997,10 @@ pub struct Event<'a> {
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
     /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
-    pub wd    : WatchDescriptor,
+    pub wd: WatchDescriptor,
 
-    /// Shows what kind of event this is
-    ///
-    /// The various flags that can be set on this mask are defined in the
-    /// [`event_mask`] module. You can check against any flags that are of
-    /// interest to you by using [`EventMask::contains`].
-    ///
-    /// [`event_mask`]: event_mask/index.html
-    /// [`EventMask::contains`]: event_mask/struct.EventMask.html#contains
-    pub mask  : EventMask,
+    /// Indicates what kind of event this is
+    pub mask: EventMask,
 
     /// Connects related events to each other
     ///
@@ -794,7 +1017,7 @@ pub struct Event<'a> {
     /// This field is set only, if the subject of the event is a file in a
     /// wacthed directory. If the event concerns a file or directory that is
     /// watched directly, `name` will be `None`.
-    pub name  : Option<&'a OsStr>,
+    pub name: Option<&'a OsStr>,
 }
 
 impl<'a> Event<'a> {
@@ -827,64 +1050,170 @@ impl<'a> Event<'a> {
 
 
 bitflags! {
-    /// Mask for an event
+    /// Indicates the type of an event
     ///
     /// This struct can be retrieved from an [`Event`] via its `mask` field.
-    /// You can determine the [`Event`]'s type by comparing it to the
-    /// constants in [this module] module using [`EventMask::contains`].
+    /// You can determine the [`Event`]'s type by comparing the `EventMask` to
+    /// its associated constants.
     ///
-    /// [`Event`]: ../struct.Event.html
-    /// [this module]: index.html
-    /// [`EventMask::contains`]: struct.EventMask.html#method.contains
+    /// Please refer to the documentation of [`Event`] for a usage example.
+    ///
+    /// [`Event`]: struct.Event.html
     pub struct EventMask: u32 {
-        /// File was accessed.
-        const ACCESS        = ffi::IN_ACCESS;
+        /// File was accessed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_ACCESS`].
+        ///
+        /// [`inotify_sys::IN_ACCESS`]: ../inotify_sys/constant.IN_ACCESS.html
+        const ACCESS = ffi::IN_ACCESS;
 
-        /// Metadata changed.
-        const ATTRIB        = ffi::IN_ATTRIB;
+        /// Metadata (permissions, timestamps, ...) changed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_ATTRIB`].
+        ///
+        /// [`inotify_sys::IN_ATTRIB`]: ../inotify_sys/constant.IN_ATTRIB.html
+        const ATTRIB = ffi::IN_ATTRIB;
 
-        /// File opened for writing was closed.
-        const CLOSE_WRITE   = ffi::IN_CLOSE_WRITE;
+        /// File opened for writing was closed
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_WRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_WRITE`]: ../inotify_sys/constant.IN_CLOSE_WRITE.html
+        const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
-        /// File or directory not opened for writing was closed.
+        /// File or directory not opened for writing was closed
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_CLOSE_NOWRITE`].
+        ///
+        /// [`inotify_sys::IN_CLOSE_NOWRITE`]: ../inotify_sys/constant.IN_CLOSE_NOWRITE.html
         const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
-        /// File/directory created in watched directory.
-        const CREATE        = ffi::IN_CREATE;
+        /// File/directory created in watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_CREATE`].
+        ///
+        /// [`inotify_sys::IN_CREATE`]: ../inotify_sys/constant.IN_CREATE.html
+        const CREATE = ffi::IN_CREATE;
 
-        /// File/directory deleted from watched directory.
-        const DELETE        = ffi::IN_DELETE;
+        /// File/directory deleted from watched directory
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_DELETE`].
+        ///
+        /// [`inotify_sys::IN_DELETE`]: ../inotify_sys/constant.IN_DELETE.html
+        const DELETE = ffi::IN_DELETE;
 
-        /// Watched file/directory was itself deleted.
-        const DELETE_SELF   = ffi::IN_DELETE_SELF;
+        /// Watched file/directory was deleted
+        ///
+        /// See [`inotify_sys::IN_DELETE_SELF`].
+        ///
+        /// [`inotify_sys::IN_DELETE_SELF`]: ../inotify_sys/constant.IN_DELETE_SELF.html
+        const DELETE_SELF = ffi::IN_DELETE_SELF;
 
-        /// File was modified.
-        const MODIFY        = ffi::IN_MODIFY;
+        /// File was modified
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MODIFY`].
+        ///
+        /// [`inotify_sys::IN_MODIFY`]: ../inotify_sys/constant.IN_MODIFY.html
+        const MODIFY = ffi::IN_MODIFY;
 
-        /// Watched file/directory was itself moved.
-        const MOVE_SELF     = ffi::IN_MOVE_SELF;
+        /// Watched file/directory was moved
+        ///
+        /// See [`inotify_sys::IN_MOVE_SELF`].
+        ///
+        /// [`inotify_sys::IN_MOVE_SELF`]: ../inotify_sys/constant.IN_MOVE_SELF.html
+        const MOVE_SELF = ffi::IN_MOVE_SELF;
 
-        /// Generated for the directory containing the old filename when a
-        /// file is renamend.
-        const MOVED_FROM    = ffi::IN_MOVED_FROM;
+        /// File was renamed/moved; watched directory contained old name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_FROM`].
+        ///
+        /// [`inotify_sys::IN_MOVED_FROM`]: ../inotify_sys/constant.IN_MOVED_FROM.html
+        const MOVED_FROM = ffi::IN_MOVED_FROM;
 
-        /// Generated for the directory containing the new filename when a
-        /// file is renamed.
-        const MOVED_TO      = ffi::IN_MOVED_TO;
+        /// File was renamed/moved; watched directory contains new name
+        ///
+        /// When watching a directory, this event is only triggered for objects
+        /// inside the directory, not the directory itself.
+        ///
+        /// See [`inotify_sys::IN_MOVED_TO`].
+        ///
+        /// [`inotify_sys::IN_MOVED_TO`]: ../inotify_sys/constant.IN_MOVED_TO.html
+        const MOVED_TO = ffi::IN_MOVED_TO;
 
-        /// File or directory was opened.
-        const OPEN          = ffi::IN_OPEN;
+        /// File or directory was opened
+        ///
+        /// When watching a directory, this event can be triggered for the
+        /// directory itself, as well as objects inside the directory.
+        ///
+        /// See [`inotify_sys::IN_OPEN`].
+        ///
+        /// [`inotify_sys::IN_OPEN`]: ../inotify_sys/constant.IN_OPEN.html
+        const OPEN = ffi::IN_OPEN;
 
-        /// Watch was removed.
-        const IGNORED       = ffi::IN_IGNORED;
+        /// Watch was removed
+        ///
+        /// This event will be generated, if the watch was removed explicitely
+        /// (via [`Inotify::rm_watch`]), or automatically (because the file was
+        /// deleted or the file system was unmounted).
+        ///
+        /// See [`inotify_sys::IN_IGNORED`].
+        ///
+        /// [`inotify_sys::IN_IGNORED`]: ../inotify_sys/constant.IN_IGNORED.html
+        const IGNORED = ffi::IN_IGNORED;
 
-        /// Subject of this event is a directory.
-        const ISDIR         = ffi::IN_ISDIR;
+        /// Event related to a directory
+        ///
+        /// The subject of the event is a directory.
+        ///
+        /// See [`inotify_sys::IN_ISDIR`].
+        ///
+        /// [`inotify_sys::IN_ISDIR`]: ../inotify_sys/constant.IN_ISDIR.html
+        const ISDIR = ffi::IN_ISDIR;
 
-        /// Event queue overflowed.
-        const Q_OVERFLOW    = ffi::IN_Q_OVERFLOW;
+        /// Event queue overflowed
+        ///
+        /// The event queue has overflowed and events have presumably been lost.
+        ///
+        /// See [`inotify_sys::IN_Q_OVERFLOW`].
+        ///
+        /// [`inotify_sys::IN_Q_OVERFLOW`]: ../inotify_sys/constant.IN_Q_OVERFLOW.html
+        const Q_OVERFLOW = ffi::IN_Q_OVERFLOW;
 
         /// File system containing watched object was unmounted.
-        const UNMOUNT       = ffi::IN_UNMOUNT;
+        /// File system was unmounted
+        ///
+        /// The file system that contained the watched object has been
+        /// unmounted. An event with [`WatchMask::IGNORED`] will subsequently be
+        /// generated for the same watch descriptor.
+        ///
+        /// See [`inotify_sys::IN_UNMOUNT`].
+        ///
+        /// [`WatchMask::IGNORED`]: #associatedconstant.IGNORED
+        /// [`inotify_sys::IN_UNMOUNT`]: ../inotify_sys/constant.IN_UNMOUNT.html
+        const UNMOUNT = ffi::IN_UNMOUNT;
     }
 }
