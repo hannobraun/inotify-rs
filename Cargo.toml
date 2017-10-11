@@ -11,7 +11,7 @@ authors = [
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
-repository    = "https://github.com/hannobraun/inotify-rs"
+repository    = "https://github.com/inotify-rs/inotify"
 license       = "ISC"
 readme        = "README.md"
 
@@ -19,7 +19,7 @@ keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
 
 [badges]
-travis-ci = { repository = "hannobraun/inotify-rs" }
+travis-ci = { repository = "inotify-rs/inotify" }
 
 [dependencies]
 bitflags    = "1"
