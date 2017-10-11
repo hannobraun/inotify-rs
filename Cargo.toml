@@ -19,7 +19,8 @@ keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
 
 [badges]
-travis-ci = { repository = "inotify-rs/inotify" }
+maintenance = { status = "actively-developed" }
+travis-ci   = { repository = "inotify-rs/inotify" }
 
 [dependencies]
 bitflags    = "1"
