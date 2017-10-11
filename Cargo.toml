@@ -11,7 +11,7 @@ authors = [
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
-repository    = "https://github.com/hannobraun/inotify-rs"
+repository    = "https://github.com/inotify-rs/inotify"
 license       = "ISC"
 readme        = "README.md"
 
@@ -19,7 +19,8 @@ keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
 
 [badges]
-travis-ci = { repository = "hannobraun/inotify-rs" }
+maintenance = { status = "actively-developed" }
+travis-ci   = { repository = "inotify-rs/inotify" }
 
 [dependencies]
 bitflags    = "1"
@@ -30,8 +31,8 @@ libc        = "0.2"
 tempdir = "0.3"
 
 [package.metadata.release]
-pre-release-commit-message = "Release {{version}}"
-pro-release-commit-message = "Bump version to {{version}}"
+pre-release-commit-message = "chore: Release version {{version}}"
+pro-release-commit-message = "chore: Bump version to {{version}}"
 tag-prefix                 = "v"
 tag-message                = "Version {{version}}"
 dev-version-ext            = "dev"
