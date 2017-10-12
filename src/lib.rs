@@ -378,6 +378,10 @@ impl Inotify {
     /// method that will block until at least one event is available, please
     /// consider [`read_events_blocking`].
     ///
+    /// Please note that inotify will merge identical unread events into a
+    /// single event. This means this method can not be used to count the number
+    /// of file system events.
+    ///
     /// The `buffer` argument, as the name indicates, is used as a buffer for
     /// the inotify events. Its contents may be overwritten.
     ///
