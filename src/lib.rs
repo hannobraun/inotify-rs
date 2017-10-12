@@ -348,6 +348,8 @@ impl Inotify {
     /// This method will block the current thread until at least one event is
     /// available. If this is not desirable, please consider [`read_events`].
     ///
+    /// The documentation of [`read_events`] has additional about this call.
+    ///
     /// # Errors
     ///
     /// Directly returns the error from the call to [`read`], without adding any
@@ -372,13 +374,12 @@ impl Inotify {
     /// Returns any available events
     ///
     /// Returns an iterator over all events that are currently available. If no
-    /// events are available, an iterator is still returned.
+    /// events are available, an iterator is still returned. If you need a
+    /// method that will block until at least one event is available, please
+    /// consider [`read_events_blocking`].
     ///
     /// The `buffer` argument, as the name indicates, is used as a buffer for
     /// the inotify events. Its contents may be overwritten.
-    ///
-    /// If you need a method that will block until at least one event is
-    /// available, please consider [`read_events_blocking`].
     ///
     /// # Errors
     ///
