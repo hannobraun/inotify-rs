@@ -22,7 +22,7 @@ If you're having any problems with completing your change, feel free to open a p
 
 ## Commit guidelines
 
-We use [clog] to generate a changelog for each release. This is done automatically, using the commit messages as a data source. Therefore it is very imporant to write clear commit messages and tag them in a way that the tool can understand.
+We use [clog] to generate a changelog for each release. This is done automatically, using the commit messages as a data source. Therefore it is very important to write clear commit messages and tag them in a way that the tool can understand.
 
 The rest of this section explains the rules for commit messages. Please don't be put off, if this seems overwhelming. As always, if you're unsure about anything, just send a pull request. [GitCop] and the reviewer will happily point out any problems.
 

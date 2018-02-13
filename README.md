@@ -65,7 +65,7 @@ fn main() {
 
 ## Usage
 
-Inlude it in your `Cargo.toml`:
+Include it in your `Cargo.toml`:
 
 ```toml
 [dependencies]
