@@ -172,9 +172,9 @@ impl Inotify {
             // Passing `IN_CLOEXEC` prevents leaking file descriptors to
             // processes executed by this process and seems to be a best
             // practice. I don't grasp this issue completely and failed to find
-            // any authorative sources on the topic. There's some discussion in
+            // any authoritative sources on the topic. There's some discussion in
             // the open(2) and fcntl(2) man pages, but I didn't find that
-            // helpful in understanding the issue of leaked file scriptors.
+            // helpful in understanding the issue of leaked file descriptors.
             // For what it's worth, there's a Rust issue about this:
             // https://github.com/rust-lang/rust/issues/12148
             ffi::inotify_init1(ffi::IN_CLOEXEC | ffi::IN_NONBLOCK)
@@ -203,7 +203,7 @@ impl Inotify {
     /// If this method is used to add a new watch, a new [`WatchDescriptor`] is
     /// returned. If it is used to update an existing watch, a
     /// [`WatchDescriptor`] that equals the previously returned
-    /// [`WatchDescriptor`] for that watch is returned intead.
+    /// [`WatchDescriptor`] for that watch is returned instead.
     ///
     /// Under the hood, this method just calls [`inotify_add_watch`] and does
     /// some trivial translation between the types on the Rust side and the C
@@ -701,7 +701,7 @@ bitflags! {
 
         /// Watch for all events
         ///
-        /// This constant is simply a conventient combination of the following
+        /// This constant is simply a convenient combination of the following
         /// other constants:
         ///
         /// - [`ACCESS`]
@@ -736,7 +736,7 @@ bitflags! {
 
         /// Watch for all move events
         ///
-        /// This constant is simply a conventient combination of the following
+        /// This constant is simply a convenient combination of the following
         /// other constants:
         ///
         /// - [`MOVED_FROM`]
@@ -751,7 +751,7 @@ bitflags! {
 
         /// Watch for all close events
         ///
-        /// This constant is simply a conventient combination of the following
+        /// This constant is simply a convenient combination of the following
         /// other constants:
         ///
         /// - [`CLOSE_WRITE`]
@@ -836,7 +836,7 @@ impl Hash for WatchDescriptor {
         // is acceptable, we just don't look at it at all.
         // I don't think that this influences storage in a `HashMap` or
         // `HashSet` negatively, as storing `WatchDescriptor`s from different
-        // `Inotify` instances seems like something of an antipattern anyway.
+        // `Inotify` instances seems like something of an anti-pattern anyway.
         self.id.hash(state);
     }
 }
@@ -1019,8 +1019,8 @@ pub struct Event<'a> {
 
     /// The name of the file the event originates from
     ///
-    /// This field is set only, if the subject of the event is a file in a
-    /// wacthed directory. If the event concerns a file or directory that is
+    /// This field is set only if the subject of the event is a file in a
+    /// watched directory. If the event concerns a file or directory that is
     /// watched directly, `name` will be `None`.
     pub name: Option<&'a OsStr>,
 }
@@ -1181,7 +1181,7 @@ bitflags! {
 
         /// Watch was removed
         ///
-        /// This event will be generated, if the watch was removed explicitely
+        /// This event will be generated, if the watch was removed explicitly
         /// (via [`Inotify::rm_watch`]), or automatically (because the file was
         /// deleted or the file system was unmounted).
         ///
