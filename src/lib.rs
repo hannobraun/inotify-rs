@@ -959,33 +959,6 @@ impl<'a> Iterator for Events<'a> {
 /// retrieve events, call [`Inotify::read_events_blocking`] or
 /// [`Inotify::read_events`].
 ///
-/// # Examples
-///
-/// Here's how to determine if this event indicates that a file was modified:
-///
-/// ``` rust
-/// # use std::mem;
-/// # use std::os::unix::io::RawFd;
-/// # use std::rc::Weak;
-/// #
-/// # use inotify::{
-/// #     Event,
-/// #     EventMask,
-/// # };
-/// #
-/// # // Construct a fake event for the sake of this example
-/// # let event: Event = Event {
-/// #     wd    : unsafe { mem::transmute((0, Weak::<RawFd>::new())) },
-/// #     mask  : EventMask::MODIFY,
-/// #     cookie: 0,
-/// #     name  : None,
-/// # };
-/// #
-/// if event.mask.contains(EventMask::MODIFY) {
-///     // do something
-/// }
-/// ```
-///
 /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
