@@ -93,8 +93,8 @@ use std::os::unix::io::{
     RawFd,
 };
 use std::path::Path;
-use std::rc::{
-    Rc,
+use std::sync::{
+    Arc,
     Weak,
 };
 use std::slice;
@@ -125,7 +125,7 @@ use libc::{
 ///
 /// [top-level documentation]: index.html
 pub struct Inotify {
-    fd           : Rc<RawFd>,
+    fd           : Arc<RawFd>,
     close_on_drop: bool,
 }
 
@@ -184,7 +184,7 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  =>
                 Ok(Inotify {
-                    fd           : Rc::new(fd),
+                    fd           : Arc::new(fd),
                     close_on_drop: true,
                 }),
         }
@@ -271,7 +271,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{ id: wd, fd: Rc::downgrade(&self.fd) }),
+            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
         }
     }
 
@@ -438,7 +438,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(Rc::downgrade(&self.fd), buffer, 0));
+                    return Ok(Events::new(Arc::downgrade(&self.fd), buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -468,7 +468,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(Rc::downgrade(&self.fd), buffer, num_bytes))
+        Ok(Events::new(Arc::downgrade(&self.fd), buffer, num_bytes))
     }
 
     /// Closes the inotify instance
@@ -526,7 +526,7 @@ impl AsRawFd for Inotify {
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd           : Rc::new(fd),
+            fd           : Arc::new(fd),
             close_on_drop: true,
         }
     }
