@@ -7,13 +7,16 @@
 extern crate futures;
 extern crate inotify;
 extern crate tempdir;
+extern crate tokio_core;
 
 use inotify::{
+    EventOwned,
     Inotify,
     WatchMask,
 };
 use std::fs::File;
 use std::io::{
+    self,
     Write,
     ErrorKind,
 };
@@ -57,16 +60,23 @@ fn it_should_watch_a_file_async() {
 
     write_to(&mut file);
 
-    use futures::Stream;
-    let events = inotify.event_stream().take(1).wait().collect::<Vec<_>>();
+    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let handle = core.handle();
 
-    let mut num_events = 0;
-    for event in events {
-        if let Ok(event) = event {
+    use futures::Stream;
+    let num_events = core.run(inotify.event_stream(&handle)
+        .expect("failed to create the event stream")
+        .take(1)
+        .fold(0, |count: usize, event: EventOwned| {
             assert_eq!(watch, event.wd);
-            num_events += 1;
-        }
-    }
+            if true {
+                futures::future::ok(count + 1)
+            } else {
+                // The compiler needs a hint about what the error type is.
+                futures::future::err(io::Error::last_os_error())
+            }
+        })).unwrap();
+
     assert!(num_events > 0);
 }
 

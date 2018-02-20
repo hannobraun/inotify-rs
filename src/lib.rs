@@ -1,3 +1,4 @@
+#![feature(conservative_impl_trait)]
 #![crate_name = "inotify"]
 #![crate_type = "lib"]
 #![deny(missing_docs)]
@@ -76,6 +77,9 @@ extern crate bitflags;
 
 extern crate futures;
 extern crate libc;
+extern crate tokio_core;
+extern crate tokio_file_unix;
+extern crate tokio_io;
 extern crate inotify_sys as ffi;
 
 
@@ -84,6 +88,7 @@ use std::hash::{
     Hash,
     Hasher,
 };
+use std::fs::File;
 use std::io;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
@@ -105,8 +110,7 @@ use std::ffi::{
     CString,
 };
 
-use futures::{Async, Poll, Stream};
-use futures::task;
+use futures::Stream;
 use libc::{
     FILENAME_MAX,
     F_GETFL,
@@ -117,6 +121,8 @@ use libc::{
     size_t,
     c_int,
 };
+use tokio_core::reactor::Handle;
+use tokio_io::codec::length_delimited;
 
 
 /// Idiomatic Rust wrapper around Linux's inotify API
@@ -479,8 +485,34 @@ impl Inotify {
     /// read would block.
     ///
     /// An internal buffer which can hold the maximum possible size is used.
-    pub fn event_stream(&mut self) -> EventStream {
-        EventStream::new(self.fd.clone())
+    pub fn event_stream(mut self, handle: &Handle) -> io::Result<impl Stream<Item = EventOwned, Error = io::Error>> {
+        self.close_on_drop = false;
+
+        // Pass ownership of the file descriptor off.
+        let file = unsafe { File::from_raw_fd(*self.fd) };
+        let file = tokio_file_unix::File::new_nb(file)?
+            .into_reader(handle)?;
+
+        // Use this when 1.24 is available for use. We can use the hard-coded 16 due to Linux's ABI
+        // guarantees.
+        // const EVENT_MAX_SIZE: usize = mem::size_of::<ffi::inotify_event>() + (FILENAME_MAX as usize) + 1;
+        const EVENT_MAX_SIZE: usize = 16 + (FILENAME_MAX as usize) + 1;
+
+        Ok(length_delimited::Builder::new()
+            .little_endian()
+            // FIXME: See https://github.com/tokio-rs/tokio/pull/144
+            // .native_endian()
+            .max_frame_length(EVENT_MAX_SIZE)
+            .length_field_length(mem::size_of::<u32>())
+            .length_field_offset(mem::size_of::<c_int>() + 2 * mem::size_of::<u32>())
+            .length_adjustment(mem::size_of::<ffi::inotify_event>() as isize)
+            .num_skip(0)
+            .new_read(file)
+            .map(move |buf| {
+                let (step, event) = Event::from_buffer(Arc::downgrade(&self.fd), &buf, buf.len());
+                assert_eq!(step, buf.len());
+                event.into_owned()
+            }))
     }
 
     /// Closes the inotify instance
@@ -558,96 +590,6 @@ fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
             buffer.as_mut_ptr() as *mut c_void,
             buffer.len() as size_t
         )
-    }
-}
-
-// Use this when 1.24 is available for use. We can use the hard-coded 16 due to Linux's ABI
-// guarantees.
-// const EVENT_MAX_SIZE: usize = mem::size_of::<ffi::inotify_event>() + (FILENAME_MAX as usize) + 1;
-const EVENT_MAX_SIZE: usize = 16 + (FILENAME_MAX as usize) + 1;
-
-/// Stream of inotify events
-///
-/// Allows for streaming events returned by [`Inotify::event_stream`].
-///
-/// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
-pub struct EventStream {
-    fd: Arc<RawFd>,
-    buffer: [u8; EVENT_MAX_SIZE],
-    pos: usize,
-    size: usize,
-}
-
-impl EventStream {
-    fn new(fd: Arc<RawFd>) -> Self {
-        EventStream {
-            fd: fd,
-            buffer: [0; EVENT_MAX_SIZE],
-            pos: 0,
-            size: 0,
-        }
-    }
-}
-
-impl Stream for EventStream {
-    type Item = EventOwned;
-    type Error = io::Error;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
-    {
-        if 0 < self.size {
-            let (step, event) = Event::from_buffer(Arc::downgrade(&self.fd), &self.buffer[self.pos..], self.size);
-            self.pos += step;
-            self.size -= step;
-
-            return Ok(Async::Ready(Some(event.into_owned())));
-        }
-
-        let num_bytes = read_into_buffer(*self.fd, &mut self.buffer);
-
-        let num_bytes = match num_bytes {
-            0 => {
-                return Ok(Async::Ready(None));
-            }
-            -1 => {
-                let error = io::Error::last_os_error();
-                if error.kind() == io::ErrorKind::WouldBlock {
-                    task::current().notify();
-                    return Ok(Async::NotReady);
-                }
-                else {
-                    return Err(error);
-                }
-            },
-            _ if num_bytes < 0 => {
-                panic!("{} {} {} {} {} {}",
-                    "Unexpected return value from `read`. Received a negative",
-                    "value that was not `-1`. According to the `read` man page",
-                    "this shouldn't happen, as either `-1` is returned on",
-                    "error, `0` on end-of-file, or a positive value for the",
-                    "number of bytes read. Returned value:",
-                    num_bytes,
-                );
-            }
-            _ => {
-                // The value returned by `read` should be `isize`. Let's quickly
-                // verify this with the following assignment, so we can be sure
-                // our cast below is valid.
-                let num_bytes: isize = num_bytes;
-
-                // The type returned by `read` is `isize`, and we've ruled out
-                // all negative values with the match arms above. This means we
-                // can safely cast to `usize`.
-                debug_assert!(num_bytes > 0);
-                num_bytes as usize
-            }
-        };
-
-        let (step, event) = Event::from_buffer(Arc::downgrade(&self.fd), &self.buffer, num_bytes);
-        self.pos = step;
-        self.size = num_bytes - step;
-
-        Ok(Async::Ready(Some(event.into_owned())))
     }
 }
 
