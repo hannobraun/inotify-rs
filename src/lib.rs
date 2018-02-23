@@ -74,6 +74,7 @@
 #[macro_use]
 extern crate bitflags;
 
+extern crate futures;
 extern crate libc;
 extern crate inotify_sys as ffi;
 
@@ -93,17 +94,21 @@ use std::os::unix::io::{
     RawFd,
 };
 use std::path::Path;
-use std::rc::{
-    Rc,
+use std::sync::{
+    Arc,
     Weak,
 };
 use std::slice;
 use std::ffi::{
     OsStr,
+    OsString,
     CString,
 };
 
+use futures::{Async, Poll, Stream};
+use futures::task;
 use libc::{
+    FILENAME_MAX,
     F_GETFL,
     F_SETFL,
     O_NONBLOCK,
@@ -125,7 +130,7 @@ use libc::{
 ///
 /// [top-level documentation]: index.html
 pub struct Inotify {
-    fd           : Rc<RawFd>,
+    fd           : Arc<RawFd>,
     close_on_drop: bool,
 }
 
@@ -184,7 +189,7 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  =>
                 Ok(Inotify {
-                    fd           : Rc::new(fd),
+                    fd           : Arc::new(fd),
                     close_on_drop: true,
                 }),
         }
@@ -271,7 +276,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{ id: wd, fd: Rc::downgrade(&self.fd) }),
+            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
         }
     }
 
@@ -418,13 +423,7 @@ impl Inotify {
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let num_bytes = unsafe {
-            ffi::read(
-                *self.fd,
-                buffer.as_mut_ptr() as *mut c_void,
-                buffer.len() as size_t
-            )
-        };
+        let num_bytes = read_into_buffer(*self.fd, buffer);
 
         let num_bytes = match num_bytes {
             0 => {
@@ -438,7 +437,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(Rc::downgrade(&self.fd), buffer, 0));
+                    return Ok(Events::new(Arc::downgrade(&self.fd), buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -468,7 +467,20 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(Rc::downgrade(&self.fd), buffer, num_bytes))
+        Ok(Events::new(Arc::downgrade(&self.fd), buffer, num_bytes))
+    }
+
+    /// Create a stream which collects events
+    ///
+    /// Returns a `Stream` over all events that are available. This stream is an
+    /// infinite source of events.
+    ///
+    /// Note that this stream is not optimal and always reschedules itself if a
+    /// read would block.
+    ///
+    /// An internal buffer which can hold the maximum possible size is used.
+    pub fn event_stream(&mut self) -> EventStream {
+        EventStream::new(self.fd.clone())
     }
 
     /// Closes the inotify instance
@@ -526,7 +538,7 @@ impl AsRawFd for Inotify {
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd           : Rc::new(fd),
+            fd           : Arc::new(fd),
             close_on_drop: true,
         }
     }
@@ -539,6 +551,105 @@ impl IntoRawFd for Inotify {
     }
 }
 
+fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
+    unsafe {
+        ffi::read(
+            fd,
+            buffer.as_mut_ptr() as *mut c_void,
+            buffer.len() as size_t
+        )
+    }
+}
+
+// Use this when 1.24 is available for use. We can use the hard-coded 16 due to Linux's ABI
+// guarantees.
+// const EVENT_MAX_SIZE: usize = mem::size_of::<ffi::inotify_event>() + (FILENAME_MAX as usize) + 1;
+const EVENT_MAX_SIZE: usize = 16 + (FILENAME_MAX as usize) + 1;
+
+/// Stream of inotify events
+///
+/// Allows for streaming events returned by [`Inotify::event_stream`].
+///
+/// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
+pub struct EventStream {
+    fd: Arc<RawFd>,
+    buffer: [u8; EVENT_MAX_SIZE],
+    pos: usize,
+    size: usize,
+}
+
+impl EventStream {
+    fn new(fd: Arc<RawFd>) -> Self {
+        EventStream {
+            fd: fd,
+            buffer: [0; EVENT_MAX_SIZE],
+            pos: 0,
+            size: 0,
+        }
+    }
+}
+
+impl Stream for EventStream {
+    type Item = EventOwned;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
+    {
+        if 0 < self.size {
+            let (step, event) = Event::from_buffer(Arc::downgrade(&self.fd), &self.buffer[self.pos..], self.size);
+            self.pos += step;
+            self.size -= step;
+
+            return Ok(Async::Ready(Some(event.into_owned())));
+        }
+
+        let num_bytes = read_into_buffer(*self.fd, &mut self.buffer);
+
+        let num_bytes = match num_bytes {
+            0 => {
+                return Ok(Async::Ready(None));
+            }
+            -1 => {
+                let error = io::Error::last_os_error();
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    task::current().notify();
+                    return Ok(Async::NotReady);
+                }
+                else {
+                    return Err(error);
+                }
+            },
+            _ if num_bytes < 0 => {
+                panic!("{} {} {} {} {} {}",
+                    "Unexpected return value from `read`. Received a negative",
+                    "value that was not `-1`. According to the `read` man page",
+                    "this shouldn't happen, as either `-1` is returned on",
+                    "error, `0` on end-of-file, or a positive value for the",
+                    "number of bytes read. Returned value:",
+                    num_bytes,
+                );
+            }
+            _ => {
+                // The value returned by `read` should be `isize`. Let's quickly
+                // verify this with the following assignment, so we can be sure
+                // our cast below is valid.
+                let num_bytes: isize = num_bytes;
+
+                // The type returned by `read` is `isize`, and we've ruled out
+                // all negative values with the match arms above. This means we
+                // can safely cast to `usize`.
+                debug_assert!(num_bytes > 0);
+                num_bytes as usize
+            }
+        };
+
+        let (step, event) = Event::from_buffer(Arc::downgrade(&self.fd), &self.buffer, num_bytes);
+        self.pos = step;
+        self.size = num_bytes - step;
+
+        Ok(Async::Ready(Some(event.into_owned())))
+    }
+}
 
 bitflags! {
     /// Describes a file system watch
@@ -868,82 +979,14 @@ impl<'a> Events<'a> {
 }
 
 impl<'a> Iterator for Events<'a> {
-    type Item = Event<'a>;
+    type Item = Event<&'a OsStr>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let event_size = mem::size_of::<ffi::inotify_event>();
-
         if self.pos < self.num_bytes {
-            // `self.buffer` contains the data that was read from the inotify
-            // instance. `self.num_bytes` is the number of bytes that were read.
-            // And as per the if condition above, `self.pos < self.num_bytes`,
-            // so our current position is still within the bounds of the buffer.
-            // This means, unless inotify lied to us, or we did something
-            // horribly wrong, there should be at least another event worth of
-            // bytes in the buffer.
-            debug_assert!(self.num_bytes - self.pos >= event_size);
+            let (step, event) = Event::from_buffer(self.fd.clone(), &self.buffer[self.pos..], self.num_bytes - self.pos);
+            self.pos += step;
 
-            let slice = &self.buffer[self.pos..];
-            let event = slice.as_ptr() as *const ffi::inotify_event;
-
-            // We have a pointer to an `inotify_event` that points into the
-            // buffer at offset `self.pos`. Since we know, as per the assertion
-            // above, that there are enough bytes for at least one more event in
-            // the buffer, dereferencing that pointer is safe.
-            let event = unsafe { *event };
-
-            // The call to `offset` is safe, as long as the starting and the
-            // resulting pointer are either in bounds or one byte past the end
-            // of an allocated object. As we've established above, there are
-            // enough bytes for the `inotify_event` left in the buffer. If there
-            // is anything else in the buffer, the new pointer will be within an
-            // allocated object. If there is nothing else, it will be exactly
-            // one byte past it.
-            let name = unsafe {
-                slice
-                    .as_ptr()
-                    .offset(event_size as isize)
-            };
-
-            // Right behind the `inotify_event` struct is the event's name. The
-            // name's length is given by `event.len`. There should always be
-            // enough bytes left in the buffer to fit the name.
-            let name_pos = self.pos + event_size;
-            debug_assert!(self.num_bytes - name_pos >= event.len as usize);
-
-            // As we've established above, the name fits within the buffer. This
-            // means that there's either an actual name in there, with enough
-            // bytes to make the created slice valid, or `event.len` is `0`, in
-            // which case the function call is safe in any case, as long as
-            // `name` is not null. We know it's not, because we created it from
-            // a slice right above.
-            let name = unsafe {
-                slice::from_raw_parts(
-                    name,
-                    event.len as usize,
-                )
-            };
-
-            // Remove trailing \0 bytes
-            //
-            // The events in the buffer are aligned, and `name` is filled up
-            // with '\0' up to the alignment boundary. Here we remove those
-            // additional bytes.
-            //
-            // The `unwrap` here is safe, because `splitn` always returns at
-            // least one result, even if the original slice contains no '\0'.
-            let name = name
-                .splitn(2, |b| b == &0u8)
-                .next()
-                .unwrap();
-
-            self.pos += event_size + event.len as usize;
-
-            Some(Event::new(
-                self.fd.clone(),
-                &event,
-                OsStr::from_bytes(name),
-            ))
+            Some(event)
         }
         else {
             None
@@ -963,7 +1006,7 @@ impl<'a> Iterator for Events<'a> {
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 #[derive(Clone, Debug)]
-pub struct Event<'a> {
+pub struct Event<S> {
     /// Identifies the watch this event originates from
     ///
     /// This [`WatchDescriptor`] is equal to the one that [`Inotify::add_watch`]
@@ -995,10 +1038,10 @@ pub struct Event<'a> {
     /// This field is set only if the subject of the event is a file in a
     /// watched directory. If the event concerns a file or directory that is
     /// watched directly, `name` will be `None`.
-    pub name: Option<&'a OsStr>,
+    pub name: Option<S>,
 }
 
-impl<'a> Event<'a> {
+impl<'a> Event<&'a OsStr> {
     fn new(fd: Weak<RawFd>, event: &ffi::inotify_event, name: &'a OsStr)
         -> Self
     {
@@ -1024,7 +1067,95 @@ impl<'a> Event<'a> {
             name  : name,
         }
     }
+
+    fn from_buffer(fd: Weak<RawFd>, buffer: &'a [u8], num_bytes: usize) -> (usize, Self) {
+        let event_size = mem::size_of::<ffi::inotify_event>();
+
+        // `self.buffer` contains the data that was read from the inotify
+        // instance. `self.num_bytes` is the number of bytes that were read.
+        // And as per the if condition above, `self.pos < self.num_bytes`,
+        // so our current position is still within the bounds of the buffer.
+        // This means, unless inotify lied to us, or we did something
+        // horribly wrong, there should be at least another event worth of
+        // bytes in the buffer.
+        debug_assert!(num_bytes >= event_size);
+
+        let slice = &buffer[..];
+        let event = slice.as_ptr() as *const ffi::inotify_event;
+
+        // We have a pointer to an `inotify_event` that points into the
+        // buffer at offset `self.pos`. Since we know, as per the assertion
+        // above, that there are enough bytes for at least one more event in
+        // the buffer, dereferencing that pointer is safe.
+        let event = unsafe { *event };
+
+        // The call to `offset` is safe, as long as the starting and the
+        // resulting pointer are either in bounds or one byte past the end
+        // of an allocated object. As we've established above, there are
+        // enough bytes for the `inotify_event` left in the buffer. If there
+        // is anything else in the buffer, the new pointer will be within an
+        // allocated object. If there is nothing else, it will be exactly
+        // one byte past it.
+        let name = unsafe {
+            slice
+                .as_ptr()
+                .offset(event_size as isize)
+        };
+
+        // Right behind the `inotify_event` struct is the event's name. The
+        // name's length is given by `event.len`. There should always be
+        // enough bytes left in the buffer to fit the name.
+        let name_pos = event_size;
+        debug_assert!(num_bytes - name_pos >= event.len as usize);
+
+        // As we've established above, the name fits within the buffer. This
+        // means that there's either an actual name in there, with enough
+        // bytes to make the created slice valid, or `event.len` is `0`, in
+        // which case the function call is safe in any case, as long as
+        // `name` is not null. We know it's not, because we created it from
+        // a slice right above.
+        let name = unsafe {
+            slice::from_raw_parts(
+                name,
+                event.len as usize,
+            )
+        };
+
+        // Remove trailing \0 bytes
+        //
+        // The events in the buffer are aligned, and `name` is filled up
+        // with '\0' up to the alignment boundary. Here we remove those
+        // additional bytes.
+        //
+        // The `unwrap` here is safe, because `splitn` always returns at
+        // least one result, even if the original slice contains no '\0'.
+        let name = name
+            .splitn(2, |b| b == &0u8)
+            .next()
+            .unwrap();
+
+        let step = event_size + event.len as usize;
+        let event = Event::new(
+            fd,
+            &event,
+            OsStr::from_bytes(name),
+        );
+
+        (step, event)
+    }
+
+    fn into_owned(&self) -> EventOwned {
+        Event {
+            wd: self.wd.clone(),
+            mask: self.mask,
+            cookie: self.cookie,
+            name: self.name.map(OsStr::to_os_string),
+        }
+    }
 }
+
+/// An owned version of `Event`
+pub type EventOwned = Event<OsString>;
 
 
 bitflags! {

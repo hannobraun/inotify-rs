@@ -4,6 +4,7 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
+extern crate futures;
 extern crate inotify;
 extern crate tempdir;
 
@@ -42,6 +43,29 @@ fn it_should_watch_a_file() {
     for event in events {
         assert_eq!(watch, event.wd);
         num_events += 1;
+    }
+    assert!(num_events > 0);
+}
+
+#[test]
+fn it_should_watch_a_file_async() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    let watch = inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
+
+    write_to(&mut file);
+
+    use futures::Stream;
+    let events = inotify.event_stream().take(1).wait().collect::<Vec<_>>();
+
+    let mut num_events = 0;
+    for event in events {
+        if let Ok(event) = event {
+            assert_eq!(watch, event.wd);
+            num_events += 1;
+        }
     }
     assert!(num_events > 0);
 }
