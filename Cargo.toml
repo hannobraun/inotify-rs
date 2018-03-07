@@ -27,6 +27,9 @@ bitflags    = "1"
 futures     = "0.1"
 inotify-sys = "0.1.1"
 libc        = "0.2"
+tokio-core  = "0.1"
+tokio-io    = "0.1"
+tokio-file-unix = "0.4"
 
 [dev-dependencies]
 tempdir = "0.3"
