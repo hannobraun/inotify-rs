@@ -86,6 +86,7 @@ use std::hash::{
 };
 use std::io;
 use std::io::ErrorKind;
+use std::ops::Deref;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::{
     AsRawFd,
@@ -97,6 +98,10 @@ use std::path::Path;
 use std::sync::{
     Arc,
     Weak,
+    atomic::{
+        AtomicBool,
+        Ordering,
+    },
 };
 use std::slice;
 use std::ffi::{
@@ -130,8 +135,7 @@ use libc::{
 ///
 /// [top-level documentation]: index.html
 pub struct Inotify {
-    fd           : Arc<RawFd>,
-    close_on_drop: bool,
+    fd: Arc<FdGuard>,
 }
 
 impl Inotify {
@@ -189,8 +193,10 @@ impl Inotify {
             -1 => Err(io::Error::last_os_error()),
             _  =>
                 Ok(Inotify {
-                    fd           : Arc::new(fd),
-                    close_on_drop: true,
+                    fd: Arc::new(FdGuard {
+                        fd,
+                        close_on_drop: AtomicBool::new(false),
+                    }),
                 }),
         }
     }
@@ -268,7 +274,7 @@ impl Inotify {
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                *self.fd,
+                **self.fd,
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -339,7 +345,7 @@ impl Inotify {
             ));
         }
 
-        let result = unsafe { ffi::inotify_rm_watch(*self.fd, wd.id) };
+        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
         match result {
             0  => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -366,11 +372,11 @@ impl Inotify {
         -> io::Result<Events<'a>>
     {
         unsafe {
-            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) & !O_NONBLOCK)
+            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) & !O_NONBLOCK)
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(*self.fd, F_SETFL, fcntl(*self.fd, F_GETFL) | O_NONBLOCK)
+            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) | O_NONBLOCK)
         };
 
         result
@@ -423,7 +429,7 @@ impl Inotify {
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let num_bytes = read_into_buffer(*self.fd, buffer);
+        let num_bytes = read_into_buffer(**self.fd, buffer);
 
         let num_bytes = match num_bytes {
             0 => {
@@ -480,20 +486,23 @@ impl Inotify {
     ///
     /// An internal buffer which can hold the maximum possible size is used.
     pub fn event_stream(&mut self) -> EventStream {
-        EventStream::new(self.fd.clone(), false)
+        EventStream::new(self.fd.clone())
     }
 
     /// Transform `self` into a `Stream` of events.
     ///
-    /// This behaves the same as [`event_stream`], but unlike that function,
-    /// the file descriptor will be closed when the _stream_ is dropped, rather
-    /// than when the `Inotify` instance that produced it is dropped. This
-    /// should be used when the `EventStream` should live longer than the
-    /// `Inotify`, such as when it is returned from a function.
+    /// This behaves the same as [`Inotify::event_stream`]. Since the file
+    /// descriptor management issues that necessitated this function have
+    /// been fixed, it should no longer be necessary, and
+    /// [`Inotify::event_stream`] should be used instead.
     ///
-    /// [`event_stream`]: struct.Inotify.html#method.event_stream
+    /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
+    #[deprecated(
+        since = "0.5.2",
+        note = "use [`Inotify::event_stream`](struct.Inotify.html#method.event_stream) instead."
+    )]
     pub fn into_event_stream(self) -> EventStream {
-        EventStream::new(Arc::new(self.into_raw_fd()), true)
+        EventStream::new(self.fd)
     }
 
 
@@ -522,46 +531,39 @@ impl Inotify {
     ///
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
-    pub fn close(mut self) -> io::Result<()> {
+    pub fn close(self) -> io::Result<()> {
         // `self` will be dropped when this method returns. The `Drop`
         // implementation will attempt to close the file descriptor again,
         // unless this flag here is cleared.
-        self.close_on_drop = false;
+        self.fd.close_on_drop.store(false, Ordering::SeqCst);
 
-        match unsafe { ffi::close(*self.fd) } {
+        match unsafe { ffi::close(**self.fd) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
     }
 }
 
-impl Drop for Inotify {
-    fn drop(&mut self) {
-        if self.close_on_drop {
-            unsafe { ffi::close(*self.fd); }
-        }
-    }
-}
-
 impl AsRawFd for Inotify {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        *self.fd
+        self.fd.as_raw_fd()
     }
 }
 
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd           : Arc::new(fd),
-            close_on_drop: true,
+            fd: Arc::new(FdGuard::from_raw_fd(fd))
         }
     }
 }
 
 impl IntoRawFd for Inotify {
-    fn into_raw_fd(mut self) -> RawFd {
-        self.close_on_drop = false;
-        *self.fd
+    #[inline]
+    fn into_raw_fd(self) -> RawFd {
+        self.fd.close_on_drop.store(false, Ordering::SeqCst);
+        self.fd.fd
     }
 }
 
@@ -576,6 +578,59 @@ fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
     }
 }
 
+/// A RAII guard around a `RawFd` that closes it automatically on drop.
+#[derive(Debug)]
+struct FdGuard {
+    fd: RawFd,
+    close_on_drop: AtomicBool,
+}
+
+impl Deref for FdGuard {
+    type Target = RawFd;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.fd
+    }
+}
+
+impl Drop for FdGuard {
+    fn drop(&mut self) {
+        if self.close_on_drop.load(Ordering::Relaxed) {
+            unsafe { ffi::close(self.fd); }
+        }
+    }
+}
+
+impl FromRawFd for FdGuard {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        FdGuard {
+            fd,
+            close_on_drop: AtomicBool::new(true),
+        }
+    }
+}
+
+impl IntoRawFd for FdGuard {
+    fn into_raw_fd(self) -> RawFd {
+        self.close_on_drop.store(false, Ordering::SeqCst);
+        self.fd
+    }
+}
+
+impl AsRawFd for FdGuard {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd
+    }
+}
+
+
+impl PartialEq for FdGuard {
+    fn eq(&self, other: &FdGuard) -> bool {
+        self.fd == other.fd
+    }
+}
+
 // Use this when 1.24 is available for use. We can use the hard-coded 16 due to Linux's ABI
 // guarantees.
 // const EVENT_MAX_SIZE: usize = mem::size_of::<ffi::inotify_event>() + (FILENAME_MAX as usize) + 1;
@@ -587,21 +642,19 @@ const EVENT_MAX_SIZE: usize = 16 + (FILENAME_MAX as usize) + 1;
 ///
 /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
 pub struct EventStream {
-    fd: Arc<RawFd>,
+    fd: Arc<FdGuard>,
     buffer: [u8; EVENT_MAX_SIZE],
     pos: usize,
     size: usize,
-    close_on_drop: bool,
 }
 
 impl EventStream {
-    fn new(fd: Arc<RawFd>, close_on_drop: bool) -> Self {
+    fn new(fd: Arc<FdGuard>) -> Self {
         EventStream {
-            fd: fd,
+            fd,
             buffer: [0; EVENT_MAX_SIZE],
             pos: 0,
             size: 0,
-            close_on_drop,
         }
     }
 }
@@ -620,7 +673,7 @@ impl Stream for EventStream {
             return Ok(Async::Ready(Some(event.into_owned())));
         }
 
-        let num_bytes = read_into_buffer(*self.fd, &mut self.buffer);
+        let num_bytes = read_into_buffer(**self.fd, &mut self.buffer);
 
         let num_bytes = match num_bytes {
             0 => {
@@ -665,14 +718,6 @@ impl Stream for EventStream {
         self.size = num_bytes - step;
 
         Ok(Async::Ready(Some(event.into_owned())))
-    }
-}
-
-impl Drop for EventStream {
-    fn drop(&mut self) {
-        if self.close_on_drop {
-            unsafe { ffi::close(*self.fd); }
-        }
     }
 }
 
@@ -950,7 +995,7 @@ bitflags! {
 #[derive(Clone, Debug)]
 pub struct WatchDescriptor{
     id: c_int,
-    fd: Weak<RawFd>,
+    fd: Weak<FdGuard>,
 }
 
 impl Eq for WatchDescriptor {}
@@ -986,14 +1031,14 @@ impl Hash for WatchDescriptor {
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 pub struct Events<'a> {
-    fd       : Weak<RawFd>,
+    fd       : Weak<FdGuard>,
     buffer   : &'a [u8],
     num_bytes: usize,
     pos      : usize,
 }
 
 impl<'a> Events<'a> {
-    fn new(fd: Weak<RawFd>, buffer: &'a [u8], num_bytes: usize) -> Self {
+    fn new(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd       : fd,
             buffer   : buffer,
@@ -1067,7 +1112,7 @@ pub struct Event<S> {
 }
 
 impl<'a> Event<&'a OsStr> {
-    fn new(fd: Weak<RawFd>, event: &ffi::inotify_event, name: &'a OsStr)
+    fn new(fd: Weak<FdGuard>, event: &ffi::inotify_event, name: &'a OsStr)
         -> Self
     {
         let mask = EventMask::from_bits(event.mask)
@@ -1075,7 +1120,7 @@ impl<'a> Event<&'a OsStr> {
 
         let wd = ::WatchDescriptor {
             id: event.wd,
-            fd: fd,
+            fd,
         };
 
         let name = if name == "" {
@@ -1086,14 +1131,14 @@ impl<'a> Event<&'a OsStr> {
         };
 
         Event {
-            wd    : wd,
-            mask  : mask,
+            wd,
+            mask,
             cookie: event.cookie,
-            name  : name,
+            name,
         }
     }
 
-    fn from_buffer(fd: Weak<RawFd>, buffer: &'a [u8], num_bytes: usize) -> (usize, Self) {
+    fn from_buffer(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize) -> (usize, Self) {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         // `self.buffer` contains the data that was read from the inotify
