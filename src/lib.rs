@@ -480,8 +480,22 @@ impl Inotify {
     ///
     /// An internal buffer which can hold the maximum possible size is used.
     pub fn event_stream(&mut self) -> EventStream {
-        EventStream::new(self.fd.clone())
+        EventStream::new(self.fd.clone(), false)
     }
+
+    /// Transform `self` into a `Stream` of events.
+    ///
+    /// This behaves the same as [`event_stream`], but unlike that function,
+    /// the file descriptor will be closed when the _stream_ is dropped, rather
+    /// than when the `Inotify` instance that produced it is dropped. This
+    /// should be used when the `EventStream` should live longer than the
+    /// `Inotify`, such as when it is returned from a function.
+    ///
+    /// [`event_stream`]: struct.Inotify.html#method.event_stream
+    pub fn into_event_stream(self) -> EventStream {
+        EventStream::new(Arc::new(self.into_raw_fd()), true)
+    }
+
 
     /// Closes the inotify instance
     ///
@@ -551,6 +565,7 @@ impl IntoRawFd for Inotify {
     }
 }
 
+
 fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
     unsafe {
         ffi::read(
@@ -576,15 +591,17 @@ pub struct EventStream {
     buffer: [u8; EVENT_MAX_SIZE],
     pos: usize,
     size: usize,
+    close_on_drop: bool,
 }
 
 impl EventStream {
-    fn new(fd: Arc<RawFd>) -> Self {
+    fn new(fd: Arc<RawFd>, close_on_drop: bool) -> Self {
         EventStream {
             fd: fd,
             buffer: [0; EVENT_MAX_SIZE],
             pos: 0,
             size: 0,
+            close_on_drop,
         }
     }
 }
@@ -648,6 +665,14 @@ impl Stream for EventStream {
         self.size = num_bytes - step;
 
         Ok(Async::Ready(Some(event.into_owned())))
+    }
+}
+
+impl Drop for EventStream {
+    fn drop(&mut self) {
+        if self.close_on_drop {
+            unsafe { ffi::close(*self.fd); }
+        }
     }
 }
 
