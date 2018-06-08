@@ -596,7 +596,7 @@ impl Deref for FdGuard {
 
 impl Drop for FdGuard {
     fn drop(&mut self) {
-        if self.close_on_drop.load(Ordering::Relaxed) {
+        if self.close_on_drop.load(Ordering::Release) {
             unsafe { ffi::close(self.fd); }
         }
     }
