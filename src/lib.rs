@@ -505,7 +505,6 @@ impl Inotify {
         EventStream::new(self.fd)
     }
 
-
     /// Closes the inotify instance
     ///
     /// Closes the file descriptor referring to the inotify instance. The user
@@ -532,10 +531,11 @@ impl Inotify {
     /// [`Inotify`]: struct.Inotify.html
     /// [`close`]: ../libc/fn.close.html
     pub fn close(self) -> io::Result<()> {
-        // `self` will be dropped when this method returns. The `Drop`
-        // implementation will attempt to close the file descriptor again,
-        // unless this flag here is cleared.
-        self.fd.close_on_drop.store(false, Ordering::SeqCst);
+        // `self` will be dropped when this method returns. If this is the only
+        // owner of `fd`, the `Arc` will also be dropped. The `Drop`
+        // implementation for `FdGuard` will attempt to close the file descriptor
+        // again, unless this flag here is cleared.
+        self.fd.should_not_close();
 
         match unsafe { ffi::close(**self.fd) } {
             0 => Ok(()),
@@ -562,7 +562,7 @@ impl FromRawFd for Inotify {
 impl IntoRawFd for Inotify {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.fd.close_on_drop.store(false, Ordering::SeqCst);
+        self.fd.should_not_close();
         self.fd.fd
     }
 }
@@ -583,6 +583,22 @@ fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
 struct FdGuard {
     fd: RawFd,
     close_on_drop: AtomicBool,
+}
+
+impl FdGuard {
+
+    /// Indicate that the wrapped file descriptor should _not_ be closed
+    /// when the guard is dropped.
+    ///
+    /// This should be called in cases where ownership of the wrapped file
+    /// descriptor has been "moved" out of the guard.
+    ///
+    /// This is factored out into a separate function to ensure that it's
+    /// always used consistently.
+    #[inline]
+    fn should_not_close(&self) {
+        self.close_on_drop.store(false, Ordering::Acquire);
+    }
 }
 
 impl Deref for FdGuard {
@@ -613,7 +629,7 @@ impl FromRawFd for FdGuard {
 
 impl IntoRawFd for FdGuard {
     fn into_raw_fd(self) -> RawFd {
-        self.close_on_drop.store(false, Ordering::SeqCst);
+        self.should_not_close();
         self.fd
     }
 }
