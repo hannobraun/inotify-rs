@@ -489,22 +489,6 @@ impl Inotify {
         EventStream::new(self.fd.clone())
     }
 
-    /// Transform `self` into a `Stream` of events.
-    ///
-    /// This behaves the same as [`Inotify::event_stream`]. Since the file
-    /// descriptor management issues that necessitated this function have
-    /// been fixed, it should no longer be necessary, and
-    /// [`Inotify::event_stream`] should be used instead.
-    ///
-    /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
-    #[deprecated(
-        since = "0.5.2",
-        note = "use [`Inotify::event_stream`](struct.Inotify.html#method.event_stream) instead."
-    )]
-    pub fn into_event_stream(self) -> EventStream {
-        EventStream::new(self.fd)
-    }
-
     /// Closes the inotify instance
     ///
     /// Closes the file descriptor referring to the inotify instance. The user
