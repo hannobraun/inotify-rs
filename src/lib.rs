@@ -581,7 +581,7 @@ impl FdGuard {
     /// always used consistently.
     #[inline]
     fn should_not_close(&self) {
-        self.close_on_drop.store(false, Ordering::Acquire);
+        self.close_on_drop.store(false, Ordering::Release);
     }
 }
 
@@ -596,7 +596,7 @@ impl Deref for FdGuard {
 
 impl Drop for FdGuard {
     fn drop(&mut self) {
-        if self.close_on_drop.load(Ordering::Release) {
+        if self.close_on_drop.load(Ordering::Acquire) {
             unsafe { ffi::close(self.fd); }
         }
     }
