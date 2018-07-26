@@ -492,12 +492,13 @@ impl Inotify {
     /// Returns a `Stream` over all events that are available. This stream is an
     /// infinite source of events.
     ///
-    /// Note that this stream is not optimal and always reschedules itself if a
-    /// read would block.
+    /// An internal buffer which can hold the largest possible event is used.
     ///
-    /// An internal buffer which can hold the maximum possible size is used.
+    /// The event stream will be associated with the default reactor. See
+    /// [`Inotify::event_stream_with_handle`], if you need more control over the
+    /// reactor used.
     ///
-    /// The event stream will be associated with the default reactor.
+    /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
     pub fn event_stream(&mut self) -> EventStream {
         EventStream::new(self.fd.clone())
