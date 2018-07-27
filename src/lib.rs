@@ -367,17 +367,14 @@ impl Inotify {
 
     /// Waits until events are available, then returns them
     ///
-    /// This method will block the current thread until at least one event is
-    /// available. If this is not desirable, please consider [`read_events`].
+    /// Blocks the current thread until at least one event is available. If this
+    /// is not desirable, please consider [`Inotify::read_events`].
     ///
-    /// The documentation of [`read_events`] has additional about this call.
+    /// This method calls [`Inotify::read_events`] internally and behaves
+    /// essentially the same, apart from the blocking behavior. Please refer to
+    /// the documentation of [`Inotify::read_events`] for more information.
     ///
-    /// # Errors
-    ///
-    /// Directly returns the error from the call to [`read`], without adding any
-    /// error conditions of its own.
-    ///
-    /// [`read_events`]: struct.Inotify.html#method.read_events
+    /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
     /// [`read`]: ../libc/fn.read.html
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
@@ -409,13 +406,14 @@ impl Inotify {
     ///
     /// # Errors
     ///
-    /// This function directly returns all errors from the call to [`read`]. In
-    /// addition, [`ErrorKind`]`::UnexpectedEof` is returned, if the call to
+    /// This function directly returns all errors from the call to [`read`]
+    /// (except EGAIN/EWOULDBLOCK, which result in an empty iterator). In
+    /// addition, [`ErrorKind::UnexpectedEof`] is returned, if the call to
     /// [`read`] returns `0`, signaling end-of-file.
     ///
     /// If `buffer` is too small, this will result in an error with
-    /// [`ErrorKind`]`::InvalidInput`. On very old Linux kernels,
-    /// [`ErrorKind`]`::UnexpectedEof` will be returned instead.
+    /// [`ErrorKind::InvalidInput`]. On very old Linux kernels,
+    /// [`ErrorKind::UnexpectedEof`] will be returned instead.
     ///
     /// # Examples
     ///
@@ -436,7 +434,8 @@ impl Inotify {
     ///
     /// [`read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
     /// [`read`]: ../libc/fn.read.html
-    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
+    /// [`ErrorKind::UnexpectedEof`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.UnexpectedEof
+    /// [`ErrorKind::InvalidInput`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidInput
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
@@ -492,12 +491,13 @@ impl Inotify {
     /// Returns a `Stream` over all events that are available. This stream is an
     /// infinite source of events.
     ///
-    /// Note that this stream is not optimal and always reschedules itself if a
-    /// read would block.
+    /// An internal buffer which can hold the largest possible event is used.
     ///
-    /// An internal buffer which can hold the maximum possible size is used.
+    /// The event stream will be associated with the default reactor. See
+    /// [`Inotify::event_stream_with_handle`], if you need more control over the
+    /// reactor used.
     ///
-    /// The event stream will be associated with the default reactor.
+    /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
     pub fn event_stream(&mut self) -> EventStream {
         EventStream::new(self.fd.clone())
