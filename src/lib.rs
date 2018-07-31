@@ -116,7 +116,6 @@ use std::ffi::{
 };
 
 use libc::{
-    FILENAME_MAX,
     F_GETFL,
     F_SETFL,
     O_NONBLOCK,
@@ -499,8 +498,10 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
-    pub fn event_stream(&mut self) -> EventStream {
-        EventStream::new(self.fd.clone())
+    pub fn event_stream<'buffer>(&mut self, buffer: &'buffer mut [u8])
+        -> EventStream<'buffer>
+    {
+        EventStream::new(self.fd.clone(), buffer)
     }
 
     /// Create a stream which collects events, associated with the given
@@ -512,10 +513,13 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
     #[cfg(feature = "stream")]
-    pub fn event_stream_with_handle(&mut self, handle: &Handle)
-                                    -> io::Result<EventStream>
+    pub fn event_stream_with_handle<'buffer>(&mut self,
+        handle: &Handle,
+        buffer: &'buffer mut [u8],
+    )
+        -> io::Result<EventStream<'buffer>>
     {
-        EventStream::new_with_handle(self.fd.clone(), handle)
+        EventStream::new_with_handle(self.fd.clone(), handle, buffer)
     }
 
     /// Closes the inotify instance
