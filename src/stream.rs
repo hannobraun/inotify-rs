@@ -24,41 +24,42 @@ use std::{
 /// Allows for streaming events returned by [`Inotify::event_stream`].
 ///
 /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
-pub struct EventStream {
+pub struct EventStream<'buffer> {
     fd: PollEvented<EventedFdGuard>,
-    buffer: [u8; EVENT_MAX_SIZE],
+    buffer: &'buffer mut [u8],
     pos: usize,
     size: usize,
 }
 
-// Use this when 1.24 is available for use. We can use the hard-coded 16 due to Linux's ABI
-// guarantees.
-// const EVENT_MAX_SIZE: usize = mem::size_of::<ffi::inotify_event>() + (FILENAME_MAX as usize) + 1;
-const EVENT_MAX_SIZE: usize = 16 + (FILENAME_MAX as usize) + 1;
-
-impl EventStream {
+impl<'buffer> EventStream<'buffer> {
     /// Returns a new `EventStream` associated with the default reactor.
-    pub(crate) fn new(fd: Arc<FdGuard>) -> Self {
+    pub(crate) fn new(fd: Arc<FdGuard>, buffer: &'buffer mut [u8]) -> Self {
         EventStream {
             fd: PollEvented::new(EventedFdGuard(fd)),
-            buffer: [0; EVENT_MAX_SIZE],
+            buffer: buffer,
             pos: 0,
             size: 0,
         }
     }
 
     /// Returns a new `EventStream` associated with the specified reactor.
-     pub(crate) fn new_with_handle(fd: Arc<FdGuard>, handle: &Handle) -> io::Result<Self> {
+     pub(crate) fn new_with_handle(
+        fd    : Arc<FdGuard>,
+        handle: &Handle,
+        buffer: &'buffer mut [u8],
+    )
+        -> io::Result<Self>
+    {
         Ok(EventStream {
             fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
-            buffer: [0; EVENT_MAX_SIZE],
+            buffer: buffer,
             pos: 0,
             size: 0,
         })
     }
 }
 
-impl Stream for EventStream {
+impl<'buffer> Stream for EventStream<'buffer> {
     type Item = EventOwned;
     type Error = io::Error;
 

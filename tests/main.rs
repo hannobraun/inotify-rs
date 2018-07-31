@@ -57,8 +57,14 @@ fn it_should_watch_a_file_async() {
 
     write_to(&mut file);
 
+    let mut buffer = [0; 1024];
+
     use futures::Stream;
-    let events = inotify.event_stream().take(1).wait().collect::<Vec<_>>();
+    let events = inotify
+        .event_stream(&mut buffer)
+        .take(1)
+        .wait()
+        .collect::<Vec<_>>();
 
     let mut num_events = 0;
     for event in events {
