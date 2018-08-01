@@ -84,6 +84,10 @@ extern crate inotify_sys as ffi;
 #[cfg(feature = "stream")]
 extern crate tokio_reactor;
 
+
+mod fd_guard;
+
+
 use std::mem;
 use std::hash::{
     Hash,
@@ -103,10 +107,7 @@ use std::path::Path;
 use std::sync::{
     Arc,
     Weak,
-    atomic::{
-        AtomicBool,
-        Ordering,
-    },
+    atomic::AtomicBool,
 };
 use std::slice;
 use std::ffi::{
@@ -133,6 +134,8 @@ mod stream;
 
 #[cfg(feature = "stream")]
 pub use self::stream::EventStream;
+
+use fd_guard::FdGuard;
 
 /// Idiomatic Rust wrapper around Linux's inotify API
 ///
@@ -594,73 +597,6 @@ fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
     }
 }
 
-/// A RAII guard around a `RawFd` that closes it automatically on drop.
-#[derive(Debug)]
-struct FdGuard {
-    fd: RawFd,
-    close_on_drop: AtomicBool,
-}
-
-impl FdGuard {
-
-    /// Indicate that the wrapped file descriptor should _not_ be closed
-    /// when the guard is dropped.
-    ///
-    /// This should be called in cases where ownership of the wrapped file
-    /// descriptor has been "moved" out of the guard.
-    ///
-    /// This is factored out into a separate function to ensure that it's
-    /// always used consistently.
-    #[inline]
-    fn should_not_close(&self) {
-        self.close_on_drop.store(false, Ordering::Release);
-    }
-}
-
-impl Deref for FdGuard {
-    type Target = RawFd;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.fd
-    }
-}
-
-impl Drop for FdGuard {
-    fn drop(&mut self) {
-        if self.close_on_drop.load(Ordering::Acquire) {
-            unsafe { ffi::close(self.fd); }
-        }
-    }
-}
-
-impl FromRawFd for FdGuard {
-    unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        FdGuard {
-            fd,
-            close_on_drop: AtomicBool::new(true),
-        }
-    }
-}
-
-impl IntoRawFd for FdGuard {
-    fn into_raw_fd(self) -> RawFd {
-        self.should_not_close();
-        self.fd
-    }
-}
-
-impl AsRawFd for FdGuard {
-    fn as_raw_fd(&self) -> RawFd {
-        self.fd
-    }
-}
-
-impl PartialEq for FdGuard {
-    fn eq(&self, other: &FdGuard) -> bool {
-        self.fd == other.fd
-    }
-}
 
 bitflags! {
     /// Describes a file system watch
