@@ -87,6 +87,7 @@ extern crate tokio_reactor;
 
 mod events;
 mod fd_guard;
+mod util;
 mod watches;
 
 
@@ -124,8 +125,6 @@ use libc::{
     F_SETFL,
     O_NONBLOCK,
     fcntl,
-    c_void,
-    size_t,
 };
 
 #[cfg(feature = "stream")]
@@ -138,6 +137,7 @@ mod stream;
 pub use self::stream::EventStream;
 
 use fd_guard::FdGuard;
+use util::read_into_buffer;
 
 
 /// Idiomatic Rust wrapper around Linux's inotify API
@@ -587,16 +587,5 @@ impl IntoRawFd for Inotify {
     fn into_raw_fd(self) -> RawFd {
         self.fd.should_not_close();
         self.fd.fd
-    }
-}
-
-
-fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
-    unsafe {
-        ffi::read(
-            fd,
-            buffer.as_mut_ptr() as *mut c_void,
-            buffer.len() as size_t
-        )
     }
 }
