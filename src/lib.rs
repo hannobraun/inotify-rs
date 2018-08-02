@@ -1,6 +1,3 @@
-#![deny(missing_docs)]
-#![deny(warnings)]
-
 //! Idiomatic inotify wrapper for the Rust programming language
 //!
 //! # About
@@ -67,6 +64,10 @@
 //! [inotify]: https://en.wikipedia.org/wiki/Inotify
 //! [`Inotify`]: struct.Inotify.html
 //! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
+
+
+#![deny(missing_docs)]
+#![deny(warnings)]
 
 
 #[macro_use]
