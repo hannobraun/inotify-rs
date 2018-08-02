@@ -16,8 +16,13 @@ use tokio_reactor::{Handle, PollEvented};
 
 use std::{
     io,
+    ops::Deref,
     sync::Arc,
 };
+
+use fd_guard::FdGuard;
+use util::read_into_buffer;
+
 
 /// Stream of inotify events
 ///
