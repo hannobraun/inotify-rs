@@ -1,5 +1,3 @@
-#![crate_name = "inotify"]
-#![crate_type = "lib"]
 #![deny(missing_docs)]
 #![deny(warnings)]
 
