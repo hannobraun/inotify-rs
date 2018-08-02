@@ -1,11 +1,10 @@
 use std::os::unix::io::RawFd;
 
+use inotify_sys as ffi;
 use libc::{
     c_void,
     size_t,
 };
-
-use ffi;
 
 
 pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {

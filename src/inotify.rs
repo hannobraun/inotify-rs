@@ -15,7 +15,7 @@ use std::{
     }
 };
 
-use ffi;
+use inotify_sys as ffi;
 use libc::{
     F_GETFL,
     F_SETFL,

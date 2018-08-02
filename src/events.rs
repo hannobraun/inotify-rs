@@ -9,7 +9,7 @@ use std::{
     sync::Weak,
 };
 
-use ffi;
+use inotify_sys as ffi;
 
 use fd_guard::FdGuard;
 use watches::WatchDescriptor;

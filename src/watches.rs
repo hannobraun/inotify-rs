@@ -7,8 +7,9 @@ use std::{
     sync::Weak,
 };
 
+use inotify_sys as ffi;
+
 use fd_guard::FdGuard;
-use ffi;
 
 
 bitflags! {

@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use ffi;
+use inotify_sys as ffi;
 
 
 /// A RAII guard around a `RawFd` that closes it automatically on drop.

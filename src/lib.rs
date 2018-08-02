@@ -79,7 +79,7 @@ extern crate bitflags;
 extern crate futures;
 
 extern crate libc;
-extern crate inotify_sys as ffi;
+extern crate inotify_sys;
 
 #[cfg(feature = "stream")]
 extern crate tokio_reactor;
