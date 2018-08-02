@@ -73,12 +73,12 @@
 #[macro_use]
 extern crate bitflags;
 
+extern crate libc;
+extern crate inotify_sys;
+
 #[cfg(feature = "stream")]
 #[macro_use]
 extern crate futures;
-
-extern crate libc;
-extern crate inotify_sys;
 
 #[cfg(feature = "stream")]
 extern crate tokio_reactor;
@@ -89,6 +89,9 @@ mod fd_guard;
 mod inotify;
 mod util;
 mod watches;
+
+#[cfg(feature = "stream")]
+mod stream;
 
 
 pub use events::{
@@ -102,9 +105,6 @@ pub use watches::{
     WatchDescriptor,
     WatchMask,
 };
-
-#[cfg(feature = "stream")]
-mod stream;
 
 #[cfg(feature = "stream")]
 pub use self::stream::EventStream;

@@ -1,18 +1,6 @@
 extern crate mio;
 extern crate tokio_io;
 
-use futures::{Async, Poll, Stream};
-
-use super::*;
-use self::{
-    mio::{
-        event::Evented,
-        unix::EventedFd,
-    },
-    tokio_io::AsyncRead,
-};
-
-use tokio_reactor::{Handle, PollEvented};
 
 use std::{
     io,
@@ -20,6 +8,27 @@ use std::{
     sync::Arc,
 };
 
+use self::{
+    mio::{
+        event::Evented,
+        unix::EventedFd,
+    },
+    tokio_io::AsyncRead,
+};
+use futures::{
+    Async,
+    Poll,
+    Stream,
+};
+use tokio_reactor::{
+    Handle,
+    PollEvented,
+};
+
+use events::{
+    Event,
+    EventOwned,
+};
 use fd_guard::FdGuard;
 use util::read_into_buffer;
 
