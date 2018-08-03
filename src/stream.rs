@@ -1,9 +1,13 @@
 extern crate mio;
 extern crate tokio_io;
 
-use futures::{Async, Poll, Stream};
 
-use super::*;
+use std::{
+    io,
+    ops::Deref,
+    sync::Arc,
+};
+
 use self::{
     mio::{
         event::Evented,
@@ -11,13 +15,23 @@ use self::{
     },
     tokio_io::AsyncRead,
 };
-
-use tokio_reactor::{Handle, PollEvented};
-
-use std::{
-    io,
-    sync::Arc,
+use futures::{
+    Async,
+    Poll,
+    Stream,
 };
+use tokio_reactor::{
+    Handle,
+    PollEvented,
+};
+
+use events::{
+    Event,
+    EventOwned,
+};
+use fd_guard::FdGuard;
+use util::read_into_buffer;
+
 
 /// Stream of inotify events
 ///
