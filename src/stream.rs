@@ -83,7 +83,6 @@ impl<'buffer> Stream for EventStream<'buffer> {
             let (step, event) = Event::from_buffer(
                 Arc::downgrade(self.fd.get_ref()),
                 &self.buffer[self.pos..],
-                self.size,
             );
             self.pos += step;
             self.size -= step;
@@ -100,7 +99,6 @@ impl<'buffer> Stream for EventStream<'buffer> {
         let (step, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
             &self.buffer,
-            num_bytes,
         );
         self.pos = step;
         self.size = num_bytes - step;
