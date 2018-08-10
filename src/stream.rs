@@ -42,7 +42,7 @@ pub struct EventStream<'buffer> {
     fd: PollEvented<EventedFdGuard>,
     buffer: &'buffer mut [u8],
     pos: usize,
-    size: usize,
+    unused_bytes: usize,
 }
 
 impl<'buffer> EventStream<'buffer> {
@@ -52,7 +52,7 @@ impl<'buffer> EventStream<'buffer> {
             fd: PollEvented::new(EventedFdGuard(fd)),
             buffer: buffer,
             pos: 0,
-            size: 0,
+            unused_bytes: 0,
         }
     }
 
@@ -68,7 +68,7 @@ impl<'buffer> EventStream<'buffer> {
             fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
             buffer: buffer,
             pos: 0,
-            size: 0,
+            unused_bytes: 0,
         })
     }
 }
@@ -79,13 +79,13 @@ impl<'buffer> Stream for EventStream<'buffer> {
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
     {
-        if 0 < self.size {
+        if 0 < self.unused_bytes {
             let (step, event) = Event::from_buffer(
                 Arc::downgrade(self.fd.get_ref()),
                 &self.buffer[self.pos..],
             );
             self.pos += step;
-            self.size -= step;
+            self.unused_bytes -= step;
 
             return Ok(Async::Ready(Some(event.into_owned())));
         }
@@ -101,7 +101,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
             &self.buffer,
         );
         self.pos = step;
-        self.size = bytes_read - step;
+        self.unused_bytes = bytes_read - step;
 
         Ok(Async::Ready(Some(event.into_owned())))
     }
