@@ -41,7 +41,7 @@ use util::read_into_buffer;
 pub struct EventStream<'buffer> {
     fd: PollEvented<EventedFdGuard>,
     buffer: &'buffer mut [u8],
-    pos: usize,
+    buffer_pos: usize,
     unused_bytes: usize,
 }
 
@@ -51,7 +51,7 @@ impl<'buffer> EventStream<'buffer> {
         EventStream {
             fd: PollEvented::new(EventedFdGuard(fd)),
             buffer: buffer,
-            pos: 0,
+            buffer_pos: 0,
             unused_bytes: 0,
         }
     }
@@ -67,7 +67,7 @@ impl<'buffer> EventStream<'buffer> {
         Ok(EventStream {
             fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
             buffer: buffer,
-            pos: 0,
+            buffer_pos: 0,
             unused_bytes: 0,
         })
     }
@@ -81,7 +81,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
     {
         if self.unused_bytes == 0 {
             // Nothing usable in buffer. Need to reset and fill buffer.
-            self.pos          = 0;
+            self.buffer_pos   = 0;
             self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
         }
 
@@ -96,9 +96,9 @@ impl<'buffer> Stream for EventStream<'buffer> {
         // least one event in there and can call `from_buffer` to take it out.
         let (step, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
-            &self.buffer[self.pos..],
+            &self.buffer[self.buffer_pos..],
         );
-        self.pos          += step;
+        self.buffer_pos   += step;
         self.unused_bytes -= step;
 
         Ok(Async::Ready(Some(event.into_owned())))
