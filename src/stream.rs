@@ -94,12 +94,12 @@ impl<'buffer> Stream for EventStream<'buffer> {
         // We have bytes in the buffer. inotify doesn't put partial events in
         // there, and we only take complete events out. That means we have at
         // least one event in there and can call `from_buffer` to take it out.
-        let (step, event) = Event::from_buffer(
+        let (bytes_consumed, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
             &self.buffer[self.buffer_pos..],
         );
-        self.buffer_pos   += step;
-        self.unused_bytes -= step;
+        self.buffer_pos   += bytes_consumed;
+        self.unused_bytes -= bytes_consumed;
 
         Ok(Async::Ready(Some(event.into_owned())))
     }
