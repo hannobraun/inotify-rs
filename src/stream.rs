@@ -90,7 +90,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
             return Ok(Async::Ready(Some(event.into_owned())));
         }
 
-        let num_bytes = try_ready!(self.fd.poll_read(&mut self.buffer)) as usize;
+        let num_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
 
         if num_bytes == 0 {
             return Ok(Async::Ready(None));
