@@ -90,9 +90,9 @@ impl<'buffer> Stream for EventStream<'buffer> {
             return Ok(Async::Ready(Some(event.into_owned())));
         }
 
-        let num_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
+        let bytes_read = try_ready!(self.fd.poll_read(&mut self.buffer));
 
-        if num_bytes == 0 {
+        if bytes_read == 0 {
             return Ok(Async::Ready(None));
         }
 
@@ -101,7 +101,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
             &self.buffer,
         );
         self.pos = step;
-        self.size = num_bytes - step;
+        self.size = bytes_read - step;
 
         Ok(Async::Ready(Some(event.into_owned())))
     }
