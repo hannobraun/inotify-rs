@@ -79,29 +79,27 @@ impl<'buffer> Stream for EventStream<'buffer> {
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
     {
-        if 0 < self.unused_bytes {
-            let (step, event) = Event::from_buffer(
-                Arc::downgrade(self.fd.get_ref()),
-                &self.buffer[self.pos..],
-            );
-            self.pos += step;
-            self.unused_bytes -= step;
-
-            return Ok(Async::Ready(Some(event.into_owned())));
+        if self.unused_bytes == 0 {
+            // Nothing usable in buffer. Need to reset and fill buffer.
+            self.pos          = 0;
+            self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
         }
 
-        let bytes_read = try_ready!(self.fd.poll_read(&mut self.buffer));
-
-        if bytes_read == 0 {
+        if self.unused_bytes == 0 {
+            // Still nothing usable in buffer. That means the last read came up
+            // with nothing and we need to return.
             return Ok(Async::Ready(None));
         }
 
+        // We have bytes in the buffer. inotify doesn't put partial events in
+        // there, and we only take complete events out. That means we have at
+        // least one event in there and can call `from_buffer` to take it out.
         let (step, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
-            &self.buffer,
+            &self.buffer[self.pos..],
         );
-        self.pos = step;
-        self.unused_bytes = bytes_read - step;
+        self.pos          += step;
+        self.unused_bytes -= step;
 
         Ok(Async::Ready(Some(event.into_owned())))
     }
