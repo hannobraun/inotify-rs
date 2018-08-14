@@ -86,8 +86,8 @@ impl<'buffer> Stream for EventStream<'buffer> {
         }
 
         if self.unused_bytes == 0 {
-            // Still nothing usable in buffer. That means the last read came up
-            // with nothing and we need to return.
+            // The previous read returned `0` signalling end-of-file. Let's
+            // signal end-of-stream to the caller.
             return Ok(Async::Ready(None));
         }
 
