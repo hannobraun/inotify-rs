@@ -41,8 +41,8 @@ use util::read_into_buffer;
 pub struct EventStream<'buffer> {
     fd: PollEvented<EventedFdGuard>,
     buffer: &'buffer mut [u8],
-    pos: usize,
-    size: usize,
+    buffer_pos: usize,
+    unused_bytes: usize,
 }
 
 impl<'buffer> EventStream<'buffer> {
@@ -51,8 +51,8 @@ impl<'buffer> EventStream<'buffer> {
         EventStream {
             fd: PollEvented::new(EventedFdGuard(fd)),
             buffer: buffer,
-            pos: 0,
-            size: 0,
+            buffer_pos: 0,
+            unused_bytes: 0,
         }
     }
 
@@ -67,8 +67,8 @@ impl<'buffer> EventStream<'buffer> {
         Ok(EventStream {
             fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
             buffer: buffer,
-            pos: 0,
-            size: 0,
+            buffer_pos: 0,
+            unused_bytes: 0,
         })
     }
 }
@@ -79,31 +79,27 @@ impl<'buffer> Stream for EventStream<'buffer> {
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
     {
-        if 0 < self.size {
-            let (step, event) = Event::from_buffer(
-                Arc::downgrade(self.fd.get_ref()),
-                &self.buffer[self.pos..],
-                self.size,
-            );
-            self.pos += step;
-            self.size -= step;
-
-            return Ok(Async::Ready(Some(event.into_owned())));
+        if self.unused_bytes == 0 {
+            // Nothing usable in buffer. Need to reset and fill buffer.
+            self.buffer_pos   = 0;
+            self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
         }
 
-        let num_bytes = try_ready!(self.fd.poll_read(&mut self.buffer)) as usize;
-
-        if num_bytes == 0 {
+        if self.unused_bytes == 0 {
+            // The previous read returned `0` signalling end-of-file. Let's
+            // signal end-of-stream to the caller.
             return Ok(Async::Ready(None));
         }
 
-        let (step, event) = Event::from_buffer(
+        // We have bytes in the buffer. inotify doesn't put partial events in
+        // there, and we only take complete events out. That means we have at
+        // least one event in there and can call `from_buffer` to take it out.
+        let (bytes_consumed, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
-            &self.buffer,
-            num_bytes,
+            &self.buffer[self.buffer_pos..],
         );
-        self.pos = step;
-        self.size = num_bytes - step;
+        self.buffer_pos   += bytes_consumed;
+        self.unused_bytes -= bytes_consumed;
 
         Ok(Async::Ready(Some(event.into_owned())))
     }
