@@ -18,13 +18,16 @@ readme        = "README.md"
 keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
 
+
 [badges]
 maintenance = { status = "actively-developed" }
 travis-ci   = { repository = "inotify-rs/inotify" }
 
+
 [features]
 default = ["stream"]
 stream = ["futures", "mio", "tokio-io", "tokio-reactor"]
+
 
 [dependencies]
 bitflags      = "1"
@@ -37,6 +40,15 @@ tokio-reactor = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
+
+
+[[example]]
+name              = "stream"
+required-features = ["stream"]
+
+[[example]]
+name = "watch"
+
 
 [package.metadata.release]
 pre-release-commit-message = "chore: Release version {{version}}"
