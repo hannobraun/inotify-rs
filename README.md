@@ -69,7 +69,7 @@ Include it in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-inotify = "0.4"
+inotify = "0.6"
 ```
 
 Please refer to the [documentation] and the example above, for information on how to use it in your code.
@@ -90,7 +90,7 @@ Please also make sure to read the **[inotify man page]**. Inotify use can be har
 
 ## License
 
-Copyright (c) 2014-2017, Hanno Braun and contributors
+Copyright (c) 2014-2018, Hanno Braun and contributors
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
