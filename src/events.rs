@@ -161,16 +161,17 @@ impl<'a> Event<&'a OsStr> {
         // convert that pointer into a reference.
         let event = unsafe { &*event };
 
-        // Directly after the event struct should be a name, if there's one
-        // associated with the event. Let's make a new slice that starts with
-        // that name. If there's no name, this slice might have a length of `0`.
-        let name = &buffer[event_size..];
-
         // The name's length is given by `event.len`. There should always be
         // enough bytes left in the buffer to fit the name. Let's make sure that
         // is the case.
         let bytes_left_in_buffer = buffer.len() - event_size;
         assert!(bytes_left_in_buffer >= event.len as usize);
+
+        // Directly after the event struct should be a name, if there's one
+        // associated with the event. Let's make a new slice that starts with
+        // that name. If there's no name, this slice might have a length of `0`.
+        let bytes_consumed = event_size + event.len as usize;
+        let name = &buffer[event_size..bytes_consumed];
 
         // Remove trailing '\0' bytes
         //
@@ -184,8 +185,6 @@ impl<'a> Event<&'a OsStr> {
             .splitn(2, |b| b == &0u8)
             .next()
             .unwrap();
-
-        let bytes_consumed = event_size + event.len as usize;
 
         let event = Event::new(
             fd,
