@@ -161,16 +161,17 @@ impl<'a> Event<&'a OsStr> {
         // convert that pointer into a reference.
         let event = unsafe { &*event };
 
-        // Directly after the event struct should be a name, if there's one
-        // associated with the event. Let's make a new slice that starts with
-        // that name. If there's no name, this slice might have a length of `0`.
-        let name = &buffer[event_size..];
-
         // The name's length is given by `event.len`. There should always be
         // enough bytes left in the buffer to fit the name. Let's make sure that
         // is the case.
         let bytes_left_in_buffer = buffer.len() - event_size;
         assert!(bytes_left_in_buffer >= event.len as usize);
+
+        // Directly after the event struct should be a name, if there's one
+        // associated with the event. Let's make a new slice that starts with
+        // that name. If there's no name, this slice might have a length of `0`.
+        let bytes_consumed = event_size + event.len as usize;
+        let name = &buffer[event_size..bytes_consumed];
 
         // Remove trailing '\0' bytes
         //
@@ -184,8 +185,6 @@ impl<'a> Event<&'a OsStr> {
             .splitn(2, |b| b == &0u8)
             .next()
             .unwrap();
-
-        let bytes_consumed = event_size + event.len as usize;
 
         let event = Event::new(
             fd,
@@ -377,5 +376,53 @@ bitflags! {
         /// [`WatchMask::IGNORED`]: #associatedconstant.IGNORED
         /// [`inotify_sys::IN_UNMOUNT`]: ../inotify_sys/constant.IN_UNMOUNT.html
         const UNMOUNT = ffi::IN_UNMOUNT;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        io::prelude::*,
+        mem,
+        slice,
+        sync,
+    };
+
+    use inotify_sys as ffi;
+
+    use super::Event;
+
+
+    #[test]
+    fn from_buffer_should_not_mistake_next_event_for_name_of_previous_event() {
+        let mut buffer = [0u8; 1024];
+
+        // First, put a normal event into the buffer
+        let event = ffi::inotify_event {
+            wd:     0,
+            mask:   0,
+            cookie: 0,
+            len:    0, // no name following after event
+        };
+        let event = unsafe {
+                slice::from_raw_parts(
+                &event as *const _ as *const u8,
+                mem::size_of_val(&event),
+            )
+        };
+        (&mut buffer[..]).write(event)
+            .expect("Failed to write into buffer");
+
+        // After that event, simulate an event that starts with a non-zero byte.
+        buffer[mem::size_of_val(&event)] = 1;
+
+        // Now create the event and verify that the name is actually `None`, as
+        // dictated by the value `len` above.
+        let (_, event) = Event::from_buffer(
+            sync::Weak::new(),
+            &buffer,
+        );
+        assert_eq!(event.name, None);
     }
 }
