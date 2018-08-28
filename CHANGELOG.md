@@ -1,3 +1,13 @@
+<a name="v0.6.1"></a>
+### v0.6.1 (2018-08-28)
+
+
+#### Bug Fixes
+
+*   Don't return spurious filenames ([2f37560f](2f37560f))
+
+
+
 <a name="v0.6.0"></a>
 ## v0.6.0 (2018-08-16)
 
