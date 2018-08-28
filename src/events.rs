@@ -378,3 +378,51 @@ bitflags! {
         const UNMOUNT = ffi::IN_UNMOUNT;
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        io::prelude::*,
+        mem,
+        slice,
+        sync,
+    };
+
+    use inotify_sys as ffi;
+
+    use super::Event;
+
+
+    #[test]
+    fn from_buffer_should_not_mistake_next_event_for_name_of_previous_event() {
+        let mut buffer = [0u8; 1024];
+
+        // First, put a normal event into the buffer
+        let event = ffi::inotify_event {
+            wd:     0,
+            mask:   0,
+            cookie: 0,
+            len:    0, // no name following after event
+        };
+        let event = unsafe {
+                slice::from_raw_parts(
+                &event as *const _ as *const u8,
+                mem::size_of_val(&event),
+            )
+        };
+        (&mut buffer[..]).write(event)
+            .expect("Failed to write into buffer");
+
+        // After that event, simulate an event that starts with a non-zero byte.
+        buffer[mem::size_of_val(&event)] = 1;
+
+        // Now create the event and verify that the name is actually `None`, as
+        // dictated by the value `len` above.
+        let (_, event) = Event::from_buffer(
+            sync::Weak::new(),
+            &buffer,
+        );
+        assert_eq!(event.name, None);
+    }
+}
