@@ -61,7 +61,7 @@ fn it_should_watch_a_file_async() {
 
     use futures::Stream;
     let events = inotify
-        .event_stream(&mut buffer)
+        .event_stream(&mut buffer[..])
         .take(1)
         .wait()
         .collect::<Vec<_>>();

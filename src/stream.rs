@@ -38,16 +38,19 @@ use util::read_into_buffer;
 /// Allows for streaming events returned by [`Inotify::event_stream`].
 ///
 /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
-pub struct EventStream<'buffer> {
+pub struct EventStream<T> {
     fd: PollEvented<EventedFdGuard>,
-    buffer: &'buffer mut [u8],
+    buffer: T,
     buffer_pos: usize,
     unused_bytes: usize,
 }
 
-impl<'buffer> EventStream<'buffer> {
+impl<T> EventStream<T>
+where
+    T: AsMut<[u8]> + AsRef<[u8]>,
+{
     /// Returns a new `EventStream` associated with the default reactor.
-    pub(crate) fn new(fd: Arc<FdGuard>, buffer: &'buffer mut [u8]) -> Self {
+    pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> Self {
         EventStream {
             fd: PollEvented::new(EventedFdGuard(fd)),
             buffer: buffer,
@@ -60,7 +63,7 @@ impl<'buffer> EventStream<'buffer> {
      pub(crate) fn new_with_handle(
         fd    : Arc<FdGuard>,
         handle: &Handle,
-        buffer: &'buffer mut [u8],
+        buffer: T,
     )
         -> io::Result<Self>
     {
@@ -73,7 +76,10 @@ impl<'buffer> EventStream<'buffer> {
     }
 }
 
-impl<'buffer> Stream for EventStream<'buffer> {
+impl<T> Stream for EventStream<T>
+where
+    T: AsMut<[u8]> + AsRef<[u8]>,
+{
     type Item = EventOwned;
     type Error = io::Error;
 
@@ -82,7 +88,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
         if self.unused_bytes == 0 {
             // Nothing usable in buffer. Need to reset and fill buffer.
             self.buffer_pos   = 0;
-            self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer));
+            self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer.as_mut()));
         }
 
         if self.unused_bytes == 0 {
@@ -96,7 +102,7 @@ impl<'buffer> Stream for EventStream<'buffer> {
         // least one event in there and can call `from_buffer` to take it out.
         let (bytes_consumed, event) = Event::from_buffer(
             Arc::downgrade(self.fd.get_ref()),
-            &self.buffer[self.buffer_pos..],
+            &self.buffer.as_ref()[self.buffer_pos..],
         );
         self.buffer_pos   += bytes_consumed;
         self.unused_bytes -= bytes_consumed;
