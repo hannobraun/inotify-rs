@@ -402,8 +402,10 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
-    pub fn event_stream<'buffer>(&mut self, buffer: &'buffer mut [u8])
-        -> EventStream<'buffer>
+    pub fn event_stream<T>(&mut self, buffer: T)
+        -> EventStream<T>
+    where
+        T: AsMut<[u8]> + AsRef<[u8]>,
     {
         EventStream::new(self.fd.clone(), buffer)
     }
@@ -417,11 +419,10 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
     #[cfg(feature = "stream")]
-    pub fn event_stream_with_handle<'buffer>(&mut self,
-        handle: &Handle,
-        buffer: &'buffer mut [u8],
-    )
-        -> io::Result<EventStream<'buffer>>
+    pub fn event_stream_with_handle<T>(&mut self, handle: &Handle, buffer: T)
+        -> io::Result<EventStream<T>>
+    where
+        T: AsMut<[u8]> + AsRef<[u8]>,
     {
         EventStream::new_with_handle(self.fd.clone(), handle, buffer)
     }

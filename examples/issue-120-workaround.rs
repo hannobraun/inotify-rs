@@ -9,10 +9,6 @@ use tempdir::TempDir;
 use tokio::prelude::*;
 
 fn main() -> Result<(), io::Error> {
-    /// XXX: this is a workaround to set the inotify's buffer to be
-    /// used, matching with tokio's runtime API
-    /// https://github.com/inotify-rs/inotify/issues/120
-    static mut BUFFER: [u8; 32] = [0; 32];
 
     let mut inotify = Inotify::init()?;
 
@@ -26,7 +22,7 @@ fn main() -> Result<(), io::Error> {
     });
 
     let future = inotify
-        .event_stream(unsafe { &mut BUFFER })
+        .event_stream([0; 32])
         .map_err(|e| println!("inotify error: {:?}", e))
         .for_each(move |event| {
             println!("event: {:?}", event);
