@@ -90,7 +90,7 @@ Please also make sure to read the **[inotify man page]**. Inotify use can be har
 
 ## License
 
-Copyright (c) 2014-2018, Hanno Braun and contributors
+Copyright (c) Hanno Braun and contributors
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
