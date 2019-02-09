@@ -1,3 +1,10 @@
+<a name="v0.7.0"></a>
+### v0.7.0 (2019-02-09)
+
+#### Features
+
+* Make stream API more flexible in regards to buffers ([ea3e7a394bf34a6ccce4f2136c0991fe7e8f1f42](ea3e7a394bf34a6ccce4f2136c0991fe7e8f1f42)) (breaking change)
+
 <a name="v0.6.1"></a>
 ### v0.6.1 (2018-08-28)
 
