@@ -17,7 +17,7 @@ readme        = "README.md"
 
 keywords   = ["inotify", "linux"]
 categories = ["api-bindings", "filesystem"]
-
+exclude    = ["/.travis.yml", "/inotify-rs.sublime-project"]
 
 [badges]
 maintenance = { status = "actively-developed" }
