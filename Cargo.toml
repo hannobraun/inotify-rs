@@ -49,10 +49,6 @@ required-features = ["stream"]
 [[example]]
 name = "watch"
 
-[[example]]
-name = "issue-120-workaround"
-required-features = ["stream"]
-
 [package.metadata.release]
 pre-release-commit-message = "chore: Release version {{version}}"
 pro-release-commit-message = "chore: Bump version to {{version}}"
