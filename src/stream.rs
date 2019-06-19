@@ -1,37 +1,18 @@
 extern crate mio;
 extern crate tokio_io;
 
-
-use std::{
-    io,
-    ops::Deref,
-    sync::Arc,
-};
+use std::{io, ops::Deref, sync::Arc};
 
 use self::{
-    mio::{
-        event::Evented,
-        unix::EventedFd,
-    },
+    mio::{event::Evented, unix::EventedFd},
     tokio_io::AsyncRead,
 };
-use futures::{
-    Async,
-    Poll,
-    Stream,
-};
-use tokio_reactor::{
-    Handle,
-    PollEvented,
-};
+use futures::{Async, Poll, Stream};
+use tokio_reactor::{Handle, PollEvented};
 
-use events::{
-    Event,
-    EventOwned,
-};
+use events::{Event, EventOwned};
 use fd_guard::FdGuard;
 use util::read_into_buffer;
-
 
 /// Stream of inotify events
 ///
@@ -60,13 +41,11 @@ where
     }
 
     /// Returns a new `EventStream` associated with the specified reactor.
-     pub(crate) fn new_with_handle(
-        fd    : Arc<FdGuard>,
+    pub(crate) fn new_with_handle(
+        fd: Arc<FdGuard>,
         handle: &Handle,
         buffer: T,
-    )
-        -> io::Result<Self>
-    {
+    ) -> io::Result<Self> {
         Ok(EventStream {
             fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
             buffer: buffer,
@@ -83,11 +62,10 @@ where
     type Item = EventOwned;
     type Error = io::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
-    {
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         if self.unused_bytes == 0 {
             // Nothing usable in buffer. Need to reset and fill buffer.
-            self.buffer_pos   = 0;
+            self.buffer_pos = 0;
             self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer.as_mut()));
         }
 
@@ -104,7 +82,7 @@ where
             Arc::downgrade(self.fd.get_ref()),
             &self.buffer.as_ref()[self.buffer_pos..],
         );
-        self.buffer_pos   += bytes_consumed;
+        self.buffer_pos += bytes_consumed;
         self.unused_bytes -= bytes_consumed;
 
         Ok(Async::Ready(Some(event.into_owned())))
@@ -116,24 +94,24 @@ struct EventedFdGuard(Arc<FdGuard>);
 
 impl Evented for EventedFdGuard {
     #[inline]
-    fn register(&self,
-                poll: &mio::Poll,
-                token: mio::Token,
-                interest: mio::Ready,
-                opts: mio::PollOpt)
-                -> io::Result<()>
-    {
+    fn register(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        interest: mio::Ready,
+        opts: mio::PollOpt,
+    ) -> io::Result<()> {
         EventedFd(&(self.fd)).register(poll, token, interest, opts)
     }
 
     #[inline]
-    fn reregister(&self,
-                  poll: &mio::Poll,
-                  token: mio::Token,
-                  interest: mio::Ready,
-                  opts: mio::PollOpt)
-                  -> io::Result<()>
-    {
+    fn reregister(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        interest: mio::Ready,
+        opts: mio::PollOpt,
+    ) -> io::Result<()> {
         EventedFd(&(self.fd)).reregister(poll, token, interest, opts)
     }
 
@@ -158,5 +136,4 @@ impl Deref for EventedFdGuard {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-
 }

@@ -1,6 +1,5 @@
 #![deny(warnings)]
 
-
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
@@ -8,23 +7,12 @@ extern crate futures;
 extern crate inotify;
 extern crate tempdir;
 
-use inotify::{
-    Inotify,
-    WatchMask,
-};
+use inotify::{Inotify, WatchMask};
 use std::fs::File;
-use std::io::{
-    Write,
-    ErrorKind,
-};
-use std::os::unix::io::{
-    AsRawFd,
-    FromRawFd,
-    IntoRawFd,
-};
+use std::io::{ErrorKind, Write};
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 use std::path::PathBuf;
 use tempdir::TempDir;
-
 
 #[test]
 fn it_should_watch_a_file() {
@@ -90,7 +78,9 @@ fn it_should_convert_the_name_into_an_os_str() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path.parent().unwrap(), WatchMask::MODIFY).unwrap();
+    inotify
+        .add_watch(&path.parent().unwrap(), WatchMask::MODIFY)
+        .unwrap();
 
     write_to(&mut file);
 
@@ -99,8 +89,7 @@ fn it_should_convert_the_name_into_an_os_str() {
 
     if let Some(event) = events.next() {
         assert_eq!(path.file_name(), event.name);
-    }
-    else {
+    } else {
         panic!("Expected inotify event");
     }
 }
@@ -120,8 +109,7 @@ fn it_should_set_name_to_none_if_it_is_empty() {
 
     if let Some(event) = events.next() {
         assert_eq!(event.name, None);
-    }
-    else {
+    } else {
         panic!("Expected inotify event");
     }
 }
@@ -137,7 +125,10 @@ fn it_should_not_accept_watchdescriptors_from_other_instances() {
     let mut second_inotify = Inotify::init().unwrap();
     let wd2 = second_inotify.add_watch(&path, WatchMask::ACCESS).unwrap();
 
-    assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
+    assert_eq!(
+        inotify.rm_watch(wd2).unwrap_err().kind(),
+        ErrorKind::InvalidInput
+    );
 }
 
 #[test]
@@ -145,17 +136,11 @@ fn watch_descriptors_from_different_inotify_instances_should_not_be_equal() {
     let mut testdir = TestDir::new();
     let (path, _) = testdir.new_file();
 
-    let mut inotify_1 = Inotify::init()
-        .unwrap();
-    let mut inotify_2 = Inotify::init()
-        .unwrap();
+    let mut inotify_1 = Inotify::init().unwrap();
+    let mut inotify_2 = Inotify::init().unwrap();
 
-    let wd_1 = inotify_1
-        .add_watch(&path, WatchMask::ACCESS)
-        .unwrap();
-    let wd_2 = inotify_2
-        .add_watch(&path, WatchMask::ACCESS)
-        .unwrap();
+    let wd_1 = inotify_1.add_watch(&path, WatchMask::ACCESS).unwrap();
+    let wd_2 = inotify_2.add_watch(&path, WatchMask::ACCESS).unwrap();
 
     // As far as inotify is concerned, watch descriptors are just integers that
     // are scoped per inotify instance. This means that multiple instances will
@@ -176,37 +161,27 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
     // This is quite likely, but it doesn't happen every time. Therefore we may
     // need a few tries until we find two instances where that is the case.
     let (wd_1, mut inotify_2) = loop {
-        let mut inotify_1 = Inotify::init()
-            .unwrap();
+        let mut inotify_1 = Inotify::init().unwrap();
 
-        let wd_1 = inotify_1
-            .add_watch(&path, WatchMask::ACCESS)
-            .unwrap();
+        let wd_1 = inotify_1.add_watch(&path, WatchMask::ACCESS).unwrap();
         let fd_1 = inotify_1.as_raw_fd();
 
-        inotify_1
-            .close()
-            .unwrap();
-        let inotify_2 = Inotify::init()
-            .unwrap();
+        inotify_1.close().unwrap();
+        let inotify_2 = Inotify::init().unwrap();
 
         if fd_1 == inotify_2.as_raw_fd() {
             break (wd_1, inotify_2);
         }
     };
 
-    let wd_2 = inotify_2
-        .add_watch(&path, WatchMask::ACCESS)
-        .unwrap();
+    let wd_2 = inotify_2.add_watch(&path, WatchMask::ACCESS).unwrap();
 
     // The way we engineered this situation, both `WatchDescriptor` instances
     // have the same fields. They still come from different inotify instances
     // though, so they shouldn't be equal.
     assert!(wd_1 != wd_2);
 
-    inotify_2
-        .close()
-        .unwrap();
+    inotify_2.close().unwrap();
 
     // A little extra gotcha: If both inotify instances are closed, and the `Eq`
     // implementation naively compares the weak pointers, both will be `None`,
@@ -230,7 +205,6 @@ fn it_should_implement_raw_fd_traits_correctly() {
         panic!("Failed to add watch: {}", error);
     }
 }
-
 
 struct TestDir {
     dir: TempDir,
@@ -258,9 +232,6 @@ impl TestDir {
 }
 
 fn write_to(file: &mut File) {
-    file
-        .write(b"This should trigger an inotify event.")
-        .unwrap_or_else(|error|
-            panic!("Failed to write to file: {}", error)
-        );
+    file.write(b"This should trigger an inotify event.")
+        .unwrap_or_else(|error| panic!("Failed to write to file: {}", error));
 }

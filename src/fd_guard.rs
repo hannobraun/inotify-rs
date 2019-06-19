@@ -1,29 +1,19 @@
 use std::{
     ops::Deref,
-    os::unix::io::{
-        AsRawFd,
-        FromRawFd,
-        IntoRawFd,
-        RawFd,
-    },
-    sync::atomic::{
-        AtomicBool,
-        Ordering,
-    },
+    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 use inotify_sys as ffi;
 
-
 /// A RAII guard around a `RawFd` that closes it automatically on drop.
 #[derive(Debug)]
 pub struct FdGuard {
-    pub(crate) fd           : RawFd,
+    pub(crate) fd: RawFd,
     pub(crate) close_on_drop: AtomicBool,
 }
 
 impl FdGuard {
-
     /// Indicate that the wrapped file descriptor should _not_ be closed
     /// when the guard is dropped.
     ///
@@ -50,7 +40,9 @@ impl Deref for FdGuard {
 impl Drop for FdGuard {
     fn drop(&mut self) {
         if self.close_on_drop.load(Ordering::Acquire) {
-            unsafe { ffi::close(self.fd); }
+            unsafe {
+                ffi::close(self.fd);
+            }
         }
     }
 }

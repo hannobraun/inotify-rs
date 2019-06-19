@@ -65,16 +65,14 @@
 //! [`Inotify`]: struct.Inotify.html
 //! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
-
 #![deny(missing_docs)]
 #![deny(warnings)]
-
 
 #[macro_use]
 extern crate bitflags;
 
-extern crate libc;
 extern crate inotify_sys;
+extern crate libc;
 
 #[cfg(feature = "stream")]
 #[macro_use]
@@ -82,7 +80,6 @@ extern crate futures;
 
 #[cfg(feature = "stream")]
 extern crate tokio_reactor;
-
 
 mod events;
 mod fd_guard;
@@ -93,18 +90,9 @@ mod watches;
 #[cfg(feature = "stream")]
 mod stream;
 
-
-pub use events::{
-    Event,
-    EventMask,
-    EventOwned,
-    Events,
-};
+pub use events::{Event, EventMask, EventOwned, Events};
 pub use inotify::Inotify;
-pub use watches::{
-    WatchDescriptor,
-    WatchMask,
-};
+pub use watches::{WatchDescriptor, WatchMask};
 
 #[cfg(feature = "stream")]
 pub use self::stream::EventStream;

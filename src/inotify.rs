@@ -2,41 +2,24 @@ use std::{
     ffi::CString,
     io,
     os::unix::ffi::OsStrExt,
-    os::unix::io::{
-        AsRawFd,
-        FromRawFd,
-        IntoRawFd,
-        RawFd,
-    },
+    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
     path::Path,
-    sync::{
-        atomic::AtomicBool,
-        Arc,
-    }
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use inotify_sys as ffi;
-use libc::{
-    F_GETFL,
-    F_SETFL,
-    O_NONBLOCK,
-    fcntl,
-};
+use libc::{fcntl, F_GETFL, F_SETFL, O_NONBLOCK};
 
 use events::Events;
 use fd_guard::FdGuard;
 use util::read_into_buffer;
-use watches::{
-    WatchDescriptor,
-    WatchMask,
-};
+use watches::{WatchDescriptor, WatchMask};
 
 #[cfg(feature = "stream")]
 use tokio_reactor::Handle;
 
 #[cfg(feature = "stream")]
 use stream::EventStream;
-
 
 /// Idiomatic Rust wrapper around Linux's inotify API
 ///
@@ -105,13 +88,12 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  =>
-                Ok(Inotify {
-                    fd: Arc::new(FdGuard {
-                        fd,
-                        close_on_drop: AtomicBool::new(false),
-                    }),
+            _ => Ok(Inotify {
+                fd: Arc::new(FdGuard {
+                    fd,
+                    close_on_drop: AtomicBool::new(false),
                 }),
+            }),
         }
     }
 
@@ -180,23 +162,21 @@ impl Inotify {
     /// [`inotify_add_watch`]: ../inotify_sys/fn.inotify_add_watch.html
     /// [`WatchMask`]: struct.WatchMask.html
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
-    pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
-        -> io::Result<WatchDescriptor>
-        where P: AsRef<Path>
+    pub fn add_watch<P>(&mut self, path: P, mask: WatchMask) -> io::Result<WatchDescriptor>
+    where
+        P: AsRef<Path>,
     {
         let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
 
-        let wd = unsafe {
-            ffi::inotify_add_watch(
-                **self.fd,
-                path.as_ptr() as *const _,
-                mask.bits(),
-            )
-        };
+        let wd =
+            unsafe { ffi::inotify_add_watch(**self.fd, path.as_ptr() as *const _, mask.bits()) };
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
+            _ => Ok(WatchDescriptor {
+                id: wd,
+                fd: Arc::downgrade(&self.fd),
+            }),
         }
     }
 
@@ -261,10 +241,9 @@ impl Inotify {
 
         let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
         match result {
-            0  => Ok(()),
+            0 => Ok(()),
             -1 => Err(io::Error::last_os_error()),
-            _  => panic!(
-                "unexpected return code from inotify_rm_watch ({})", result)
+            _ => panic!("unexpected return code from inotify_rm_watch ({})", result),
         }
     }
 
@@ -279,16 +258,10 @@ impl Inotify {
     ///
     /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
     /// [`read`]: ../libc/fn.read.html
-    pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
-        -> io::Result<Events<'a>>
-    {
-        unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) & !O_NONBLOCK)
-        };
+    pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<Events<'a>> {
+        unsafe { fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) & !O_NONBLOCK) };
         let result = self.read_events(buffer);
-        unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) | O_NONBLOCK)
-        };
+        unsafe { fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) | O_NONBLOCK) };
 
         result
     }
@@ -339,31 +312,27 @@ impl Inotify {
     /// [`read`]: ../libc/fn.read.html
     /// [`ErrorKind::UnexpectedEof`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.UnexpectedEof
     /// [`ErrorKind::InvalidInput`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidInput
-    pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
-        -> io::Result<Events<'a>>
-    {
+    pub fn read_events<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<Events<'a>> {
         let num_bytes = read_into_buffer(**self.fd, buffer);
 
         let num_bytes = match num_bytes {
             0 => {
-                return Err(
-                    io::Error::new(
-                        io::ErrorKind::UnexpectedEof,
-                        "`read` return `0`, signaling end-of-file"
-                    )
-                );
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "`read` return `0`, signaling end-of-file",
+                ));
             }
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
                     return Ok(Events::new(Arc::downgrade(&self.fd), buffer, 0));
-                }
-                else {
+                } else {
                     return Err(error);
                 }
-            },
+            }
             _ if num_bytes < 0 => {
-                panic!("{} {} {} {} {} {}",
+                panic!(
+                    "{} {} {} {} {} {}",
                     "Unexpected return value from `read`. Received a negative",
                     "value that was not `-1`. According to the `read` man page",
                     "this shouldn't happen, as either `-1` is returned on",
@@ -402,8 +371,7 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
-    pub fn event_stream<T>(&mut self, buffer: T)
-        -> EventStream<T>
+    pub fn event_stream<T>(&mut self, buffer: T) -> EventStream<T>
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
@@ -419,8 +387,11 @@ impl Inotify {
     ///
     /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
     #[cfg(feature = "stream")]
-    pub fn event_stream_with_handle<T>(&mut self, handle: &Handle, buffer: T)
-        -> io::Result<EventStream<T>>
+    pub fn event_stream_with_handle<T>(
+        &mut self,
+        handle: &Handle,
+        buffer: T,
+    ) -> io::Result<EventStream<T>>
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
@@ -476,7 +447,7 @@ impl AsRawFd for Inotify {
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd: Arc::new(FdGuard::from_raw_fd(fd))
+            fd: Arc::new(FdGuard::from_raw_fd(fd)),
         }
     }
 }

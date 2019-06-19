@@ -1,21 +1,13 @@
 extern crate inotify;
 
-
 use std::env;
 
-use inotify::{
-    EventMask,
-    Inotify,
-    WatchMask,
-};
-
+use inotify::{EventMask, Inotify, WatchMask};
 
 fn main() {
-    let mut inotify = Inotify::init()
-        .expect("Failed to initialize inotify");
+    let mut inotify = Inotify::init().expect("Failed to initialize inotify");
 
-    let current_dir = env::current_dir()
-        .expect("Failed to determine current directory");
+    let current_dir = env::current_dir().expect("Failed to determine current directory");
 
     inotify
         .add_watch(
