@@ -9,7 +9,7 @@ use std::{
 
 use inotify_sys as ffi;
 
-use fd_guard::FdGuard;
+use crate::fd_guard::FdGuard;
 
 
 bitflags! {

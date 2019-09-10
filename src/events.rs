@@ -10,8 +10,8 @@ use std::{
 
 use inotify_sys as ffi;
 
-use fd_guard::FdGuard;
-use watches::WatchDescriptor;
+use crate::fd_guard::FdGuard;
+use crate::watches::WatchDescriptor;
 
 
 /// Iterator over inotify events
@@ -111,7 +111,7 @@ impl<'a> Event<&'a OsStr> {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
-        let wd = ::WatchDescriptor {
+        let wd = crate::WatchDescriptor {
             id: event.wd,
             fd,
         };
@@ -195,6 +195,7 @@ impl<'a> Event<&'a OsStr> {
         (bytes_consumed, event)
     }
 
+    #[cfg(feature = "stream")]
     pub(crate) fn into_owned(&self) -> EventOwned {
         Event {
             wd: self.wd.clone(),

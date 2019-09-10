@@ -1,14 +1,15 @@
 language: rust
 
-# Test on the latest versions of all channels.
+# Test on a recent nightly release.
 rust:
-  - stable
-  - beta
-  - nightly
+  - nightly-2019-09-13
 
 script:
   - cargo build --all
   - cargo test --all
+  # Build and test without the stream feature
+  - cargo build --all --no-default-features
+  - cargo test --all --no-default-features
 
 # Run this build on the "container-based infrastructure"
 # See http://docs.travis-ci.com/user/workers/container-based-infrastructure/.
