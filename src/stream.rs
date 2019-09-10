@@ -1,36 +1,28 @@
-extern crate mio;
-extern crate tokio_io;
-
-
 use std::{
     io,
     ops::Deref,
+    pin::Pin,
     sync::Arc,
+    task::{Poll, Context},
 };
 
-use self::{
-    mio::{
-        event::Evented,
-        unix::EventedFd,
-    },
-    tokio_io::AsyncRead,
+use mio::{
+    event::Evented,
+    unix::EventedFd,
 };
-use futures::{
-    Async,
-    Poll,
-    Stream,
-};
-use tokio_reactor::{
-    Handle,
-    PollEvented,
+use tokio_io::AsyncRead;
+use futures_core::{Stream, ready};
+use tokio_net::{
+    util::PollEvented,
+    driver::Handle,
 };
 
-use events::{
+use crate::events::{
     Event,
     EventOwned,
 };
-use fd_guard::FdGuard;
-use util::read_into_buffer;
+use crate::fd_guard::FdGuard;
+use crate::util::read_into_buffer;
 
 
 /// Stream of inotify events
@@ -47,7 +39,7 @@ pub struct EventStream<T> {
 
 impl<T> EventStream<T>
 where
-    T: AsMut<[u8]> + AsRef<[u8]>,
+    T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
 {
     /// Returns a new `EventStream` associated with the default reactor.
     pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> Self {
@@ -78,36 +70,37 @@ where
 
 impl<T> Stream for EventStream<T>
 where
-    T: AsMut<[u8]> + AsRef<[u8]>,
+    T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
 {
-    type Item = EventOwned;
-    type Error = io::Error;
+    type Item = io::Result<EventOwned>;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error>
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>
     {
-        if self.unused_bytes == 0 {
+        let self_ = self.get_mut();
+
+        if self_.unused_bytes == 0 {
             // Nothing usable in buffer. Need to reset and fill buffer.
-            self.buffer_pos   = 0;
-            self.unused_bytes = try_ready!(self.fd.poll_read(&mut self.buffer.as_mut()));
+            self_.buffer_pos   = 0;
+            self_.unused_bytes = ready!(Pin::new(&mut self_.fd).poll_read(cx, self_.buffer.as_mut()))?;
         }
 
-        if self.unused_bytes == 0 {
+        if self_.unused_bytes == 0 {
             // The previous read returned `0` signalling end-of-file. Let's
             // signal end-of-stream to the caller.
-            return Ok(Async::Ready(None));
+            return Poll::Ready(None);
         }
 
         // We have bytes in the buffer. inotify doesn't put partial events in
         // there, and we only take complete events out. That means we have at
         // least one event in there and can call `from_buffer` to take it out.
         let (bytes_consumed, event) = Event::from_buffer(
-            Arc::downgrade(self.fd.get_ref()),
-            &self.buffer.as_ref()[self.buffer_pos..],
+            Arc::downgrade(self_.fd.get_ref()),
+            &self_.buffer.as_ref()[self_.buffer_pos..],
         );
-        self.buffer_pos   += bytes_consumed;
-        self.unused_bytes -= bytes_consumed;
+        self_.buffer_pos   += bytes_consumed;
+        self_.unused_bytes -= bytes_consumed;
 
-        Ok(Async::Ready(Some(event.into_owned())))
+        Poll::Ready(Some(Ok(event.into_owned())))
     }
 }
 

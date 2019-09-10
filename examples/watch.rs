@@ -1,6 +1,3 @@
-extern crate inotify;
-
-
 use std::env;
 
 use inotify::{

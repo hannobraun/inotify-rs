@@ -23,19 +23,19 @@ use libc::{
     fcntl,
 };
 
-use events::Events;
-use fd_guard::FdGuard;
-use util::read_into_buffer;
-use watches::{
+use crate::events::Events;
+use crate::fd_guard::FdGuard;
+use crate::util::read_into_buffer;
+use crate::watches::{
     WatchDescriptor,
     WatchMask,
 };
 
 #[cfg(feature = "stream")]
-use tokio_reactor::Handle;
+use tokio_net::driver::Handle;
 
 #[cfg(feature = "stream")]
-use stream::EventStream;
+use crate::stream::EventStream;
 
 
 /// Idiomatic Rust wrapper around Linux's inotify API
@@ -405,7 +405,7 @@ impl Inotify {
     pub fn event_stream<T>(&mut self, buffer: T)
         -> EventStream<T>
     where
-        T: AsMut<[u8]> + AsRef<[u8]>,
+        T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
     {
         EventStream::new(self.fd.clone(), buffer)
     }
@@ -422,7 +422,7 @@ impl Inotify {
     pub fn event_stream_with_handle<T>(&mut self, handle: &Handle, buffer: T)
         -> io::Result<EventStream<T>>
     where
-        T: AsMut<[u8]> + AsRef<[u8]>,
+        T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
     {
         EventStream::new_with_handle(self.fd.clone(), handle, buffer)
     }

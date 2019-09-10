@@ -8,6 +8,7 @@ authors = [
   "Cristian Kubis <cristian.kubis@tsunix.de>",
   "Frank Denis <github@pureftpd.org>"
 ]
+edition = "2018"
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
@@ -26,21 +27,22 @@ travis-ci   = { repository = "inotify-rs/inotify" }
 
 [features]
 default = ["stream"]
-stream = ["futures", "mio", "tokio", "tokio-io", "tokio-reactor"]
+stream = ["futures-core-preview", "mio", "tokio-io", "tokio-net"]
 
 
 [dependencies]
-bitflags      = "1"
-futures       = { version = "0.1", optional = true }
-inotify-sys   = "0.1.3"
-libc          = "0.2"
-mio           = { version = "0.6", optional = true }
-tokio         = { version = "0.1", optional = true }
-tokio-io      = { version = "0.1", optional = true }
-tokio-reactor = { version = "0.1", optional = true }
+bitflags             = "1"
+futures-core-preview = { version = "=0.3.0-alpha.18", optional = true }
+inotify-sys          = "0.1.3"
+libc                 = "0.2"
+mio                  = { version = "0.6", optional = true }
+tokio-io             = { version = "=0.2.0-alpha.4", optional = true }
+tokio-net            = { version = "=0.2.0-alpha.4", optional = true, default-features = false }
 
 [dev-dependencies]
-tempdir = "0.3"
+tempdir              = "0.3"
+futures-util-preview = "=0.3.0-alpha.18"
+tokio                = "=0.2.0-alpha.4"
 
 [[example]]
 name              = "stream"
