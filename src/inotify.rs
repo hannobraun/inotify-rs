@@ -15,6 +15,10 @@ use std::{
     }
 };
 
+#[cfg(feature = "stream")]
+use tokio_net::driver::Handle;
+#[cfg(feature = "async-await")]
+use tokio_net::util::PollEvented;
 use inotify_sys as ffi;
 use libc::{
     F_GETFL,
@@ -25,18 +29,34 @@ use libc::{
 
 use crate::events::Events;
 use crate::fd_guard::FdGuard;
+use crate::evented_fd_guard::EventedFdGuard;
+#[cfg(feature = "stream")]
+use crate::stream::EventStream;
 use crate::util::read_into_buffer;
 use crate::watches::{
     WatchDescriptor,
     WatchMask,
 };
 
-#[cfg(feature = "stream")]
-use tokio_net::driver::Handle;
+// When the async-await feature is not enabled, use a fake `PollEvented`.
+#[cfg(not(feature = "async-await"))]
+#[repr(transparent)]
+struct PollEvented<T>(T);
 
-#[cfg(feature = "stream")]
-use crate::stream::EventStream;
+#[cfg(not(feature = "async-await"))]
+impl<T> PollEvented<T> {
+    fn new(t: T) -> Self {
+        PollEvented(t)
+    }
 
+    fn get_ref(&self) -> &T {
+        &self.0
+    }
+
+    fn into_inner(self) -> io::Result<T> {
+        Ok(self.0)
+    }
+}
 
 /// Idiomatic Rust wrapper around Linux's inotify API
 ///
@@ -49,7 +69,7 @@ use crate::stream::EventStream;
 ///
 /// [top-level documentation]: index.html
 pub struct Inotify {
-    fd: Arc<FdGuard>,
+    fd: PollEvented<EventedFdGuard>,
 }
 
 impl Inotify {
@@ -105,12 +125,12 @@ impl Inotify {
 
         match fd {
             -1 => Err(io::Error::last_os_error()),
-            _  =>
+            _ =>
                 Ok(Inotify {
-                    fd: Arc::new(FdGuard {
+                    fd: PollEvented::new(EventedFdGuard(Arc::new(FdGuard {
                         fd,
                         close_on_drop: AtomicBool::new(false),
-                    }),
+                    }))),
                 }),
         }
     }
@@ -181,14 +201,14 @@ impl Inotify {
     /// [`WatchMask`]: struct.WatchMask.html
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     pub fn add_watch<P>(&mut self, path: P, mask: WatchMask)
-        -> io::Result<WatchDescriptor>
+                        -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
     {
         let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
 
         let wd = unsafe {
             ffi::inotify_add_watch(
-                **self.fd,
+                self.as_raw_fd(),
                 path.as_ptr() as *const _,
                 mask.bits(),
             )
@@ -196,7 +216,7 @@ impl Inotify {
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
+            _ => Ok(WatchDescriptor { id: wd, fd: Arc::downgrade(self.fd.get_ref()) }),
         }
     }
 
@@ -252,18 +272,18 @@ impl Inotify {
     /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
     /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+        if wd.fd.upgrade().as_ref() != Some(self.fd.get_ref()) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Invalid WatchDescriptor",
             ));
         }
 
-        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
+        let result = unsafe { ffi::inotify_rm_watch(self.as_raw_fd(), wd.id) };
         match result {
-            0  => Ok(()),
+            0 => Ok(()),
             -1 => Err(io::Error::last_os_error()),
-            _  => panic!(
+            _ => panic!(
                 "unexpected return code from inotify_rm_watch ({})", result)
         }
     }
@@ -280,17 +300,69 @@ impl Inotify {
     /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
     /// [`read`]: ../libc/fn.read.html
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
-        -> io::Result<Events<'a>>
+                                    -> io::Result<Events<'a>>
     {
         unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) & !O_NONBLOCK)
+            fcntl(self.as_raw_fd(), F_SETFL, fcntl(self.as_raw_fd(), F_GETFL) & !O_NONBLOCK)
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) | O_NONBLOCK)
+            fcntl(self.as_raw_fd(), F_SETFL, fcntl(self.as_raw_fd(), F_GETFL) | O_NONBLOCK)
         };
 
         result
+    }
+
+    /// Read events asynchronously.
+    ///
+    /// Returns an iterator over all events that have been read. The iterator
+    /// will contain at least one event.
+    ///
+    /// Please note that inotify will merge identical unread events into a
+    /// single event. This means this method can not be used to count the number
+    /// of file system events.
+    ///
+    /// The `buffer` argument, as the name indicates, is used as a buffer for
+    /// the inotify events. Its contents may be overwritten.
+    ///
+    /// # Errors
+    ///
+    /// This function directly returns all errors from the call to [`read`]
+    /// (except EGAIN/EWOULDBLOCK). In addition, [`ErrorKind::UnexpectedEof`] is
+    /// returned, if the call to [`read`] returns `0`, signaling end-of-file.
+    ///
+    /// If `buffer` is too small, this will result in an error with
+    /// [`ErrorKind::InvalidInput`]. On very old Linux kernels,
+    /// [`ErrorKind::UnexpectedEof`] will be returned instead.
+    ///
+    /// # Runtime and Feature Flag
+    ///
+    /// This function should be used with a tokio runtime.
+    ///
+    /// This function is available only when the `async-await` feature is
+    /// enabled. The feature is enabled by default.
+    ///
+    /// [`read`]: ../libc/fn.read.html
+    /// [`ErrorKind::UnexpectedEof`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.UnexpectedEof
+    /// [`ErrorKind::InvalidInput`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidInput
+    #[cfg(feature = "async-await")]
+    pub async fn read_events_async<'a>(&mut self, buffer: &'a mut [u8])
+                                       -> io::Result<Events<'a>>
+    {
+        use tokio_io::AsyncReadExt;
+
+        let num_bytes = self.fd.read(buffer).await?;
+
+        if num_bytes == 0 {
+            return Err(
+                io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "`read` return `0`, signaling end-of-file"
+                )
+            );
+        }
+
+        Ok(Events::new(Arc::downgrade(self.fd.get_ref()), buffer, num_bytes))
     }
 
     /// Returns any available events
@@ -342,7 +414,7 @@ impl Inotify {
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
-        let num_bytes = read_into_buffer(**self.fd, buffer);
+        let num_bytes = read_into_buffer(self.as_raw_fd(), buffer);
 
         let num_bytes = match num_bytes {
             0 => {
@@ -356,7 +428,7 @@ impl Inotify {
             -1 => {
                 let error = io::Error::last_os_error();
                 if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(Arc::downgrade(&self.fd), buffer, 0));
+                    return Ok(Events::new(Arc::downgrade(self.fd.get_ref()), buffer, 0));
                 }
                 else {
                     return Err(error);
@@ -386,7 +458,7 @@ impl Inotify {
             }
         };
 
-        Ok(Events::new(Arc::downgrade(&self.fd), buffer, num_bytes))
+        Ok(Events::new(Arc::downgrade(self.fd.get_ref()), buffer, num_bytes))
     }
 
     /// Create a stream which collects events
@@ -407,7 +479,7 @@ impl Inotify {
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
-        EventStream::new(self.fd.clone(), buffer)
+        EventStream::new(self.fd.get_ref().0.clone(), buffer)
     }
 
     /// Create a stream which collects events, associated with the given
@@ -424,7 +496,7 @@ impl Inotify {
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
-        EventStream::new_with_handle(self.fd.clone(), handle, buffer)
+        EventStream::new_with_handle(self.fd.get_ref().0.clone(), handle, buffer)
     }
 
     /// Closes the inotify instance
@@ -457,9 +529,9 @@ impl Inotify {
         // owner of `fd`, the `Arc` will also be dropped. The `Drop`
         // implementation for `FdGuard` will attempt to close the file descriptor
         // again, unless this flag here is cleared.
-        self.fd.should_not_close();
+        self.fd.get_ref().should_not_close();
 
-        match unsafe { ffi::close(**self.fd) } {
+        match unsafe { ffi::close(self.as_raw_fd()) } {
             0 => Ok(()),
             _ => Err(io::Error::last_os_error()),
         }
@@ -469,14 +541,14 @@ impl Inotify {
 impl AsRawFd for Inotify {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd.as_raw_fd()
+        ****self.fd.get_ref()
     }
 }
 
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd: Arc::new(FdGuard::from_raw_fd(fd))
+            fd: PollEvented::new(EventedFdGuard(Arc::new(FdGuard::from_raw_fd(fd))))
         }
     }
 }
@@ -484,7 +556,8 @@ impl FromRawFd for Inotify {
 impl IntoRawFd for Inotify {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.fd.should_not_close();
-        self.fd.fd
+        let fd = self.fd.into_inner().expect("into_inner failed");
+        fd.should_not_close();
+        fd.fd
     }
 }

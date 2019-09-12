@@ -5,11 +5,18 @@ rust:
   - nightly-2019-09-13
 
 script:
-  - cargo build --all
-  - cargo test --all
-  # Build and test without the stream feature
+  # Test all feature combinations
   - cargo build --all --no-default-features
   - cargo test --all --no-default-features
+
+  - cargo build --all --no-default-features --features=async-await
+  - cargo test --all --no-default-features --features=async-await
+
+  - cargo build --all --no-default-features --features=stream
+  - cargo test --all --no-default-features --features=stream
+
+  - cargo test --all --all-features
+  - cargo build --all --all-features
 
 # Run this build on the "container-based infrastructure"
 # See http://docs.travis-ci.com/user/workers/container-based-infrastructure/.

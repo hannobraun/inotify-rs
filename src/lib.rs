@@ -81,7 +81,7 @@ mod watches;
 
 #[cfg(feature = "stream")]
 mod stream;
-
+mod evented_fd_guard;
 
 pub use crate::events::{
     Event,

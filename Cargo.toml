@@ -26,7 +26,8 @@ travis-ci   = { repository = "inotify-rs/inotify" }
 
 
 [features]
-default = ["stream"]
+default = ["stream", "async-await"]
+async-await = ["mio", "tokio-io", "tokio-net"]
 stream = ["futures-core-preview", "mio", "tokio-io", "tokio-net"]
 
 

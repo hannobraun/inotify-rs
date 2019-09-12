@@ -1,15 +1,10 @@
 use std::{
     io,
-    ops::Deref,
     pin::Pin,
     sync::Arc,
     task::{Poll, Context},
 };
 
-use mio::{
-    event::Evented,
-    unix::EventedFd,
-};
 use tokio_io::AsyncRead;
 use futures_core::{Stream, ready};
 use tokio_net::{
@@ -22,7 +17,7 @@ use crate::events::{
     EventOwned,
 };
 use crate::fd_guard::FdGuard;
-use crate::util::read_into_buffer;
+use crate::evented_fd_guard::EventedFdGuard;
 
 
 /// Stream of inotify events
@@ -103,54 +98,4 @@ where
 
         Poll::Ready(Some(Ok(event.into_owned())))
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct EventedFdGuard(Arc<FdGuard>);
-
-impl Evented for EventedFdGuard {
-    #[inline]
-    fn register(&self,
-                poll: &mio::Poll,
-                token: mio::Token,
-                interest: mio::Ready,
-                opts: mio::PollOpt)
-                -> io::Result<()>
-    {
-        EventedFd(&(self.fd)).register(poll, token, interest, opts)
-    }
-
-    #[inline]
-    fn reregister(&self,
-                  poll: &mio::Poll,
-                  token: mio::Token,
-                  interest: mio::Ready,
-                  opts: mio::PollOpt)
-                  -> io::Result<()>
-    {
-        EventedFd(&(self.fd)).reregister(poll, token, interest, opts)
-    }
-
-    #[inline]
-    fn deregister(&self, poll: &mio::Poll) -> io::Result<()> {
-        EventedFd(&self.fd).deregister(poll)
-    }
-}
-
-impl io::Read for EventedFdGuard {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match read_into_buffer(self.fd, buf) {
-            i if i >= 0 => Ok(i as usize),
-            _ => Err(io::Error::last_os_error()),
-        }
-    }
-}
-
-impl Deref for EventedFdGuard {
-    type Target = Arc<FdGuard>;
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-
 }
