@@ -405,7 +405,7 @@ impl Inotify {
     pub fn event_stream<T>(&mut self, buffer: T)
         -> EventStream<T>
     where
-        T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
+        T: AsMut<[u8]> + AsRef<[u8]>,
     {
         EventStream::new(self.fd.clone(), buffer)
     }
@@ -422,7 +422,7 @@ impl Inotify {
     pub fn event_stream_with_handle<T>(&mut self, handle: &Handle, buffer: T)
         -> io::Result<EventStream<T>>
     where
-        T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
+        T: AsMut<[u8]> + AsRef<[u8]>,
     {
         EventStream::new_with_handle(self.fd.clone(), handle, buffer)
     }

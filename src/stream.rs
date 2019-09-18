@@ -39,7 +39,7 @@ pub struct EventStream<T> {
 
 impl<T> EventStream<T>
 where
-    T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
+    T: AsMut<[u8]> + AsRef<[u8]>,
 {
     /// Returns a new `EventStream` associated with the default reactor.
     pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> Self {
@@ -70,13 +70,14 @@ where
 
 impl<T> Stream for EventStream<T>
 where
-    T: AsMut<[u8]> + AsRef<[u8]> + Unpin,
+    T: AsMut<[u8]> + AsRef<[u8]>,
 {
     type Item = io::Result<EventOwned>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>
     {
-        let self_ = self.get_mut();
+        // Safety: safe because we never move out of `self_`.
+        let self_ = unsafe { self.get_unchecked_mut() };
 
         if self_.unused_bytes == 0 {
             // Nothing usable in buffer. Need to reset and fill buffer.
