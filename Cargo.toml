@@ -32,17 +32,17 @@ stream = ["futures-core-preview", "mio", "tokio-io", "tokio-net"]
 
 [dependencies]
 bitflags             = "1"
-futures-core-preview = { version = "=0.3.0-alpha.18", optional = true }
+futures-core-preview = { version = "=0.3.0-alpha.19", optional = true }
 inotify-sys          = "0.1.3"
 libc                 = "0.2"
 mio                  = { version = "0.6", optional = true }
-tokio-io             = { version = "=0.2.0-alpha.5", optional = true }
-tokio-net            = { version = "=0.2.0-alpha.5", optional = true, default-features = false }
+tokio-io             = { version = "=0.2.0-alpha.6", optional = true }
+tokio-net            = { version = "=0.2.0-alpha.6", optional = true, default-features = false }
 
 [dev-dependencies]
 tempdir              = "0.3"
-futures-util-preview = "=0.3.0-alpha.18"
-tokio                = "=0.2.0-alpha.5"
+futures-util-preview = "=0.3.0-alpha.19"
+tokio                = "=0.2.0-alpha.6"
 
 [[example]]
 name              = "stream"
