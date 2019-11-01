@@ -31,8 +31,6 @@ use crate::watches::{
     WatchMask,
 };
 
-#[cfg(feature = "stream")]
-use tokio_net::driver::Handle;
 
 #[cfg(feature = "stream")]
 use crate::stream::EventStream;
@@ -403,28 +401,11 @@ impl Inotify {
     /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
     pub fn event_stream<T>(&mut self, buffer: T)
-        -> EventStream<T>
-    where
-        T: AsMut<[u8]> + AsRef<[u8]>,
-    {
-        EventStream::new(self.fd.clone(), buffer)
-    }
-
-    /// Create a stream which collects events, associated with the given
-    /// reactor.
-    ///
-    /// This functions identically to [`Inotify::event_stream`], except that
-    /// the returned stream will be associated with the given reactor, rather
-    /// than the default.
-    ///
-    /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
-    #[cfg(feature = "stream")]
-    pub fn event_stream_with_handle<T>(&mut self, handle: &Handle, buffer: T)
         -> io::Result<EventStream<T>>
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
-        EventStream::new_with_handle(self.fd.clone(), handle, buffer)
+        EventStream::new(self.fd.clone(), buffer)
     }
 
     /// Closes the inotify instance

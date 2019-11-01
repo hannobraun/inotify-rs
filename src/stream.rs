@@ -10,12 +10,9 @@ use mio::{
     event::Evented,
     unix::EventedFd,
 };
-use tokio_io::AsyncRead;
+use tokio::io::AsyncRead;
 use futures_core::{Stream, ready};
-use tokio_net::{
-    util::PollEvented,
-    driver::Handle,
-};
+use tokio::net::util::PollEvented;
 
 use crate::events::{
     Event,
@@ -42,25 +39,9 @@ where
     T: AsMut<[u8]> + AsRef<[u8]>,
 {
     /// Returns a new `EventStream` associated with the default reactor.
-    pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> Self {
-        EventStream {
-            fd: PollEvented::new(EventedFdGuard(fd)),
-            buffer: buffer,
-            buffer_pos: 0,
-            unused_bytes: 0,
-        }
-    }
-
-    /// Returns a new `EventStream` associated with the specified reactor.
-     pub(crate) fn new_with_handle(
-        fd    : Arc<FdGuard>,
-        handle: &Handle,
-        buffer: T,
-    )
-        -> io::Result<Self>
-    {
+    pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
-            fd: PollEvented::new_with_handle(EventedFdGuard(fd), handle)?,
+            fd: PollEvented::new(EventedFdGuard(fd))?,
             buffer: buffer,
             buffer_pos: 0,
             unused_bytes: 0,
