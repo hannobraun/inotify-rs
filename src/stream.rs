@@ -10,9 +10,8 @@ use mio::{
     event::Evented,
     unix::EventedFd,
 };
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncRead, PollEvented};
 use futures_core::{Stream, ready};
-use tokio::net::util::PollEvented;
 
 use crate::events::{
     Event,
