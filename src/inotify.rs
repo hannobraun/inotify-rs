@@ -393,12 +393,6 @@ impl Inotify {
     /// infinite source of events.
     ///
     /// An internal buffer which can hold the largest possible event is used.
-    ///
-    /// The event stream will be associated with the default reactor. See
-    /// [`Inotify::event_stream_with_handle`], if you need more control over the
-    /// reactor used.
-    ///
-    /// [`Inotify::event_stream_with_handle`]: struct.Inotify.html#method.event_stream_with_handle
     #[cfg(feature = "stream")]
     pub fn event_stream<T>(&mut self, buffer: T)
         -> io::Result<EventStream<T>>
