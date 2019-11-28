@@ -9,6 +9,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Install rust (1.39)
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.39.0
+        override: true
+    - name: Check rust  and cargo version
+      run: rustc -V && cargo -V
     - name: Build
       run: cargo build --verbose
     - name: Run tests
