@@ -1,8 +1,3 @@
-extern crate futures;
-extern crate inotify;
-extern crate tempdir;
-
-
 use std::{
     fs::File,
     io,
@@ -10,15 +5,15 @@ use std::{
     time::Duration,
 };
 
-use futures::Stream;
+use futures_util::StreamExt;
 use inotify::{
     Inotify,
     WatchMask,
 };
 use tempdir::TempDir;
 
-
-fn main() -> Result<(), io::Error> {
+#[tokio::main]
+async fn main() -> Result<(), io::Error> {
     let mut inotify = Inotify::init()
         .expect("Failed to initialize inotify");
 
@@ -34,10 +29,10 @@ fn main() -> Result<(), io::Error> {
     });
 
     let mut buffer = [0; 32];
-    let stream = inotify.event_stream(&mut buffer);
+    let mut stream = inotify.event_stream(&mut buffer)?;
 
-    for event in stream.wait() {
-        print!("event: {:?}\n", event);
+    while let Some(event_or_error) = stream.next().await {
+        println!("event: {:?}", event_or_error?);
     }
 
     Ok(())

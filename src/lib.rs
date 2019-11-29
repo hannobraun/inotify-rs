@@ -73,17 +73,6 @@
 #[macro_use]
 extern crate bitflags;
 
-extern crate libc;
-extern crate inotify_sys;
-
-#[cfg(feature = "stream")]
-#[macro_use]
-extern crate futures;
-
-#[cfg(feature = "stream")]
-extern crate tokio_reactor;
-
-
 mod events;
 mod fd_guard;
 mod inotify;
@@ -94,14 +83,14 @@ mod watches;
 mod stream;
 
 
-pub use events::{
+pub use crate::events::{
     Event,
     EventMask,
     EventOwned,
     Events,
 };
-pub use inotify::Inotify;
-pub use watches::{
+pub use crate::inotify::Inotify;
+pub use crate::watches::{
     WatchDescriptor,
     WatchMask,
 };
