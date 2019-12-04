@@ -49,10 +49,3 @@ required-features = ["stream"]
 
 [[example]]
 name = "watch"
-
-[package.metadata.release]
-pre-release-commit-message = "chore: Release version {{version}}"
-pro-release-commit-message = "chore: Bump version to {{version}}"
-tag-prefix                 = "v"
-tag-message                = "Version {{version}}"
-dev-version-ext            = "dev"
