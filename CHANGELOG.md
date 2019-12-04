@@ -1,3 +1,11 @@
+<a name="v0.8.0"></a>
+### v0.8.0 (2019-12-04)
+
+- Update to tokio 0.2 and futures 0.3 ([#134])
+
+[#134]: https://github.com/inotify-rs/inotify/pull/134
+
+
 <a name="v0.7.0"></a>
 ### v0.7.0 (2019-02-09)
 
