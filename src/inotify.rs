@@ -107,7 +107,7 @@ impl Inotify {
                 Ok(Inotify {
                     fd: Arc::new(FdGuard {
                         fd,
-                        close_on_drop: AtomicBool::new(false),
+                        close_on_drop: AtomicBool::new(true),
                     }),
                 }),
         }
