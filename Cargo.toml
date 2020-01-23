@@ -1,7 +1,7 @@
 [package]
 
 name    = "inotify"
-version = "0.8.0"
+version = "0.8.1"
 authors = [
   "Hanno Braun <mail@hannobraun.de>",
   "Félix Saparelli <me@passcod.name>",
@@ -12,7 +12,7 @@ edition = "2018"
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
-repository    = "https://github.com/inotify-rs/inotify"
+repository    = "https://github.com/hannobraun/inotify"
 license       = "ISC"
 readme        = "README.md"
 
