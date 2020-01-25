@@ -1,9 +1,15 @@
-<a name="v0.8.1"></a>
-### v0.8.1 (2020-01-23)
+<a name="v0.8.2"></a>
+### v0.8.2 (2020-01-25)
 
 - Ensure file descriptor is closed on drop ([#140])
 
 [#140]: https://github.com/inotify-rs/inotify/pull/140
+
+
+<a name="v0.8.1"></a>
+### v0.8.1 (2020-01-23)
+
+No changes, due to a mistake made while releasing this version.
 
 
 <a name="v0.8.0"></a>
