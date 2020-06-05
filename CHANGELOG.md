@@ -1,3 +1,11 @@
+<a name="v0.7.1"></a>
+### v0.7.1 (2020-06-05)
+
+- backport: Avoid using `inotify_init1` ([#146])
+
+[#146]: https://github.com/hannobraun/inotify/pull/146
+
+
 <a name="v0.7.0"></a>
 ### v0.7.0 (2019-02-09)
 
