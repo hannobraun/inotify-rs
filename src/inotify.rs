@@ -18,7 +18,9 @@ use std::{
 use inotify_sys as ffi;
 use libc::{
     F_GETFL,
+    F_SETFD,
     F_SETFL,
+    FD_CLOEXEC,
     O_NONBLOCK,
     fcntl,
 };
@@ -82,23 +84,25 @@ impl Inotify {
     /// [`IN_CLOEXEC`]: ../inotify_sys/constant.IN_CLOEXEC.html
     /// [`IN_NONBLOCK`]: ../inotify_sys/constant.IN_NONBLOCK.html
     pub fn init() -> io::Result<Inotify> {
+        // Initialize inotify and set CLOEXEC and NONBLOCK flags.
+        //
+        // NONBLOCK is needed, because `Inotify` manages blocking behavior for
+        // the API consumer, and the way we do that is to make everything non-
+        // blocking by default and later override that as required.
+        //
+        // CLOEXEC prevents leaking file descriptors to processes executed by
+        // this process and seems to be a best practice. I don't grasp this
+        // issue completely and failed to find any authoritative sources on the
+        // topic. There's some discussion in the open(2) and fcntl(2) man pages,
+        // but I didn't find that helpful in understanding the issue of leaked
+        // file descriptors. For what it's worth, there's a Rust issue about
+        // this:
+        // https://github.com/rust-lang/rust/issues/12148
         let fd = unsafe {
-            // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
-            //
-            // `IN_NONBLOCK` is needed, because `Inotify` manages blocking
-            // behavior for the API consumer, and the way we do that is to make
-            // everything non-blocking by default and later override that as
-            // required.
-            //
-            // Passing `IN_CLOEXEC` prevents leaking file descriptors to
-            // processes executed by this process and seems to be a best
-            // practice. I don't grasp this issue completely and failed to find
-            // any authoritative sources on the topic. There's some discussion in
-            // the open(2) and fcntl(2) man pages, but I didn't find that
-            // helpful in understanding the issue of leaked file descriptors.
-            // For what it's worth, there's a Rust issue about this:
-            // https://github.com/rust-lang/rust/issues/12148
-            ffi::inotify_init1(ffi::IN_CLOEXEC | ffi::IN_NONBLOCK)
+            let fd = ffi::inotify_init();
+            fcntl(fd, F_SETFD, FD_CLOEXEC);
+            fcntl(fd, F_SETFL, O_NONBLOCK);
+            fd
         };
 
         match fd {
