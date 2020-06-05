@@ -1,3 +1,11 @@
+<a name="v0.8.3"></a>
+### v0.8.3 (2020-06-05)
+
+- Avoid using `inotify_init1` ([#146])
+
+[#146]: https://github.com/hannobraun/inotify/pull/146
+
+
 <a name="v0.8.2"></a>
 ### v0.8.2 (2020-01-25)
 
