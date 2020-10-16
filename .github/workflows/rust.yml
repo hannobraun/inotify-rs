@@ -12,7 +12,7 @@ jobs:
     - name: Install rust (1.39)
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.39.0
+        toolchain: 1.47.0
         override: true
     - name: Check rust  and cargo version
       run: rustc -V && cargo -V
