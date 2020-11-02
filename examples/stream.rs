@@ -10,14 +10,14 @@ use inotify::{
     Inotify,
     WatchMask,
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
     let mut inotify = Inotify::init()
         .expect("Failed to initialize inotify");
 
-    let dir = TempDir::new("inotify-rs-test")?;
+    let dir = TempDir::new()?;
 
     inotify.add_watch(dir.path(), WatchMask::CREATE | WatchMask::MODIFY)?;
 

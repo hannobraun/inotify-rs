@@ -19,7 +19,7 @@ use std::os::unix::io::{
     IntoRawFd,
 };
 use std::path::PathBuf;
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 
 #[test]
@@ -238,7 +238,7 @@ struct TestDir {
 impl TestDir {
     fn new() -> TestDir {
         TestDir {
-            dir: TempDir::new("inotify-rs-test").unwrap(),
+            dir: TempDir::new().unwrap(),
             counter: 0,
         }
     }

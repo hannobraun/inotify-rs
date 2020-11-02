@@ -39,7 +39,7 @@ mio          = { version = "0.6", optional = true }
 tokio        = { version = "0.2.2", optional = true, features = ["io-driver"] }
 
 [dev-dependencies]
-tempdir      = "0.3"
+tempfile     = "3.1.0"
 futures-util = "0.3.1"
 tokio        = { version = "0.2.1", features = ["macros", "rt-core"] }
 
