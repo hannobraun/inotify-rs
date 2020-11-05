@@ -295,12 +295,12 @@ impl Inotify {
         result
     }
 
-    /// Returns any available events
+    /// Returns one buffer's worth of available events
     ///
-    /// Returns an iterator over all events that are currently available. If no
-    /// events are available, an iterator is still returned. If you need a
-    /// method that will block until at least one event is available, please
-    /// consider [`read_events_blocking`].
+    /// Reads as many events as possible into `buffer`, and returns an iterator
+    /// over them. If no events are available, an iterator is still returned. If
+    /// you need a method that will block until at least one event is available,
+    /// please consider [`read_events_blocking`].
     ///
     /// Please note that inotify will merge identical unread events into a
     /// single event. This means this method can not be used to count the number
