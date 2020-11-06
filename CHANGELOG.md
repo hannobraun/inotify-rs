@@ -1,3 +1,15 @@
+<a name="v0.9.0"></a>
+### v0.9.0 (2020-11-06)
+
+- Update minimum supported Rust version to version 1.47 ([#154])
+- Fix documentation: `Inotify::read_events` doesn't handle all events ([#157])
+- Update to tokio 0.3 ([#158])
+
+[#154]: https://github.com/hannobraun/inotify/pull/154
+[#157]: https://github.com/hannobraun/inotify/pull/157
+[#158]: https://github.com/hannobraun/inotify/pull/158
+
+
 <a name="v0.8.3"></a>
 ### v0.8.3 (2020-06-05)
 
