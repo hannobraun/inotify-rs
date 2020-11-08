@@ -98,7 +98,10 @@ fn read(fd: &AsyncFd<ArcFdGuard>, buffer: &mut [u8], cx: &mut Context) -> Poll<i
 
     match result {
         Ok(read) => Poll::Ready(Ok(read)),
-        Err(ref err) if err.kind() == io::ErrorKind::WouldBlock => Poll::Pending,
+        Err(ref err) if err.kind() == io::ErrorKind::WouldBlock => {
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        }
         Err(err) => Poll::Ready(Err(err)),
     }
 }
