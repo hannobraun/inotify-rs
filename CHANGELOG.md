@@ -1,3 +1,11 @@
+<a name="v0.9.1"></a>
+### v0.9.1 (2020-11-09)
+
+- Fix take wake-up ([#161])
+
+[#161]: https://github.com/hannobraun/inotify/pull/161
+
+
 <a name="v0.9.0"></a>
 ### v0.9.0 (2020-11-06)
 
