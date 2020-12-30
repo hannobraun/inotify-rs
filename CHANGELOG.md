@@ -1,3 +1,10 @@
+### v0.9.2 (2020-12-30)
+
+- Upgrade to Tokio 1.0 ([#165])
+
+[#165]: https://github.com/hannobraun/inotify/pull/165
+
+
 <a name="v0.9.1"></a>
 ### v0.9.1 (2020-11-09)
 
