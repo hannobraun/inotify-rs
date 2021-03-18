@@ -100,21 +100,20 @@ impl Inotify {
         // https://github.com/rust-lang/rust/issues/12148
         let fd = unsafe {
             let fd = ffi::inotify_init();
+            if fd == -1 {
+                return Err(io::Error::last_os_error());
+            }
             fcntl(fd, F_SETFD, FD_CLOEXEC);
             fcntl(fd, F_SETFL, O_NONBLOCK);
             fd
         };
 
-        match fd {
-            -1 => Err(io::Error::last_os_error()),
-            _  =>
-                Ok(Inotify {
-                    fd: Arc::new(FdGuard {
-                        fd,
-                        close_on_drop: AtomicBool::new(true),
-                    }),
-                }),
-        }
+        Ok(Inotify {
+            fd: Arc::new(FdGuard {
+                fd,
+                close_on_drop: AtomicBool::new(true),
+            }),
+        })
     }
 
     /// Adds or updates a watch for the given path
