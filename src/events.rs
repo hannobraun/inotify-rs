@@ -98,7 +98,7 @@ pub struct Event<S> {
 
     /// The name of the file the event originates from
     ///
-    /// This field is set only if the subject of the event is a file in a
+    /// This field is set only if the subject of the event is a file or directory in a
     /// watched directory. If the event concerns a file or directory that is
     /// watched directly, `name` will be `None`.
     pub name: Option<S>,
