@@ -14,7 +14,7 @@ jobs:
       with:
         toolchain: 1.47.0
         override: true
-    - name: Check rust  and cargo version
+    - name: Check rust and cargo version
       run: rustc -V && cargo -V
     - name: Build
       run: cargo build --verbose
