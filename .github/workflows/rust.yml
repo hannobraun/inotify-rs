@@ -9,7 +9,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install rust (1.39)
+    - name: Install rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: 1.47.0
