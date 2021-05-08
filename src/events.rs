@@ -12,6 +12,7 @@ use inotify_sys as ffi;
 
 use crate::fd_guard::FdGuard;
 use crate::watches::WatchDescriptor;
+use crate::util::align_buffer;
 
 
 /// Iterator over inotify events
@@ -148,10 +149,18 @@ impl<'a> Event<&'a OsStr> {
         -> (usize, Self)
     {
         let event_size = mem::size_of::<ffi::inotify_event>();
+        let event_align = mem::align_of::<ffi::inotify_event>();
 
-        // Make sure that the buffer is big enough to contain an event, without
+        // Make sure that the buffer can satisfy the alignment requirements for `inotify_event`
+        assert!(buffer.len() >= event_align);
+
+        // Discard the unaligned portion, if any, of the supplied buffer
+        let buffer = align_buffer(buffer);
+
+        // Make sure that the aligned buffer is big enough to contain an event, without
         // the name. Otherwise we can't safely convert it to an `inotify_event`.
         assert!(buffer.len() >= event_size);
+
 
         let event = buffer.as_ptr() as *const ffi::inotify_event;
 
@@ -390,6 +399,8 @@ mod tests {
         sync,
     };
 
+    use crate::util;
+
     use inotify_sys as ffi;
 
     use super::Event;
@@ -398,6 +409,9 @@ mod tests {
     #[test]
     fn from_buffer_should_not_mistake_next_event_for_name_of_previous_event() {
         let mut buffer = [0u8; 1024];
+
+        // Make sure the buffer is properly aligned before writing raw events into it
+        let buffer = util::align_buffer_mut(&mut buffer);
 
         // First, put a normal event into the buffer
         let event = ffi::inotify_event {
