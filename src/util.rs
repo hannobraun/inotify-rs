@@ -25,12 +25,9 @@ pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
 
 pub fn align_buffer(buffer: &[u8]) -> &[u8] {
     if buffer.len() >= mem::align_of::<ffi::inotify_event>() {
-        unsafe {
-            let ptr = buffer.as_ptr();
-            let offset = ptr.align_offset(mem::align_of::<ffi::inotify_event>());
-            let aligned_ptr = ptr.add(offset);
-            std::slice::from_raw_parts(aligned_ptr, buffer.len() - offset)
-        }
+        let ptr = buffer.as_ptr();
+        let offset = ptr.align_offset(mem::align_of::<ffi::inotify_event>());
+        &buffer[offset..]
     } else {
         &buffer[0..0]
     }
@@ -38,12 +35,9 @@ pub fn align_buffer(buffer: &[u8]) -> &[u8] {
 
 pub fn align_buffer_mut(buffer: &mut [u8]) -> &mut [u8] {
    if buffer.len() >= mem::align_of::<ffi::inotify_event>() {
-       unsafe {
-            let ptr = buffer.as_mut_ptr();
-            let offset = ptr.align_offset(mem::align_of::<ffi::inotify_event>());
-            let aligned_ptr = ptr.add(offset);
-            std::slice::from_raw_parts_mut(aligned_ptr, buffer.len() - offset)
-       }
+        let ptr = buffer.as_mut_ptr();
+        let offset = ptr.align_offset(mem::align_of::<ffi::inotify_event>());
+        &mut buffer[offset..]
    } else {
        &mut buffer[0..0]
    } 
