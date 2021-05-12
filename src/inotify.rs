@@ -103,8 +103,12 @@ impl Inotify {
             if fd == -1 {
                 return Err(io::Error::last_os_error());
             }
-            fcntl(fd, F_SETFD, FD_CLOEXEC);
-            fcntl(fd, F_SETFL, O_NONBLOCK);
+            if fcntl(fd, F_SETFD, FD_CLOEXEC) == -1 {
+                return Err(io::Error::last_os_error());
+            }
+            if fcntl(fd, F_SETFL, O_NONBLOCK) == -1 {
+                return Err(io::Error::last_os_error());
+            }
             fd
         };
 
@@ -284,11 +288,23 @@ impl Inotify {
         -> io::Result<Events<'a>>
     {
         unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) & !O_NONBLOCK)
+            let res = fcntl(**self.fd, F_GETFL);
+            if res == -1 {
+                return Err(io::Error::last_os_error());
+            }
+            if fcntl(**self.fd, F_SETFL, res & !O_NONBLOCK) == -1 {
+                return Err(io::Error::last_os_error());
+            }
         };
         let result = self.read_events(buffer);
         unsafe {
-            fcntl(**self.fd, F_SETFL, fcntl(**self.fd, F_GETFL) | O_NONBLOCK)
+            let res = fcntl(**self.fd, F_GETFL);
+            if res == -1 {
+                return Err(io::Error::last_os_error());
+            }
+            if fcntl(**self.fd, F_SETFL, res | O_NONBLOCK) == -1 {
+                return Err(io::Error::last_os_error());
+            }
         };
 
         result
