@@ -1,3 +1,17 @@
+### v0.9.3 (2021-05-12)
+
+- Improve documentation ([#167], [#169])
+- Add missing check for invalid file descriptor ([#168])
+- Fix unsound use of buffers due to misalignment ([#171])
+- Add missing error checks ([#173])
+
+[#167]: https://github.com/hannobraun/inotify-rs/pull/167
+[#168]: https://github.com/hannobraun/inotify-rs/pull/168
+[#169]: https://github.com/hannobraun/inotify-rs/pull/169
+[#171]: https://github.com/hannobraun/inotify-rs/pull/171
+[#173]: https://github.com/hannobraun/inotify-rs/pull/173
+
+
 ### v0.9.2 (2020-12-30)
 
 - Upgrade to Tokio 1.0 ([#165])
