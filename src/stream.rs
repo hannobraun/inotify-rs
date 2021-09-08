@@ -18,6 +18,7 @@ use crate::util::read_into_buffer;
 /// Allows for streaming events returned by [`Inotify::event_stream`].
 ///
 /// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
+#[derive(Debug)]
 pub struct EventStream<T> {
     fd: AsyncFd<ArcFdGuard>,
     buffer: T,
@@ -77,6 +78,7 @@ where
 }
 
 // Newtype wrapper because AsRawFd isn't implemented for Arc<T> where T: AsRawFd.
+#[derive(Debug)]
 struct ArcFdGuard(Arc<FdGuard>);
 
 impl AsRawFd for ArcFdGuard {

@@ -68,6 +68,7 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![deny(missing_debug_implementations)]
 
 
 #[macro_use]

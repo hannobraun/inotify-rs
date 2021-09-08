@@ -48,6 +48,7 @@ use crate::stream::EventStream;
 /// usage example.
 ///
 /// [top-level documentation]: index.html
+#[derive(Debug)]
 pub struct Inotify {
     fd: Arc<FdGuard>,
 }

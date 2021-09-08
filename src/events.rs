@@ -22,6 +22,7 @@ use crate::util::align_buffer;
 ///
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
+#[derive(Debug)]
 pub struct Events<'a> {
     fd       : Weak<FdGuard>,
     buffer   : &'a [u8],
