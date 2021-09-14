@@ -204,8 +204,9 @@ impl<'a> Event<&'a OsStr> {
         (bytes_consumed, event)
     }
 
-    #[cfg(feature = "stream")]
-    pub(crate) fn into_owned(&self) -> EventOwned {
+    /// Returns an owned copy of the event.
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    pub fn into_owned(&self) -> EventOwned {
         Event {
             wd: self.wd.clone(),
             mask: self.mask,
