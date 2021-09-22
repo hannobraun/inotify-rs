@@ -1,3 +1,12 @@
+### v0.9.4 (2021-09-22)
+
+- Make `Event::into_owned` always available ([#179])
+- Implement missing `Debug` implementations ([#180])
+
+[#179]: https://github.com/hannobraun/inotify-rs/pull/179
+[#180]: https://github.com/hannobraun/inotify-rs/pull/180
+
+
 ### v0.9.3 (2021-05-12)
 
 - Improve documentation ([#167], [#169])
