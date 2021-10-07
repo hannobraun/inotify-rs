@@ -1,3 +1,10 @@
+### v0.9.5 (2021-10-07)
+
+- Implement `Ord`/`PartialOrd` for `WatchDescriptor` ([#183])
+
+[#183]: https://github.com/hannobraun/inotify-rs/pull/183
+
+
 ### v0.9.4 (2021-09-22)
 
 - Make `Event::into_owned` always available ([#179])
