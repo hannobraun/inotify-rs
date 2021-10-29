@@ -91,6 +91,10 @@ pub use crate::events::{
     Events,
 };
 pub use crate::inotify::Inotify;
+pub use crate::util::{
+    get_buffer_size,
+    get_absolute_path_buffer_size,
+};
 pub use crate::watches::{
     WatchDescriptor,
     WatchMask,
