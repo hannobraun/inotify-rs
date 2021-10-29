@@ -28,7 +28,7 @@ async fn main() -> Result<(), io::Error> {
         }
     });
 
-    let mut buffer = [0; 32];
+    let mut buffer = [0; 1024];
     let mut stream = inotify.event_stream(&mut buffer)?;
 
     while let Some(event_or_error) = stream.next().await {
