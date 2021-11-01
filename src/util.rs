@@ -71,7 +71,6 @@ pub fn align_buffer_mut(buffer: &mut [u8]) -> &mut [u8] {
 /// This function is really just a fallible wrapper around `get_absolute_path_buffer_size()`.
 ///
 /// path: A relative or absolute path for the inotify events.
-#[allow(dead_code)]
 pub fn get_buffer_size(path: &Path) -> io::Result<usize> {
     Ok(get_absolute_path_buffer_size(&path.canonicalize()?))
 }
@@ -82,7 +81,6 @@ pub fn get_buffer_size(path: &Path) -> io::Result<usize> {
 /// for this function.
 ///
 /// path: An absolute path for the inotify events.
-#[allow(dead_code)]
 pub fn get_absolute_path_buffer_size(path: &Path) -> usize {
     INOTIFY_EVENT_SIZE
     // Get the length of the absolute parent path, if the path is not the root directory.
