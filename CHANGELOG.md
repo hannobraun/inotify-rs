@@ -1,3 +1,12 @@
+### v0.9.6 (2021-10-07)
+
+- Fix build status badge in README ([#185])
+- Add `get_buffer_size`/`get_absolute_path_buffer_size` ([#187])
+
+[#185]: https://github.com/hannobraun/inotify-rs/pull/185
+[#187]: https://github.com/hannobraun/inotify-rs/pull/187
+
+
 ### v0.9.5 (2021-10-07)
 
 - Implement `Ord`/`PartialOrd` for `WatchDescriptor` ([#183])
