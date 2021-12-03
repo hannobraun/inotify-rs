@@ -79,7 +79,7 @@ fn it_should_return_immediately_if_no_events_are_available() {
     let mut inotify = Inotify::init().unwrap();
 
     let mut buffer = [0; 1024];
-    assert_eq!(0, inotify.read_events(&mut buffer).unwrap().count());
+    assert_eq!(inotify.read_events(&mut buffer).unwrap_err().kind(), ErrorKind::WouldBlock);
 }
 
 #[test]
@@ -225,7 +225,9 @@ fn it_should_implement_raw_fd_traits_correctly() {
 
     let mut buffer = [0; 1024];
     if let Err(error) = inotify.read_events(&mut buffer) {
-        panic!("Failed to add watch: {}", error);
+        if error.kind() != ErrorKind::WouldBlock {
+            panic!("Failed to add watch: {}", error);
+        }
     }
 }
 
