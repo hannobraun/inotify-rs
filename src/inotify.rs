@@ -327,9 +327,8 @@ impl Inotify {
     ///
     /// # Errors
     ///
-    /// This function directly returns all errors from the call to [`read`]
-    /// (except EGAIN/EWOULDBLOCK, which result in an empty iterator). In
-    /// addition, [`ErrorKind::UnexpectedEof`] is returned, if the call to
+    /// This function directly returns all errors from the call to [`read`].
+    /// In addition, [`ErrorKind::UnexpectedEof`] is returned, if the call to
     /// [`read`] returns `0`, signaling end-of-file.
     ///
     /// If `buffer` is too small, this will result in an error with
@@ -338,15 +337,21 @@ impl Inotify {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use inotify::Inotify;
+    /// use std::io::ErrorKind;
     ///
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
     /// let mut buffer = [0; 1024];
-    /// let events = inotify.read_events(&mut buffer)
-    ///     .expect("Error while reading events");
+    /// let events = loop {
+    ///     match inotify.read_events(&mut buffer) {
+    ///         Ok(events) => break events,
+    ///         Err(error) if error.kind() == ErrorKind::WouldBlock => continue,
+    ///         _ => panic!("Error while reading events"),
+    ///     }
+    /// };
     ///
     /// for event in events {
     ///     // Handle event
@@ -373,12 +378,7 @@ impl Inotify {
             }
             -1 => {
                 let error = io::Error::last_os_error();
-                if error.kind() == io::ErrorKind::WouldBlock {
-                    return Ok(Events::new(Arc::downgrade(&self.fd), buffer, 0));
-                }
-                else {
-                    return Err(error);
-                }
+                return Err(error);
             },
             _ if num_bytes < 0 => {
                 panic!("{} {} {} {} {} {}",
