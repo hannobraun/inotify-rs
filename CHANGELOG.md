@@ -1,4 +1,4 @@
-### v0.9.6 (2021-10-07)
+### v0.9.6 (2021-11-03)
 
 - Fix build status badge in README ([#185])
 - Add `get_buffer_size`/`get_absolute_path_buffer_size` ([#187])
