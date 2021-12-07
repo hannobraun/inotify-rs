@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.10.0 (2021-12-07)
+
+- **Breaking change:** Remove special handling of `WouldBlock` error ([#190])
+
+[#190]: https://github.com/hannobraun/inotify-rs/pull/190
+
+
 ## v0.9.6 (2021-11-03)
 
 - Fix build status badge in README ([#185])
