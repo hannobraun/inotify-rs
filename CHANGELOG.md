@@ -1,3 +1,5 @@
+# Changelog
+
 ### v0.9.6 (2021-11-03)
 
 - Fix build status badge in README ([#185])
