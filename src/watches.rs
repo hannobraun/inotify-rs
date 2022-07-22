@@ -19,7 +19,6 @@ use inotify_sys as ffi;
 
 use crate::fd_guard::FdGuard;
 
-
 bitflags! {
     /// Describes a file system watch
     ///
@@ -281,6 +280,14 @@ bitflags! {
     }
 }
 
+impl WatchDescriptor {
+    /// Getter method for a watcher's id.
+    ///
+    /// Can be used to distinguish events for files with the same name.
+    pub fn get_watch_descriptor_id(&self) -> c_int {
+        self.id
+    }
+}
 
 /// Interface for adding and removing watches
 #[derive(Clone, Debug)]
