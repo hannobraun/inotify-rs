@@ -73,7 +73,7 @@ where
         self_.buffer_pos += bytes_consumed;
         self_.unused_bytes -= bytes_consumed;
 
-        Poll::Ready(Some(Ok(event.into_owned())))
+        Poll::Ready(Some(Ok(event.to_owned())))
     }
 }
 

@@ -206,8 +206,15 @@ impl<'a> Event<&'a OsStr> {
     }
 
     /// Returns an owned copy of the event.
-    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    #[deprecated = "use `to_owned()` instead; methods named `into_owned()` usually take self by value"]
+    #[allow(clippy::wrong_self_convention)]
     pub fn into_owned(&self) -> EventOwned {
+        self.to_owned()
+    }
+
+    /// Returns an owned copy of the event.
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    pub fn to_owned(&self) -> EventOwned {
         Event {
             wd: self.wd.clone(),
             mask: self.mask,
