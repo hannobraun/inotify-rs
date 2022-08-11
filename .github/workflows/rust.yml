@@ -14,13 +14,18 @@ jobs:
       with:
         toolchain: 1.49.0
         override: true
+        components: clippy
     - name: Check rust and cargo version
       run: rustc -V && cargo -V
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run Clippy lints
+      run: cargo clippy --verbose -- -D warnings
     - name: Build (no default features)
       run: cargo build --verbose --no-default-features
     - name: Run tests (no default features)
       run: cargo test --verbose --no-default-features
+    - name: Run Clippy lints (no default features)
+      run: cargo clippy --verbose --no-default-features -- -D warnings
