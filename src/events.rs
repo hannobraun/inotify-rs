@@ -35,10 +35,10 @@ impl<'a> Events<'a> {
         -> Self
     {
         Events {
-            fd       : fd,
-            buffer   : buffer,
-            num_bytes: num_bytes,
-            pos      : 0,
+            fd,
+            buffer,
+            num_bytes,
+            pos: 0,
         }
     }
 }
@@ -118,7 +118,7 @@ impl<'a> Event<&'a OsStr> {
             fd,
         };
 
-        let name = if name == "" {
+        let name = if name.is_empty() {
             None
         }
         else {

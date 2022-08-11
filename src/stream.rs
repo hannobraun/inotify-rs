@@ -34,7 +34,7 @@ where
     pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
             fd: AsyncFd::new(ArcFdGuard(fd))?,
-            buffer: buffer,
+            buffer,
             buffer_pos: 0,
             unused_bytes: 0,
         })
