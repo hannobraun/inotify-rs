@@ -34,7 +34,7 @@ where
     pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
             fd: AsyncFd::new(ArcFdGuard(fd))?,
-            buffer: buffer,
+            buffer,
             buffer_pos: 0,
             unused_bytes: 0,
         })
@@ -73,7 +73,7 @@ where
         self_.buffer_pos += bytes_consumed;
         self_.unused_bytes -= bytes_consumed;
 
-        Poll::Ready(Some(Ok(event.into_owned())))
+        Poll::Ready(Some(Ok(event.to_owned())))
     }
 }
 

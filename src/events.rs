@@ -35,10 +35,10 @@ impl<'a> Events<'a> {
         -> Self
     {
         Events {
-            fd       : fd,
-            buffer   : buffer,
-            num_bytes: num_bytes,
-            pos      : 0,
+            fd,
+            buffer,
+            num_bytes,
+            pos: 0,
         }
     }
 }
@@ -118,7 +118,7 @@ impl<'a> Event<&'a OsStr> {
             fd,
         };
 
-        let name = if name == "" {
+        let name = if name.is_empty() {
             None
         }
         else {
@@ -206,8 +206,15 @@ impl<'a> Event<&'a OsStr> {
     }
 
     /// Returns an owned copy of the event.
-    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    #[deprecated = "use `to_owned()` instead; methods named `into_owned()` usually take self by value"]
+    #[allow(clippy::wrong_self_convention)]
     pub fn into_owned(&self) -> EventOwned {
+        self.to_owned()
+    }
+
+    /// Returns an owned copy of the event.
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    pub fn to_owned(&self) -> EventOwned {
         Event {
             wd: self.wd.clone(),
             mask: self.mask,
