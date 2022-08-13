@@ -74,6 +74,37 @@ async fn it_should_watch_a_file_async() {
     assert!(num_events > 0);
 }
 
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_watch_a_file_from_eventstream_watches() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+
+    let mut buffer = [0; 1024];
+
+    use futures_util::StreamExt;
+    let stream = inotify.event_stream(&mut buffer[..]).unwrap();
+
+    let watch = stream.watches().add(&path, WatchMask::MODIFY).unwrap();
+    write_to(&mut file);
+
+    let events = stream
+        .take(1)
+        .collect::<Vec<_>>()
+        .await;
+
+    let mut num_events = 0;
+    for event in events {
+        if let Ok(event) = event {
+            assert_eq!(watch, event.wd);
+            num_events += 1;
+        }
+    }
+    assert!(num_events > 0);
+}
+
 #[test]
 fn it_should_return_immediately_if_no_events_are_available() {
     let mut inotify = Inotify::init().unwrap();

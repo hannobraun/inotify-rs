@@ -12,6 +12,7 @@ use tokio::io::unix::AsyncFd;
 use crate::events::{Event, EventOwned};
 use crate::fd_guard::FdGuard;
 use crate::util::read_into_buffer;
+use crate::watches::Watches;
 
 /// Stream of inotify events
 ///
@@ -38,6 +39,15 @@ where
             buffer_pos: 0,
             unused_bytes: 0,
         })
+    }
+
+    /// Returns an instance of `Watches` to add and remove watches.
+    /// See [`Watches::add`] and [`Watches::remove`].
+    ///
+    /// [`Watches::add`]: struct.Watches.html#method.add
+    /// [`Watches::remove`]: struct.Watches.html#method.remove
+    pub fn watches(&self) -> Watches {
+        Watches::new(self.fd.get_ref().0.clone())
     }
 }
 
