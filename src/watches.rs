@@ -23,12 +23,12 @@ use crate::fd_guard::FdGuard;
 bitflags! {
     /// Describes a file system watch
     ///
-    /// Passed to [`Inotify::add_watch`], to describe what file system events
+    /// Passed to [`Watches::add`], to describe what file system events
     /// to watch for, and how to do that.
     ///
     /// # Examples
     ///
-    /// `WatchMask` constants can be passed to [`Inotify::add_watch`] as is. For
+    /// `WatchMask` constants can be passed to [`Watches::add`] as is. For
     /// example, here's how to create a watch that triggers an event when a file
     /// is accessed:
     ///
@@ -40,12 +40,12 @@ bitflags! {
     /// #
     /// # let mut inotify = Inotify::init().unwrap();
     /// #
-    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # // Create a temporary file, so `Watches::add` won't return an error.
     /// # use std::fs::File;
     /// # File::create("/tmp/inotify-rs-test-file")
     /// #     .expect("Failed to create test file");
     /// #
-    /// inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::ACCESS)
+    /// inotify.watches().add("/tmp/inotify-rs-test-file", WatchMask::ACCESS)
     ///    .expect("Error adding watch");
     /// ```
     ///
@@ -59,11 +59,11 @@ bitflags! {
     /// # };
     /// #
     /// # let mut inotify = Inotify::init().unwrap();
-    /// inotify.add_watch("/tmp/", WatchMask::CREATE | WatchMask::DELETE)
+    /// inotify.watches().add("/tmp/", WatchMask::CREATE | WatchMask::DELETE)
     ///    .expect("Error adding watch");
     /// ```
     ///
-    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+    /// [`Watches::add`]: struct.Watches.html#method.add
     pub struct WatchMask: u32 {
         /// File was accessed
         ///
@@ -347,12 +347,12 @@ impl Watches {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # // Create a temporary file, so `Watches::add` won't return an error.
     /// # use std::fs::File;
     /// # File::create("/tmp/inotify-rs-test-file")
     /// #     .expect("Failed to create test file");
     /// #
-    /// inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
+    /// inotify.watches().add("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
     ///     .expect("Failed to add file watch");
     ///
     /// // Handle events for the file here
@@ -385,7 +385,7 @@ impl Watches {
     ///
     /// Removes the watch represented by the provided [`WatchDescriptor`] by
     /// calling [`inotify_rm_watch`]. [`WatchDescriptor`]s can be obtained via
-    /// [`Inotify::add_watch`], or from the `wd` field of [`Event`].
+    /// [`Watches::add`], or from the `wd` field of [`Event`].
     ///
     /// # Errors
     ///
@@ -401,7 +401,7 @@ impl Watches {
     /// let mut inotify = Inotify::init()
     ///     .expect("Failed to initialize an inotify instance");
     ///
-    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # // Create a temporary file, so `Watches::add` won't return an error.
     /// # use std::fs::File;
     /// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
     /// #     .expect("Failed to create test file");
@@ -409,7 +409,7 @@ impl Watches {
     /// # // Add a watch and modify the file, so the code below doesn't block
     /// # // forever.
     /// # use inotify::WatchMask;
-    /// # inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
+    /// # inotify.watches().add("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
     /// #     .expect("Failed to add file watch");
     /// # use std::io::Write;
     /// # write!(&mut test_file, "something\n")
@@ -419,15 +419,16 @@ impl Watches {
     /// let events = inotify
     ///     .read_events_blocking(&mut buffer)
     ///     .expect("Error while waiting for events");
+    /// let mut watches = inotify.watches();
     ///
     /// for event in events {
-    ///     inotify.rm_watch(event.wd);
+    ///     watches.remove(event.wd);
     /// }
     /// ```
     ///
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
     /// [`inotify_rm_watch`]: ../inotify_sys/fn.inotify_rm_watch.html
-    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+    /// [`Watches::add`]: struct.Watches.html#method.add
     /// [`Event`]: struct.Event.html
     /// [`Inotify`]: struct.Inotify.html
     /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
@@ -453,12 +454,12 @@ impl Watches {
 
 /// Represents a watch on an inode
 ///
-/// Can be obtained from [`Inotify::add_watch`] or from an [`Event`]. A watch
+/// Can be obtained from [`Watches::add`] or from an [`Event`]. A watch
 /// descriptor can be used to get inotify to stop watching an inode by passing
-/// it to [`Inotify::rm_watch`].
+/// it to [`Watches::remove`].
 ///
-/// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
-/// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
+/// [`Watches::add`]: struct.Watches.html#method.add
+/// [`Watches::remove`]: struct.Watches.html#method.remove
 /// [`Event`]: struct.Event.html
 #[derive(Clone, Debug)]
 pub struct WatchDescriptor{

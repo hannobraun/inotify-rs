@@ -63,26 +63,26 @@ impl<'a> Iterator for Events<'a> {
 /// An inotify event
 ///
 /// A file system event that describes a change that the user previously
-/// registered interest in. To watch for events, call [`Inotify::add_watch`]. To
+/// registered interest in. To watch for events, call [`Watches::add`]. To
 /// retrieve events, call [`Inotify::read_events_blocking`] or
 /// [`Inotify::read_events`].
 ///
-/// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+/// [`Watches::add`]: struct.Watches.html#method.add
 /// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
 /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
 #[derive(Clone, Debug)]
 pub struct Event<S> {
     /// Identifies the watch this event originates from
     ///
-    /// This [`WatchDescriptor`] is equal to the one that [`Inotify::add_watch`]
+    /// This [`WatchDescriptor`] is equal to the one that [`Watches::add`]
     /// returned when interest for this event was registered. The
     /// [`WatchDescriptor`] can be used to remove the watch using
-    /// [`Inotify::rm_watch`], thereby preventing future events of this type
+    /// [`Watches::remove`], thereby preventing future events of this type
     /// from being created.
     ///
     /// [`WatchDescriptor`]: struct.WatchDescriptor.html
-    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
-    /// [`Inotify::rm_watch`]: struct.Inotify.html#method.rm_watch
+    /// [`Watches::add`]: struct.Watches.html#method.add
+    /// [`Watches::remove`]: struct.Watches.html#method.remove
     pub wd: WatchDescriptor,
 
     /// Indicates what kind of event this is
@@ -357,7 +357,7 @@ bitflags! {
         /// Watch was removed
         ///
         /// This event will be generated, if the watch was removed explicitly
-        /// (via [`Inotify::rm_watch`]), or automatically (because the file was
+        /// (via [`Watches::remove`]), or automatically (because the file was
         /// deleted or the file system was unmounted).
         ///
         /// See [`inotify_sys::IN_IGNORED`].
