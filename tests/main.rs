@@ -266,6 +266,33 @@ fn it_should_implement_raw_fd_traits_correctly() {
     }
 }
 
+#[test]
+fn it_should_watch_correctly_with_a_watches_clone() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    let mut watches1 = inotify.watches();
+    let mut watches2 = watches1.clone();
+    let watch1 = watches1.add(&path, WatchMask::MODIFY).unwrap();
+    let watch2 = watches2.add(&path, WatchMask::MODIFY).unwrap();
+
+    // same path and same Inotify should return same descriptor
+    assert_eq!(watch1, watch2);
+
+    write_to(&mut file);
+
+    let mut buffer = [0; 1024];
+    let events = inotify.read_events_blocking(&mut buffer).unwrap();
+
+    let mut num_events = 0;
+    for event in events {
+        assert_eq!(watch2, event.wd);
+        num_events += 1;
+    }
+    assert!(num_events > 0);
+}
+
 
 struct TestDir {
     dir: TempDir,
