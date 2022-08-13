@@ -19,14 +19,15 @@
 //! let mut inotify = Inotify::init()
 //!     .expect("Error while initializing inotify instance");
 //!
-//! # // Create a temporary file, so `add_watch` won't return an error.
+//! # // Create a temporary file, so `Watches::add` won't return an error.
 //! # use std::fs::File;
 //! # let mut test_file = File::create("/tmp/inotify-rs-test-file")
 //! #     .expect("Failed to create test file");
 //! #
 //! // Watch for modify and close events.
 //! inotify
-//!     .add_watch(
+//!     .watches()
+//!     .add(
 //!         "/tmp/inotify-rs-test-file",
 //!         WatchMask::MODIFY | WatchMask::CLOSE,
 //!     )
@@ -37,7 +38,7 @@
 //! # write!(&mut test_file, "something\n")
 //! #     .expect("Failed to write something to test file");
 //! #
-//! // Read events that were added with `add_watch` above.
+//! // Read events that were added with `Watches::add` above.
 //! let mut buffer = [0; 1024];
 //! let events = inotify.read_events_blocking(&mut buffer)
 //!     .expect("Error while reading events");

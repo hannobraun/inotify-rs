@@ -19,7 +19,7 @@ async fn main() -> Result<(), io::Error> {
 
     let dir = TempDir::new()?;
 
-    inotify.add_watch(dir.path(), WatchMask::CREATE | WatchMask::MODIFY)?;
+    inotify.watches().add(dir.path(), WatchMask::CREATE | WatchMask::MODIFY)?;
 
     thread::spawn::<_, Result<(), io::Error>>(move || {
         loop {

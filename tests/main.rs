@@ -28,7 +28,7 @@ fn it_should_watch_a_file() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    let watch = inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
+    let watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -50,7 +50,7 @@ async fn it_should_watch_a_file_async() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    let watch = inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
+    let watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -60,6 +60,37 @@ async fn it_should_watch_a_file_async() {
     let events = inotify
         .event_stream(&mut buffer[..])
         .unwrap()
+        .take(1)
+        .collect::<Vec<_>>()
+        .await;
+
+    let mut num_events = 0;
+    for event in events {
+        if let Ok(event) = event {
+            assert_eq!(watch, event.wd);
+            num_events += 1;
+        }
+    }
+    assert!(num_events > 0);
+}
+
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_watch_a_file_from_eventstream_watches() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+
+    let mut buffer = [0; 1024];
+
+    use futures_util::StreamExt;
+    let stream = inotify.event_stream(&mut buffer[..]).unwrap();
+
+    let watch = stream.watches().add(&path, WatchMask::MODIFY).unwrap();
+    write_to(&mut file);
+
+    let events = stream
         .take(1)
         .collect::<Vec<_>>()
         .await;
@@ -88,7 +119,7 @@ fn it_should_convert_the_name_into_an_os_str() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path.parent().unwrap(), WatchMask::MODIFY).unwrap();
+    inotify.watches().add(&path.parent().unwrap(), WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -109,7 +140,7 @@ fn it_should_set_name_to_none_if_it_is_empty() {
     let (path, mut file) = testdir.new_file();
 
     let mut inotify = Inotify::init().unwrap();
-    inotify.add_watch(&path, WatchMask::MODIFY).unwrap();
+    inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -129,13 +160,13 @@ fn it_should_not_accept_watchdescriptors_from_other_instances() {
     let mut testdir = TestDir::new();
     let (path, _) = testdir.new_file();
 
-    let mut inotify = Inotify::init().unwrap();
-    let _ = inotify.add_watch(&path, WatchMask::ACCESS).unwrap();
+    let inotify = Inotify::init().unwrap();
+    let _ = inotify.watches().add(&path, WatchMask::ACCESS).unwrap();
 
-    let mut second_inotify = Inotify::init().unwrap();
-    let wd2 = second_inotify.add_watch(&path, WatchMask::ACCESS).unwrap();
+    let second_inotify = Inotify::init().unwrap();
+    let wd2 = second_inotify.watches().add(&path, WatchMask::ACCESS).unwrap();
 
-    assert_eq!(inotify.rm_watch(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
+    assert_eq!(inotify.watches().remove(wd2).unwrap_err().kind(), ErrorKind::InvalidInput);
 }
 
 #[test]
@@ -143,16 +174,18 @@ fn watch_descriptors_from_different_inotify_instances_should_not_be_equal() {
     let mut testdir = TestDir::new();
     let (path, _) = testdir.new_file();
 
-    let mut inotify_1 = Inotify::init()
+    let inotify_1 = Inotify::init()
         .unwrap();
-    let mut inotify_2 = Inotify::init()
+    let inotify_2 = Inotify::init()
         .unwrap();
 
     let wd_1 = inotify_1
-        .add_watch(&path, WatchMask::ACCESS)
+        .watches()
+        .add(&path, WatchMask::ACCESS)
         .unwrap();
     let wd_2 = inotify_2
-        .add_watch(&path, WatchMask::ACCESS)
+        .watches()
+        .add(&path, WatchMask::ACCESS)
         .unwrap();
 
     // As far as inotify is concerned, watch descriptors are just integers that
@@ -173,12 +206,13 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
     // old one.
     // This is quite likely, but it doesn't happen every time. Therefore we may
     // need a few tries until we find two instances where that is the case.
-    let (wd_1, mut inotify_2) = loop {
-        let mut inotify_1 = Inotify::init()
+    let (wd_1, inotify_2) = loop {
+        let inotify_1 = Inotify::init()
             .unwrap();
 
         let wd_1 = inotify_1
-            .add_watch(&path, WatchMask::ACCESS)
+            .watches()
+            .add(&path, WatchMask::ACCESS)
             .unwrap();
         let fd_1 = inotify_1.as_raw_fd();
 
@@ -194,7 +228,8 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
     };
 
     let wd_2 = inotify_2
-        .add_watch(&path, WatchMask::ACCESS)
+        .watches()
+        .add(&path, WatchMask::ACCESS)
         .unwrap();
 
     // The way we engineered this situation, both `WatchDescriptor` instances
@@ -229,6 +264,33 @@ fn it_should_implement_raw_fd_traits_correctly() {
             panic!("Failed to add watch: {}", error);
         }
     }
+}
+
+#[test]
+fn it_should_watch_correctly_with_a_watches_clone() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    let mut watches1 = inotify.watches();
+    let mut watches2 = watches1.clone();
+    let watch1 = watches1.add(&path, WatchMask::MODIFY).unwrap();
+    let watch2 = watches2.add(&path, WatchMask::MODIFY).unwrap();
+
+    // same path and same Inotify should return same descriptor
+    assert_eq!(watch1, watch2);
+
+    write_to(&mut file);
+
+    let mut buffer = [0; 1024];
+    let events = inotify.read_events_blocking(&mut buffer).unwrap();
+
+    let mut num_events = 0;
+    for event in events {
+        assert_eq!(watch2, event.wd);
+        num_events += 1;
+    }
+    assert!(num_events > 0);
 }
 
 
