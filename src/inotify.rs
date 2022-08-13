@@ -1,7 +1,5 @@
 use std::{
-    ffi::CString,
     io,
-    os::unix::ffi::OsStrExt,
     os::unix::io::{
         AsRawFd,
         FromRawFd,
@@ -31,6 +29,7 @@ use crate::util::read_into_buffer;
 use crate::watches::{
     WatchDescriptor,
     WatchMask,
+    Watches,
 };
 
 
@@ -121,6 +120,11 @@ impl Inotify {
         })
     }
 
+    /// Gets an interface that allows adding and removing watches
+    pub fn watches(&self) -> Watches {
+        Watches::new(self.fd.clone())
+    }
+
     /// Adds or updates a watch for the given path
     ///
     /// Adds a new watch or updates an existing one for the file referred to by
@@ -190,20 +194,7 @@ impl Inotify {
         -> io::Result<WatchDescriptor>
         where P: AsRef<Path>
     {
-        let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
-
-        let wd = unsafe {
-            ffi::inotify_add_watch(
-                **self.fd,
-                path.as_ptr() as *const _,
-                mask.bits(),
-            )
-        };
-
-        match wd {
-            -1 => Err(io::Error::last_os_error()),
-            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
-        }
+        self.watches().add(path, mask)
     }
 
     /// Stops watching a file
@@ -258,20 +249,7 @@ impl Inotify {
     /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
     /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
     pub fn rm_watch(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Invalid WatchDescriptor",
-            ));
-        }
-
-        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
-        match result {
-            0  => Ok(()),
-            -1 => Err(io::Error::last_os_error()),
-            _  => panic!(
-                "unexpected return code from inotify_rm_watch ({})", result)
-        }
+        self.watches().remove(wd)
     }
 
     /// Waits until events are available, then returns them

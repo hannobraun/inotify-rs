@@ -1,11 +1,18 @@
 use std::{
+    cmp::Ordering,
+    ffi::CString,
     hash::{
         Hash,
         Hasher,
     },
-    cmp::Ordering,
+    io,
     os::raw::c_int,
-    sync::Weak,
+    os::unix::ffi::OsStrExt,
+    path::Path,
+    sync::{
+        Arc,
+        Weak,
+    },
 };
 
 use inotify_sys as ffi;
@@ -271,6 +278,175 @@ bitflags! {
         ///
         /// [`inotify_sys::IN_ONLYDIR`]: ../inotify_sys/constant.IN_ONLYDIR.html
         const ONLYDIR = ffi::IN_ONLYDIR;
+    }
+}
+
+
+/// Interface for adding and removing watches
+#[derive(Clone, Debug)]
+pub struct Watches {
+    pub(crate) fd: Arc<FdGuard>,
+}
+
+impl Watches {
+    /// Init watches with an inotify file descriptor
+    pub(crate) fn new(fd: Arc<FdGuard>) -> Self {
+        Watches {
+            fd,
+        }
+    }
+
+    /// Adds or updates a watch for the given path
+    ///
+    /// Adds a new watch or updates an existing one for the file referred to by
+    /// `path`. Returns a watch descriptor that can be used to refer to this
+    /// watch later.
+    ///
+    /// The `mask` argument defines what kind of changes the file should be
+    /// watched for, and how to do that. See the documentation of [`WatchMask`]
+    /// for details.
+    ///
+    /// If this method is used to add a new watch, a new [`WatchDescriptor`] is
+    /// returned. If it is used to update an existing watch, a
+    /// [`WatchDescriptor`] that equals the previously returned
+    /// [`WatchDescriptor`] for that watch is returned instead.
+    ///
+    /// Under the hood, this method just calls [`inotify_add_watch`] and does
+    /// some trivial translation between the types on the Rust side and the C
+    /// side.
+    ///
+    /// # Attention: Updating watches and hardlinks
+    ///
+    /// As mentioned above, this method can be used to update an existing watch.
+    /// This is usually done by calling this method with the same `path`
+    /// argument that it has been called with before. But less obviously, it can
+    /// also happen if the method is called with a different path that happens
+    /// to link to the same inode.
+    ///
+    /// You can detect this by keeping track of [`WatchDescriptor`]s and the
+    /// paths they have been returned for. If the same [`WatchDescriptor`] is
+    /// returned for a different path (and you haven't freed the
+    /// [`WatchDescriptor`] by removing the watch), you know you have two paths
+    /// pointing to the same inode, being watched by the same watch.
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to
+    /// [`inotify_add_watch`][`inotify_add_watch`] (translated into an
+    /// `io::Error`), without adding any error conditions of
+    /// its own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::{
+    ///     Inotify,
+    ///     WatchMask,
+    /// };
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # use std::fs::File;
+    /// # File::create("/tmp/inotify-rs-test-file")
+    /// #     .expect("Failed to create test file");
+    /// #
+    /// inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
+    ///     .expect("Failed to add file watch");
+    ///
+    /// // Handle events for the file here
+    /// ```
+    ///
+    /// [`inotify_add_watch`]: ../inotify_sys/fn.inotify_add_watch.html
+    /// [`WatchMask`]: struct.WatchMask.html
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
+    pub fn add<P>(&mut self, path: P, mask: WatchMask)
+                        -> io::Result<WatchDescriptor>
+        where P: AsRef<Path>
+    {
+        let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
+
+        let wd = unsafe {
+            ffi::inotify_add_watch(
+                **self.fd,
+                path.as_ptr() as *const _,
+                mask.bits(),
+            )
+        };
+
+        match wd {
+            -1 => Err(io::Error::last_os_error()),
+            _  => Ok(WatchDescriptor{ id: wd, fd: Arc::downgrade(&self.fd) }),
+        }
+    }
+
+    /// Stops watching a file
+    ///
+    /// Removes the watch represented by the provided [`WatchDescriptor`] by
+    /// calling [`inotify_rm_watch`]. [`WatchDescriptor`]s can be obtained via
+    /// [`Inotify::add_watch`], or from the `wd` field of [`Event`].
+    ///
+    /// # Errors
+    ///
+    /// Directly returns the error from the call to [`inotify_rm_watch`].
+    /// Returns an [`io::Error`] with [`ErrorKind`]`::InvalidInput`, if the given
+    /// [`WatchDescriptor`] did not originate from this [`Inotify`] instance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use inotify::Inotify;
+    ///
+    /// let mut inotify = Inotify::init()
+    ///     .expect("Failed to initialize an inotify instance");
+    ///
+    /// # // Create a temporary file, so `add_watch` won't return an error.
+    /// # use std::fs::File;
+    /// # let mut test_file = File::create("/tmp/inotify-rs-test-file")
+    /// #     .expect("Failed to create test file");
+    /// #
+    /// # // Add a watch and modify the file, so the code below doesn't block
+    /// # // forever.
+    /// # use inotify::WatchMask;
+    /// # inotify.add_watch("/tmp/inotify-rs-test-file", WatchMask::MODIFY)
+    /// #     .expect("Failed to add file watch");
+    /// # use std::io::Write;
+    /// # write!(&mut test_file, "something\n")
+    /// #     .expect("Failed to write something to test file");
+    /// #
+    /// let mut buffer = [0; 1024];
+    /// let events = inotify
+    ///     .read_events_blocking(&mut buffer)
+    ///     .expect("Error while waiting for events");
+    ///
+    /// for event in events {
+    ///     inotify.rm_watch(event.wd);
+    /// }
+    /// ```
+    ///
+    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
+    /// [`inotify_rm_watch`]: ../inotify_sys/fn.inotify_rm_watch.html
+    /// [`Inotify::add_watch`]: struct.Inotify.html#method.add_watch
+    /// [`Event`]: struct.Event.html
+    /// [`Inotify`]: struct.Inotify.html
+    /// [`io::Error`]: https://doc.rust-lang.org/std/io/struct.Error.html
+    /// [`ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
+    pub fn remove(&mut self, wd: WatchDescriptor) -> io::Result<()> {
+        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid WatchDescriptor",
+            ));
+        }
+
+        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
+        match result {
+            0  => Ok(()),
+            -1 => Err(io::Error::last_os_error()),
+            _  => panic!(
+                "unexpected return code from inotify_rm_watch ({})", result)
+        }
     }
 }
 
