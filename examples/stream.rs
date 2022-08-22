@@ -14,7 +14,7 @@ use tempfile::TempDir;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
-    let mut inotify = Inotify::init()
+    let inotify = Inotify::init()
         .expect("Failed to initialize inotify");
 
     let dir = TempDir::new()?;
@@ -29,7 +29,7 @@ async fn main() -> Result<(), io::Error> {
     });
 
     let mut buffer = [0; 1024];
-    let mut stream = inotify.event_stream(&mut buffer)?;
+    let mut stream = inotify.into_event_stream(&mut buffer)?;
 
     while let Some(event_or_error) = stream.next().await {
         println!("event: {:?}", event_or_error?);
