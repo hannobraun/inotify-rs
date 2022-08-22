@@ -11,14 +11,15 @@ use tokio::io::unix::AsyncFd;
 
 use crate::events::{Event, EventOwned};
 use crate::fd_guard::FdGuard;
+use crate::Inotify;
 use crate::util::read_into_buffer;
 use crate::watches::Watches;
 
 /// Stream of inotify events
 ///
-/// Allows for streaming events returned by [`Inotify::event_stream`].
+/// Allows for streaming events returned by [`Inotify::into_event_stream`].
 ///
-/// [`Inotify::event_stream`]: struct.Inotify.html#method.event_stream
+/// [`Inotify::into_event_stream`]: struct.Inotify.html#method.into_event_stream
 #[derive(Debug)]
 pub struct EventStream<T> {
     fd: AsyncFd<ArcFdGuard>,
@@ -48,6 +49,12 @@ where
     /// [`Watches::remove`]: struct.Watches.html#method.remove
     pub fn watches(&self) -> Watches {
         Watches::new(self.fd.get_ref().0.clone())
+    }
+
+    /// Consumes the `EventStream` instance and returns an `Inotify` using the original
+    /// file descriptor that was passed from `Inotify` to create the `EventStream`.
+    pub fn into_inotify(self) -> Inotify {
+        Inotify::from_file_descriptor(self.fd.into_inner().0)
     }
 }
 

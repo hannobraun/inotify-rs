@@ -277,12 +277,10 @@ impl Inotify {
         Ok(Events::new(Arc::downgrade(&self.fd), buffer, num_bytes))
     }
 
-    /// Create a stream which collects events
-    ///
-    /// Returns a `Stream` over all events that are available. This stream is an
-    /// infinite source of events.
-    ///
-    /// An internal buffer which can hold the largest possible event is used.
+    /// Deprecated: use `into_event_stream()` instead, which enforces a single `Stream` and predictable reads.
+    /// Using this method to create multiple `EventStream` instances from one `Inotify` is unsupported,
+    /// as they will contend over one event source and each produce unpredictable stream contents.
+    #[deprecated = "use `into_event_stream()` instead, which enforces a single Stream and predictable reads"]
     #[cfg(feature = "stream")]
     pub fn event_stream<T>(&mut self, buffer: T)
         -> io::Result<EventStream<T>>
@@ -290,6 +288,32 @@ impl Inotify {
         T: AsMut<[u8]> + AsRef<[u8]>,
     {
         EventStream::new(self.fd.clone(), buffer)
+    }
+
+    /// Create a stream which collects events. Consumes the `Inotify` instance.
+    ///
+    /// Returns a `Stream` over all events that are available. This stream is an
+    /// infinite source of events.
+    ///
+    /// An internal buffer which can hold the largest possible event is used.
+    #[cfg(feature = "stream")]
+    pub fn into_event_stream<T>(self, buffer: T)
+        -> io::Result<EventStream<T>>
+    where
+        T: AsMut<[u8]> + AsRef<[u8]>,
+    {
+        EventStream::new(self.fd, buffer)
+    }
+
+    /// Creates an `Inotify` instance using the file descriptor which was originally
+    /// initialized in `Inotify::init`. This is intended to be used to transform an
+    /// `EventStream` back into an `Inotify`. Do not attempt to clone `Inotify` with this.
+    #[cfg(feature = "stream")]
+    pub(crate) fn from_file_descriptor(fd: Arc<FdGuard>) -> Self
+    {
+        Inotify {
+            fd,
+        }
     }
 
     /// Closes the inotify instance

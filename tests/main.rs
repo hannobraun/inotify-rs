@@ -49,8 +49,16 @@ async fn it_should_watch_a_file_async() {
     let mut testdir = TestDir::new();
     let (path, mut file) = testdir.new_file();
 
-    let mut inotify = Inotify::init().unwrap();
-    let watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
+    let inotify = Inotify::init().unwrap();
+
+    // Hold ownership of `watches` for this test, so that the underlying file descriptor has
+    // at least one reference to keep it alive, and we can inspect the WatchDescriptors below.
+    // Otherwise the `Weak<FdGuard>` contained in the WatchDescriptors will be invalidated
+    // when `inotify` is consumed by `into_event_stream()` and the EventStream is dropped
+    // during `await`.
+    let mut watches = inotify.watches();
+
+    let watch = watches.add(&path, WatchMask::MODIFY).unwrap();
 
     write_to(&mut file);
 
@@ -58,7 +66,7 @@ async fn it_should_watch_a_file_async() {
 
     use futures_util::StreamExt;
     let events = inotify
-        .event_stream(&mut buffer[..])
+        .into_event_stream(&mut buffer[..])
         .unwrap()
         .take(1)
         .collect::<Vec<_>>()
@@ -80,14 +88,20 @@ async fn it_should_watch_a_file_from_eventstream_watches() {
     let mut testdir = TestDir::new();
     let (path, mut file) = testdir.new_file();
 
-    let mut inotify = Inotify::init().unwrap();
+    let inotify = Inotify::init().unwrap();
 
     let mut buffer = [0; 1024];
 
     use futures_util::StreamExt;
-    let stream = inotify.event_stream(&mut buffer[..]).unwrap();
+    let stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
 
-    let watch = stream.watches().add(&path, WatchMask::MODIFY).unwrap();
+    // Hold ownership of `watches` for this test, so that the underlying file descriptor has
+    // at least one reference to keep it alive, and we can inspect the WatchDescriptors below.
+    // Otherwise the `Weak<FdGuard>` contained in the WatchDescriptors will be invalidated
+    // when `stream` is dropped during `await`.
+    let mut watches = stream.watches();
+
+    let watch = watches.add(&path, WatchMask::MODIFY).unwrap();
     write_to(&mut file);
 
     let events = stream
@@ -101,6 +115,32 @@ async fn it_should_watch_a_file_from_eventstream_watches() {
             assert_eq!(watch, event.wd);
             num_events += 1;
         }
+    }
+    assert!(num_events > 0);
+}
+
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_watch_a_file_after_converting_back_from_eventstream() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let inotify = Inotify::init().unwrap();
+
+    let mut buffer = [0; 1024];
+    let stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
+    let mut inotify = stream.into_inotify();
+
+    let watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
+
+    write_to(&mut file);
+
+    let events = inotify.read_events_blocking(&mut buffer).unwrap();
+
+    let mut num_events = 0;
+    for event in events {
+        assert_eq!(watch, event.wd);
+        num_events += 1;
     }
     assert!(num_events > 0);
 }
