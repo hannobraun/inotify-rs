@@ -6,7 +6,7 @@
 
 use inotify::{
     Inotify,
-    WatchMask,
+    WatchMask
 };
 use std::fs::File;
 use std::io::{
@@ -20,6 +20,17 @@ use std::os::unix::io::{
 };
 use std::path::PathBuf;
 use tempfile::TempDir;
+
+#[cfg(feature = "stream")]
+use maplit::hashmap;
+#[cfg(feature = "stream")]
+use inotify::EventMask;
+#[cfg(feature = "stream")]
+use rand::{thread_rng, prelude::SliceRandom};
+#[cfg(feature = "stream")]
+use std::sync::{Mutex, Arc};
+#[cfg(feature = "stream")]
+use futures_util::StreamExt;
 
 
 #[test]
@@ -333,6 +344,63 @@ fn it_should_watch_correctly_with_a_watches_clone() {
     assert!(num_events > 0);
 }
 
+#[cfg(feature = "stream")]
+#[tokio::test]
+/// Testing if two files with the same name but different directories
+/// (e.g. "file_a" and "another_dir/file_a") are distinguished when _randomly_
+/// triggering a DELETE_SELF for the two files.
+async fn it_should_distinguish_event_for_files_with_same_name() {
+    let mut testdir = TestDir::new();
+    let testdir_path = testdir.dir.path().to_owned();
+    let file_order = Arc::new(Mutex::new(vec!["file_a", "another_dir/file_a"]));
+    file_order.lock().unwrap().shuffle(&mut thread_rng());
+    let file_order_clone = file_order.clone();
+
+    let inotify = Inotify::init().expect("Failed to initialize inotify instance");
+
+    // creating file_a inside `TestDir.dir`
+    let (path_1, _) = testdir.new_file_with_name("file_a");
+    // creating a directory inside `TestDir.dir`
+    testdir.new_directory_with_name("another_dir");
+    // creating a file inside `TestDir.dir/another_dir`
+    let (path_2, _) = testdir.new_file_in_directory_with_name("another_dir", "file_a");
+
+    // watching both files for `DELETE_SELF`
+    let wd_1 = inotify.watches().add(&path_1, WatchMask::DELETE_SELF).unwrap();
+    let wd_2 = inotify.watches().add(&path_2, WatchMask::DELETE_SELF).unwrap();
+
+    let expected_ids = hashmap! {
+        wd_1.get_watch_descriptor_id() => "file_a",
+        wd_2.get_watch_descriptor_id() => "another_dir/file_a"
+    };
+    let mut buffer = [0; 1024];
+
+    let file_removal_handler = tokio::spawn(async move {
+        for file in file_order.lock().unwrap().iter() {
+            testdir.delete_file(file);
+        }
+    });
+
+    let event_handle = tokio::spawn(async move {
+        let mut events = inotify.into_event_stream(&mut buffer).unwrap();
+        while let Some(Ok(event)) = events.next().await {
+            if event.mask == EventMask::DELETE_SELF {
+                let id = event.wd.get_watch_descriptor_id();
+                let file = expected_ids.get(&id).unwrap();
+                let full_path = testdir_path.join(*file);
+                println!("file {:?} was deleted", full_path);
+                file_order_clone.lock().unwrap().retain(|&x| x != *file);
+
+                if file_order_clone.lock().unwrap().is_empty() {
+                    break;
+                }
+            }
+        }
+    });
+
+    let () = event_handle.await.unwrap();
+    let () = file_removal_handler.await.unwrap();
+}
 
 struct TestDir {
     dir: TempDir,
@@ -345,6 +413,45 @@ impl TestDir {
             dir: TempDir::new().unwrap(),
             counter: 0,
         }
+    }
+
+    #[cfg(feature = "stream")]
+    fn new_file_with_name(&mut self, file_name: &str) -> (PathBuf, File) {
+        self.counter += 1;
+
+        let path = self.dir.path().join(file_name);
+        let file = File::create(&path)
+            .unwrap_or_else(|error| panic!("Failed to create temporary file: {}", error));
+
+        (path, file)
+    }
+
+    #[cfg(feature = "stream")]
+    fn delete_file(&mut self, relative_path_to_file: &str) {
+        let path = &self.dir.path().join(relative_path_to_file);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[cfg(feature = "stream")]
+    fn new_file_in_directory_with_name(
+        &mut self,
+        dir_name: &str,
+        file_name: &str,
+    ) -> (PathBuf, File) {
+        self.counter += 1;
+
+        let path = self.dir.path().join(dir_name).join(file_name);
+        let file = File::create(&path)
+            .unwrap_or_else(|error| panic!("Failed to create temporary file: {}", error));
+
+        (path, file)
+    }
+
+    #[cfg(feature = "stream")]
+    fn new_directory_with_name(&mut self, dir_name: &str) -> PathBuf {
+        let path = self.dir.path().join(dir_name);
+        let () = std::fs::create_dir(&path).unwrap();
+        path.to_path_buf()
     }
 
     fn new_file(&mut self) -> (PathBuf, File) {

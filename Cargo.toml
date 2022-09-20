@@ -38,6 +38,8 @@ libc         = "0.2"
 tokio        = { version = "1.0.1", optional = true, features = ["net"] }
 
 [dev-dependencies]
+maplit = "1.0"
+rand = "0.8"
 tempfile     = "3.1.0"
 futures-util = "0.3.1"
 tokio        = { version = "1.0.1", features = ["macros", "rt-multi-thread"] }
