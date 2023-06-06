@@ -9,6 +9,7 @@ authors = [
   "Frank Denis <github@pureftpd.org>"
 ]
 edition = "2018"
+rust-version = "1.63"
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"

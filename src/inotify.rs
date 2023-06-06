@@ -1,9 +1,12 @@
 use std::{
     io,
     os::unix::io::{
+        AsFd,
         AsRawFd,
+        BorrowedFd,
         FromRawFd,
         IntoRawFd,
+        OwnedFd,
         RawFd,
     },
     path::Path,
@@ -368,5 +371,24 @@ impl IntoRawFd for Inotify {
     fn into_raw_fd(self) -> RawFd {
         self.fd.should_not_close();
         self.fd.fd
+    }
+}
+
+impl AsFd for Inotify {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.fd.as_fd()
+    }
+}
+
+impl From<Inotify> for OwnedFd {
+    fn from(fd: Inotify) -> OwnedFd {
+        unsafe { OwnedFd::from_raw_fd(fd.into_raw_fd()) }
+    }
+}
+
+impl From<OwnedFd> for Inotify {
+    fn from(fd: OwnedFd) -> Inotify {
+        unsafe { Inotify::from_raw_fd(fd.into_raw_fd()) }
     }
 }
