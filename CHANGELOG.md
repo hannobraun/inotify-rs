@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.10.1 (2023-06-07)
+
+- Add `WatchDescriptor::get_watch_descriptor_id` ([#193])
+- Add `Event::to_owned` ([#196])
+- Deprecate `Event::into_owned` ([#196])
+- Add `Watches`/`Inotify::watches`/`EventStream::watches` ([#197])
+- Deprecate `Inotify::add_watch`/`Inotify::rm_watch` ([#197])
+- Add `Inotify::into_event_stream`/`EventStream::into_inotify` ([#199])
+- Deprecate `Inotify::event_stream` ([#199])
+- Implement `AsFd` and bidirectional conversion to/from `OwnedFd` ([#202])
+- Raise Minimum Supported Rust Version (MSRV) to 1.63.0 ([#202])
+
+[#193]: https://github.com/hannobraun/inotify-rs/pull/193
+[#196]: https://github.com/hannobraun/inotify-rs/pull/196
+[#197]: https://github.com/hannobraun/inotify-rs/pull/197
+[#199]: https://github.com/hannobraun/inotify-rs/pull/199
+[#202]: https://github.com/hannobraun/inotify-rs/pull/202
+
+
 ## v0.10.0 (2021-12-07)
 
 - **Breaking change:** Remove special handling of `WouldBlock` error ([#190])
