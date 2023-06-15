@@ -97,6 +97,7 @@ pub use crate::util::{
     get_absolute_path_buffer_size,
 };
 pub use crate::watches::{
+    Watches,
     WatchDescriptor,
     WatchMask,
 };
