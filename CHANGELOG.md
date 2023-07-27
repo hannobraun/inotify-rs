@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.10.2 (2023-07-27)
+
+- Fix broken links to `Watches` in documentation ([#205])
+
+[#205]: https://github.com/hannobraun/inotify-rs/pull/205
+
+
 ## v0.10.1 (2023-06-07)
 
 - Add `WatchDescriptor::get_watch_descriptor_id` ([#193])
