@@ -112,5 +112,5 @@ THIS SOFTWARE.
 [notify]: https://crates.io/crates/notify
 [inotify-sys]: https://crates.io/crates/inotify-sys
 [API reference]: https://docs.rs/inotify
-[examples directory]: https://github.com/inotify-rs/inotify/tree/master/examples
+[examples directory]: https://github.com/inotify-rs/inotify/tree/main/examples
 [inotify man page]: http://man7.org/linux/man-pages/man7/inotify.7.html
