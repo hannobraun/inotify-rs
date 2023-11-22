@@ -63,6 +63,7 @@ bitflags! {
     /// ```
     ///
     /// [`Watches::add`]: struct.Watches.html#method.add
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct WatchMask: u32 {
         /// File was accessed
         ///
