@@ -233,6 +233,7 @@ bitflags! {
     /// Please refer to the documentation of [`Event`] for a usage example.
     ///
     /// [`Event`]: struct.Event.html
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct EventMask: u32 {
         /// File was accessed
         ///
