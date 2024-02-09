@@ -47,7 +47,7 @@ use crate::stream::EventStream;
 /// Please refer to the [top-level documentation] for further details and a
 /// usage example.
 ///
-/// [top-level documentation]: index.html
+/// [top-level documentation]: crate
 #[derive(Debug)]
 pub struct Inotify {
     fd: Arc<FdGuard>,
@@ -80,10 +80,9 @@ impl Inotify {
     ///     .expect("Failed to initialize an inotify instance");
     /// ```
     ///
-    /// [`Inotify`]: struct.Inotify.html
-    /// [`inotify_init1`]: ../inotify_sys/fn.inotify_init1.html
-    /// [`IN_CLOEXEC`]: ../inotify_sys/constant.IN_CLOEXEC.html
-    /// [`IN_NONBLOCK`]: ../inotify_sys/constant.IN_NONBLOCK.html
+    /// [`inotify_init1`]: inotify_sys::inotify_init1
+    /// [`IN_CLOEXEC`]: inotify_sys::IN_CLOEXEC
+    /// [`IN_NONBLOCK`]: inotify_sys::IN_NONBLOCK
     pub fn init() -> io::Result<Inotify> {
         let fd = unsafe {
             // Initialize inotify and pass both `IN_CLOEXEC` and `IN_NONBLOCK`.
@@ -118,9 +117,6 @@ impl Inotify {
 
     /// Gets an interface that allows adding and removing watches.
     /// See [`Watches::add`] and [`Watches::remove`].
-    ///
-    /// [`Watches::add`]: struct.Watches.html#method.add
-    /// [`Watches::remove`]: struct.Watches.html#method.remove
     pub fn watches(&self) -> Watches {
         Watches::new(self.fd.clone())
     }
@@ -148,9 +144,6 @@ impl Inotify {
     /// This method calls [`Inotify::read_events`] internally and behaves
     /// essentially the same, apart from the blocking behavior. Please refer to
     /// the documentation of [`Inotify::read_events`] for more information.
-    ///
-    /// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
-    /// [`read`]: ../libc/fn.read.html
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
@@ -224,10 +217,10 @@ impl Inotify {
     /// }
     /// ```
     ///
-    /// [`read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
-    /// [`read`]: ../libc/fn.read.html
-    /// [`ErrorKind::UnexpectedEof`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.UnexpectedEof
-    /// [`ErrorKind::InvalidInput`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidInput
+    /// [`read_events_blocking`]: Self::read_events_blocking
+    /// [`read`]: libc::read
+    /// [`ErrorKind::UnexpectedEof`]: std::io::ErrorKind::UnexpectedEof
+    /// [`ErrorKind::InvalidInput`]: std::io::ErrorKind::InvalidInput
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8])
         -> io::Result<Events<'a>>
     {
@@ -335,8 +328,7 @@ impl Inotify {
     ///     .expect("Failed to close inotify instance");
     /// ```
     ///
-    /// [`Inotify`]: struct.Inotify.html
-    /// [`close`]: ../libc/fn.close.html
+    /// [`close`]: libc::close
     pub fn close(self) -> io::Result<()> {
         // `self` will be dropped when this method returns. If this is the only
         // owner of `fd`, the `Arc` will also be dropped. The `Drop`

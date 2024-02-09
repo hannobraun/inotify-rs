@@ -19,8 +19,8 @@ use crate::watches::WatchDescriptor;
 /// Allows for iteration over the events returned by
 /// [`Inotify::read_events_blocking`] or [`Inotify::read_events`].
 ///
-/// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
-/// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
+/// [`Inotify::read_events_blocking`]: crate::Inotify::read_events_blocking
+/// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Debug)]
 pub struct Events<'a> {
     fd       : Weak<FdGuard>,
@@ -66,9 +66,9 @@ impl<'a> Iterator for Events<'a> {
 /// retrieve events, call [`Inotify::read_events_blocking`] or
 /// [`Inotify::read_events`].
 ///
-/// [`Watches::add`]: struct.Watches.html#method.add
-/// [`Inotify::read_events_blocking`]: struct.Inotify.html#method.read_events_blocking
-/// [`Inotify::read_events`]: struct.Inotify.html#method.read_events
+/// [`Watches::add`]: crate::Watches::add
+/// [`Inotify::read_events_blocking`]: crate::Inotify::read_events_blocking
+/// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Clone, Debug)]
 pub struct Event<S> {
     /// Identifies the watch this event originates from
@@ -79,9 +79,8 @@ pub struct Event<S> {
     /// [`Watches::remove`], thereby preventing future events of this type
     /// from being created.
     ///
-    /// [`WatchDescriptor`]: struct.WatchDescriptor.html
-    /// [`Watches::add`]: struct.Watches.html#method.add
-    /// [`Watches::remove`]: struct.Watches.html#method.remove
+    /// [`Watches::add`]: crate::Watches::add
+    /// [`Watches::remove`]: crate::Watches::remove
     pub wd: WatchDescriptor,
 
     /// Indicates what kind of event this is
@@ -93,8 +92,8 @@ pub struct Event<S> {
     /// [`MOVED_TO`]. The `cookie` field will be the same for both of them,
     /// thereby making is possible to connect the event pair.
     ///
-    /// [`MOVED_FROM`]: event_mask/constant.MOVED_FROM.html
-    /// [`MOVED_TO`]: event_mask/constant.MOVED_TO.html
+    /// [`MOVED_FROM`]: EventMask::MOVED_FROM
+    /// [`MOVED_TO`]: EventMask::MOVED_TO
     pub cookie: u32,
 
     /// The name of the file the event originates from
@@ -231,8 +230,6 @@ bitflags! {
     /// its associated constants.
     ///
     /// Please refer to the documentation of [`Event`] for a usage example.
-    ///
-    /// [`Event`]: struct.Event.html
     #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct EventMask: u32 {
         /// File was accessed
@@ -241,8 +238,6 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_ACCESS`].
-        ///
-        /// [`inotify_sys::IN_ACCESS`]: ../inotify_sys/constant.IN_ACCESS.html
         const ACCESS = ffi::IN_ACCESS;
 
         /// Metadata (permissions, timestamps, ...) changed
@@ -251,8 +246,6 @@ bitflags! {
         /// directory itself, as well as objects inside the directory.
         ///
         /// See [`inotify_sys::IN_ATTRIB`].
-        ///
-        /// [`inotify_sys::IN_ATTRIB`]: ../inotify_sys/constant.IN_ATTRIB.html
         const ATTRIB = ffi::IN_ATTRIB;
 
         /// File opened for writing was closed
@@ -261,8 +254,6 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_CLOSE_WRITE`].
-        ///
-        /// [`inotify_sys::IN_CLOSE_WRITE`]: ../inotify_sys/constant.IN_CLOSE_WRITE.html
         const CLOSE_WRITE = ffi::IN_CLOSE_WRITE;
 
         /// File or directory not opened for writing was closed
@@ -271,8 +262,6 @@ bitflags! {
         /// directory itself, as well as objects inside the directory.
         ///
         /// See [`inotify_sys::IN_CLOSE_NOWRITE`].
-        ///
-        /// [`inotify_sys::IN_CLOSE_NOWRITE`]: ../inotify_sys/constant.IN_CLOSE_NOWRITE.html
         const CLOSE_NOWRITE = ffi::IN_CLOSE_NOWRITE;
 
         /// File/directory created in watched directory
@@ -281,25 +270,17 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_CREATE`].
-        ///
-        /// [`inotify_sys::IN_CREATE`]: ../inotify_sys/constant.IN_CREATE.html
         const CREATE = ffi::IN_CREATE;
 
         /// File/directory deleted from watched directory
         ///
         /// When watching a directory, this event is only triggered for objects
         /// inside the directory, not the directory itself.
-        ///
-        /// See [`inotify_sys::IN_DELETE`].
-        ///
-        /// [`inotify_sys::IN_DELETE`]: ../inotify_sys/constant.IN_DELETE.html
         const DELETE = ffi::IN_DELETE;
 
         /// Watched file/directory was deleted
         ///
         /// See [`inotify_sys::IN_DELETE_SELF`].
-        ///
-        /// [`inotify_sys::IN_DELETE_SELF`]: ../inotify_sys/constant.IN_DELETE_SELF.html
         const DELETE_SELF = ffi::IN_DELETE_SELF;
 
         /// File was modified
@@ -308,15 +289,11 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_MODIFY`].
-        ///
-        /// [`inotify_sys::IN_MODIFY`]: ../inotify_sys/constant.IN_MODIFY.html
         const MODIFY = ffi::IN_MODIFY;
 
         /// Watched file/directory was moved
         ///
         /// See [`inotify_sys::IN_MOVE_SELF`].
-        ///
-        /// [`inotify_sys::IN_MOVE_SELF`]: ../inotify_sys/constant.IN_MOVE_SELF.html
         const MOVE_SELF = ffi::IN_MOVE_SELF;
 
         /// File was renamed/moved; watched directory contained old name
@@ -325,8 +302,6 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_MOVED_FROM`].
-        ///
-        /// [`inotify_sys::IN_MOVED_FROM`]: ../inotify_sys/constant.IN_MOVED_FROM.html
         const MOVED_FROM = ffi::IN_MOVED_FROM;
 
         /// File was renamed/moved; watched directory contains new name
@@ -335,8 +310,6 @@ bitflags! {
         /// inside the directory, not the directory itself.
         ///
         /// See [`inotify_sys::IN_MOVED_TO`].
-        ///
-        /// [`inotify_sys::IN_MOVED_TO`]: ../inotify_sys/constant.IN_MOVED_TO.html
         const MOVED_TO = ffi::IN_MOVED_TO;
 
         /// File or directory was opened
@@ -345,8 +318,6 @@ bitflags! {
         /// directory itself, as well as objects inside the directory.
         ///
         /// See [`inotify_sys::IN_OPEN`].
-        ///
-        /// [`inotify_sys::IN_OPEN`]: ../inotify_sys/constant.IN_OPEN.html
         const OPEN = ffi::IN_OPEN;
 
         /// Watch was removed
@@ -357,7 +328,7 @@ bitflags! {
         ///
         /// See [`inotify_sys::IN_IGNORED`].
         ///
-        /// [`inotify_sys::IN_IGNORED`]: ../inotify_sys/constant.IN_IGNORED.html
+        /// [`Watches::remove`]: crate::Watches::remove
         const IGNORED = ffi::IN_IGNORED;
 
         /// Event related to a directory
@@ -365,8 +336,6 @@ bitflags! {
         /// The subject of the event is a directory.
         ///
         /// See [`inotify_sys::IN_ISDIR`].
-        ///
-        /// [`inotify_sys::IN_ISDIR`]: ../inotify_sys/constant.IN_ISDIR.html
         const ISDIR = ffi::IN_ISDIR;
 
         /// Event queue overflowed
@@ -374,21 +343,16 @@ bitflags! {
         /// The event queue has overflowed and events have presumably been lost.
         ///
         /// See [`inotify_sys::IN_Q_OVERFLOW`].
-        ///
-        /// [`inotify_sys::IN_Q_OVERFLOW`]: ../inotify_sys/constant.IN_Q_OVERFLOW.html
         const Q_OVERFLOW = ffi::IN_Q_OVERFLOW;
 
         /// File system containing watched object was unmounted.
         /// File system was unmounted
         ///
         /// The file system that contained the watched object has been
-        /// unmounted. An event with [`WatchMask::IGNORED`] will subsequently be
+        /// unmounted. An event with [`EventMask::IGNORED`] will subsequently be
         /// generated for the same watch descriptor.
         ///
         /// See [`inotify_sys::IN_UNMOUNT`].
-        ///
-        /// [`WatchMask::IGNORED`]: #associatedconstant.IGNORED
-        /// [`inotify_sys::IN_UNMOUNT`]: ../inotify_sys/constant.IN_UNMOUNT.html
         const UNMOUNT = ffi::IN_UNMOUNT;
     }
 }

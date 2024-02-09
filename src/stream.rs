@@ -18,8 +18,6 @@ use crate::watches::Watches;
 /// Stream of inotify events
 ///
 /// Allows for streaming events returned by [`Inotify::into_event_stream`].
-///
-/// [`Inotify::into_event_stream`]: struct.Inotify.html#method.into_event_stream
 #[derive(Debug)]
 pub struct EventStream<T> {
     fd: AsyncFd<ArcFdGuard>,
@@ -44,9 +42,6 @@ where
 
     /// Returns an instance of `Watches` to add and remove watches.
     /// See [`Watches::add`] and [`Watches::remove`].
-    ///
-    /// [`Watches::add`]: struct.Watches.html#method.add
-    /// [`Watches::remove`]: struct.Watches.html#method.remove
     pub fn watches(&self) -> Watches {
         Watches::new(self.fd.get_ref().0.clone())
     }

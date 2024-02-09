@@ -29,7 +29,7 @@ pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
 /// can be calculated using this formula:
 /// `sizeof(struct inotify_event) + NAME_MAX + 1`
 ///
-/// See: [https://man7.org/linux/man-pages/man7/inotify.7.html](https://man7.org/linux/man-pages/man7/inotify.7.html)
+/// See: <https://man7.org/linux/man-pages/man7/inotify.7.html>
 ///
 /// The NAME_MAX size formula is:
 /// `ABSOLUTE_PARENT_PATH_LEN + 1 + 255`
@@ -39,11 +39,11 @@ pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
 /// or for the root directory.
 /// - Add the maximum number of chars in a filename, 255.
 ///
-/// See: [https://github.com/torvalds/linux/blob/master/include/uapi/linux/limits.h](https://github.com/torvalds/linux/blob/master/include/uapi/linux/limits.h)
+/// See: <https://github.com/torvalds/linux/blob/master/include/uapi/linux/limits.h>
 ///
 /// Unfortunately, we can't just do the same with max path length itself.
 ///
-/// See: [https://eklitzke.org/path-max-is-tricky](https://eklitzke.org/path-max-is-tricky)
+/// See: <https://eklitzke.org/path-max-is-tricky>
 ///
 /// This function is really just a fallible wrapper around `get_absolute_path_buffer_size()`.
 ///
