@@ -223,6 +223,19 @@ bitflags! {
     }
 }
 
+impl WatchMask {
+    /// Wrapper around [`Self::from_bits_retain`] for backwards compatibility
+    ///
+    /// # Safety
+    ///
+    /// This function is not actually unsafe. It is just a wrapper around the
+    /// safe [`Self::from_bits_retain`].
+    #[deprecated = "Use the safe `from_bits_retain` method instead"]
+    pub unsafe fn from_bits_unchecked(bits: u32) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 impl WatchDescriptor {
     /// Getter method for a watcher's id.
     ///
