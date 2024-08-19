@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0 (2024-08-19)
+
+- Fix link in README ([#209])
+- **Breaking change:** Make `bits` field of `EventMask`/`WatchMask` inaccessible. You can use the `.bits()` method instead. ([#211], [#218])
+- Fix various links in documentation ([#213])
+- Bump minimum supported Rust version (MSRV) to 1.70. ([#219])
+
+[#209]: https://github.com/hannobraun/inotify-rs/pull/209
+[#211]: https://github.com/hannobraun/inotify-rs/pull/211
+[#213]: https://github.com/hannobraun/inotify-rs/pull/213
+[#218]: https://github.com/hannobraun/inotify-rs/pull/218
+[#219]: https://github.com/hannobraun/inotify-rs/pull/219
+
+
 ## v0.10.2 (2023-07-27)
 
 - Fix broken links to `Watches` in documentation ([#205])
