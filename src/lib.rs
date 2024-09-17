@@ -65,11 +65,9 @@
 //! [inotify]: https://en.wikipedia.org/wiki/Inotify
 //! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
 
-
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![deny(missing_debug_implementations)]
-
 
 #[macro_use]
 extern crate bitflags;
@@ -83,23 +81,10 @@ mod watches;
 #[cfg(feature = "stream")]
 mod stream;
 
-
-pub use crate::events::{
-    Event,
-    EventMask,
-    EventOwned,
-    Events,
-};
+pub use crate::events::{Event, EventMask, EventOwned, Events};
 pub use crate::inotify::Inotify;
-pub use crate::util::{
-    get_buffer_size,
-    get_absolute_path_buffer_size,
-};
-pub use crate::watches::{
-    Watches,
-    WatchDescriptor,
-    WatchMask,
-};
+pub use crate::util::{get_absolute_path_buffer_size, get_buffer_size};
+pub use crate::watches::{WatchDescriptor, WatchMask, Watches};
 
 #[cfg(feature = "stream")]
 pub use self::stream::EventStream;
