@@ -444,6 +444,6 @@ impl TestDir {
 }
 
 fn write_to(file: &mut File) {
-    file.write(b"This should trigger an inotify event.")
+    file.write_all(b"This should trigger an inotify event.")
         .unwrap_or_else(|error| panic!("Failed to write to file: {}", error));
 }

@@ -361,7 +361,7 @@ mod tests {
             slice::from_raw_parts(&event as *const _ as *const u8, mem::size_of_val(&event))
         };
         (&mut buffer[..])
-            .write(event)
+            .write_all(event)
             .expect("Failed to write into buffer");
 
         // After that event, simulate an event that starts with a non-zero byte.
