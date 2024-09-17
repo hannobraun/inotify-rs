@@ -365,7 +365,7 @@ mod tests {
             .expect("Failed to write into buffer");
 
         // After that event, simulate an event that starts with a non-zero byte.
-        buffer[mem::size_of_val(&event)] = 1;
+        buffer[mem::size_of_val(event)] = 1;
 
         // Now create the event and verify that the name is actually `None`, as
         // dictated by the value `len` above.
