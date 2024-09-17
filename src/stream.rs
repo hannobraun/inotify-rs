@@ -11,9 +11,9 @@ use tokio::io::unix::AsyncFd;
 
 use crate::events::{Event, EventOwned};
 use crate::fd_guard::FdGuard;
-use crate::Inotify;
 use crate::util::read_into_buffer;
 use crate::watches::Watches;
+use crate::Inotify;
 
 /// Stream of inotify events
 ///

@@ -1,8 +1,5 @@
 use std::{
-    ffi::{
-        OsStr,
-        OsString,
-    },
+    ffi::{OsStr, OsString},
     mem,
     os::unix::ffi::OsStrExt,
     sync::Weak,
@@ -13,7 +10,6 @@ use inotify_sys as ffi;
 use crate::fd_guard::FdGuard;
 use crate::watches::WatchDescriptor;
 
-
 /// Iterator over inotify events
 ///
 /// Allows for iteration over the events returned by
@@ -23,16 +19,14 @@ use crate::watches::WatchDescriptor;
 /// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Debug)]
 pub struct Events<'a> {
-    fd       : Weak<FdGuard>,
-    buffer   : &'a [u8],
+    fd: Weak<FdGuard>,
+    buffer: &'a [u8],
     num_bytes: usize,
-    pos      : usize,
+    pos: usize,
 }
 
 impl<'a> Events<'a> {
-    pub(crate) fn new(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize)
-        -> Self
-    {
+    pub(crate) fn new(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd,
             buffer,
@@ -51,13 +45,11 @@ impl<'a> Iterator for Events<'a> {
             self.pos += step;
 
             Some(event)
-        }
-        else {
+        } else {
             None
         }
     }
 }
-
 
 /// An inotify event
 ///
@@ -105,23 +97,13 @@ pub struct Event<S> {
 }
 
 impl<'a> Event<&'a OsStr> {
-    fn new(fd: Weak<FdGuard>, event: &ffi::inotify_event, name: &'a OsStr)
-        -> Self
-    {
+    fn new(fd: Weak<FdGuard>, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
-        let wd = crate::WatchDescriptor {
-            id: event.wd,
-            fd,
-        };
+        let wd = crate::WatchDescriptor { id: event.wd, fd };
 
-        let name = if name.is_empty() {
-            None
-        }
-        else {
-            Some(name)
-        };
+        let name = if name.is_empty() { None } else { Some(name) };
 
         Event {
             wd,
@@ -141,12 +123,7 @@ impl<'a> Event<&'a OsStr> {
     /// # Panics
     ///
     /// Panics if the buffer does not contain a full event, including its name.
-    pub(crate) fn from_buffer(
-        fd    : Weak<FdGuard>,
-        buffer: &'a [u8],
-    )
-        -> (usize, Self)
-    {
+    pub(crate) fn from_buffer(fd: Weak<FdGuard>, buffer: &'a [u8]) -> (usize, Self) {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         // Make sure that the buffer is big enough to contain an event, without
@@ -184,16 +161,9 @@ impl<'a> Event<&'a OsStr> {
         //
         // The `unwrap` here is safe, because `splitn` always returns at
         // least one result, even if the original slice contains no '\0'.
-        let name = name
-            .splitn(2, |b| b == &0u8)
-            .next()
-            .unwrap();
+        let name = name.splitn(2, |b| b == &0u8).next().unwrap();
 
-        let event = Event::new(
-            fd,
-            &ffi_event,
-            OsStr::from_bytes(name),
-        );
+        let event = Event::new(fd, &ffi_event, OsStr::from_bytes(name));
 
         (bytes_consumed, event)
     }
@@ -217,10 +187,8 @@ impl<'a> Event<&'a OsStr> {
     }
 }
 
-
 /// An owned version of `Event`
 pub type EventOwned = Event<OsString>;
-
 
 bitflags! {
     /// Indicates the type of an event
@@ -370,20 +338,13 @@ impl EventMask {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::{
-        io::prelude::*,
-        mem,
-        slice,
-        sync,
-    };
+    use std::{io::prelude::*, mem, slice, sync};
 
     use inotify_sys as ffi;
 
     use super::Event;
-
 
     #[test]
     fn from_buffer_should_not_mistake_next_event_for_name_of_previous_event() {
@@ -391,18 +352,16 @@ mod tests {
 
         // First, put a normal event into the buffer
         let event = ffi::inotify_event {
-            wd:     0,
-            mask:   0,
+            wd: 0,
+            mask: 0,
             cookie: 0,
-            len:    0, // no name following after event
+            len: 0, // no name following after event
         };
         let event = unsafe {
-                slice::from_raw_parts(
-                &event as *const _ as *const u8,
-                mem::size_of_val(&event),
-            )
+            slice::from_raw_parts(&event as *const _ as *const u8, mem::size_of_val(&event))
         };
-        (&mut buffer[..]).write(event)
+        (&mut buffer[..])
+            .write(event)
             .expect("Failed to write into buffer");
 
         // After that event, simulate an event that starts with a non-zero byte.
@@ -410,10 +369,7 @@ mod tests {
 
         // Now create the event and verify that the name is actually `None`, as
         // dictated by the value `len` above.
-        let (_, event) = Event::from_buffer(
-            sync::Weak::new(),
-            &buffer,
-        );
+        let (_, event) = Event::from_buffer(sync::Weak::new(), &buffer);
         assert_eq!(event.name, None);
     }
 }
