@@ -72,11 +72,9 @@ async fn it_should_watch_a_file_async() {
         .await;
 
     let mut num_events = 0;
-    for event in events {
-        if let Ok(event) = event {
-            assert_eq!(watch, event.wd);
-            num_events += 1;
-        }
+    for event in events.into_iter().flatten() {
+        assert_eq!(watch, event.wd);
+        num_events += 1;
     }
     assert!(num_events > 0);
 }
@@ -106,11 +104,9 @@ async fn it_should_watch_a_file_from_eventstream_watches() {
     let events = stream.take(1).collect::<Vec<_>>().await;
 
     let mut num_events = 0;
-    for event in events {
-        if let Ok(event) = event {
-            assert_eq!(watch, event.wd);
-            num_events += 1;
-        }
+    for event in events.into_iter().flatten() {
+        assert_eq!(watch, event.wd);
+        num_events += 1;
     }
     assert!(num_events > 0);
 }
