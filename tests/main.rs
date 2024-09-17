@@ -160,7 +160,7 @@ fn it_should_convert_the_name_into_an_os_str() {
     let mut inotify = Inotify::init().unwrap();
     inotify
         .watches()
-        .add(&path.parent().unwrap(), WatchMask::MODIFY)
+        .add(path.parent().unwrap(), WatchMask::MODIFY)
         .unwrap();
 
     write_to(&mut file);
