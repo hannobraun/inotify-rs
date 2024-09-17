@@ -19,6 +19,17 @@ jobs:
       - name: clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo doc
+        env:
+          RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
+        run: cargo doc --all-features --no-deps
+
   build:
     runs-on: ubuntu-latest
     steps:
