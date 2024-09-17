@@ -1,15 +1,7 @@
-use std::{
-    io,
-    mem,
-    os::unix::io::RawFd,
-    path::Path,
-};
+use std::{io, mem, os::unix::io::RawFd, path::Path};
 
 use inotify_sys as ffi;
-use libc::{
-    c_void,
-    size_t,
-};
+use libc::{c_void, size_t};
 
 const INOTIFY_EVENT_SIZE: usize = mem::size_of::<ffi::inotify_event>() + 257;
 
@@ -18,7 +10,7 @@ pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
         ffi::read(
             fd,
             buffer.as_mut_ptr() as *mut c_void,
-            buffer.len() as size_t
+            buffer.len() as size_t,
         )
     }
 }
@@ -35,8 +27,7 @@ pub fn read_into_buffer(fd: RawFd, buffer: &mut [u8]) -> isize {
 /// `ABSOLUTE_PARENT_PATH_LEN + 1 + 255`
 ///
 /// - `ABSOLUTE_PARENT_PATH_LEN` will be calculated at runtime.
-/// - Add 1 to account for a `/`, either in between the parent path and a filename
-/// or for the root directory.
+/// - Add 1 to account for a `/`, either in between the parent path and a filename or for the root directory.
 /// - Add the maximum number of chars in a filename, 255.
 ///
 /// See: <https://github.com/torvalds/linux/blob/master/include/uapi/linux/limits.h>
