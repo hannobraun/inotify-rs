@@ -2,25 +2,14 @@
 
 Idiomatic [inotify] wrapper for the [Rust programming language].
 
-```Rust
-extern crate inotify;
-
-
+```rs
+use inotify::{EventMask, Inotify, WatchMask};
 use std::env;
 
-use inotify::{
-    EventMask,
-    WatchMask,
-    Inotify,
-};
-
-
 fn main() {
-    let mut inotify = Inotify::init()
-        .expect("Failed to initialize inotify");
+    let mut inotify = Inotify::init().expect("Failed to initialize inotify");
 
-    let current_dir = env::current_dir()
-        .expect("Failed to determine current directory");
+    let current_dir = env::current_dir().expect("Failed to determine current directory");
 
     inotify
         .watches()
@@ -63,7 +52,6 @@ fn main() {
 }
 ```
 
-
 ## Usage
 
 Include it in your `Cargo.toml`:
@@ -79,7 +67,6 @@ Please note that inotify-rs is a relatively low-level wrapper around the origina
 
 If you need to access inotify in a way that this wrapper doesn't support, consider using [inotify-sys] instead.
 
-
 ## Documentation
 
 The most important piece of documentation for inotify-rs is the **[API reference]**, as it contains a thorough description of the complete API, as well as examples.
@@ -87,7 +74,6 @@ The most important piece of documentation for inotify-rs is the **[API reference
 Additional examples can be found in the **[examples directory]**.
 
 Please also make sure to read the **[inotify man page]**. Inotify use can be hard to get right, and this low-level wrapper won't protect you from all mistakes.
-
 
 ## License
 
@@ -104,7 +90,6 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
-
 
 [inotify]: http://en.wikipedia.org/wiki/Inotify
 [Rust programming language]: http://rust-lang.org/
