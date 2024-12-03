@@ -1,7 +1,11 @@
 # inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify) [![Rust](https://github.com/hannobraun/inotify-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/hannobraun/inotify-rs/actions/workflows/rust.yml)
 
-Idiomatic [inotify] wrapper for the [Rust programming language].
+## Introduce
+Idiomatic [inotify] wrapper for the [Rust programming language].This package generally tries to adhere to the underlying inotify API closely, while making access to it safe and convenient.
 
+## Examples
+Now inotify-rs supports synchronous or asynchronous event monitoring.
+An example of synchronous is as follows:
 ```rs
 use inotify::{EventMask, Inotify, WatchMask};
 use std::env;
@@ -51,10 +55,45 @@ fn main() {
     }
 }
 ```
+Perhaps you want asynchronous monitoring of events.An example of asynchronous is as follows:
+```rs
+use std::{fs::File, io, thread, time::Duration};
+
+use futures_util::StreamExt;
+use inotify::{Inotify, WatchMask};
+use tempfile::TempDir;
+
+#[tokio::main]
+async fn main() -> Result<(), io::Error> {
+    let inotify = Inotify::init().expect("Failed to initialize inotify");
+
+    let dir = TempDir::new()?;
+    // Watch for modify and create events.
+    inotify
+        .watches()
+        .add(dir.path(), WatchMask::CREATE | WatchMask::MODIFY)?;
+    // Create a thread to operate on the target directory
+    thread::spawn::<_, Result<(), io::Error>>(move || loop {
+        File::create(dir.path().join("file"))?;
+        thread::sleep(Duration::from_millis(500));
+    });
+
+    let mut buffer = [0; 1024];
+    let mut stream = inotify.into_event_stream(&mut buffer)?;
+    // Read events from async stream
+    while let Some(event_or_error) = stream.next().await {
+        println!("event: {:?}", event_or_error?);
+    }
+
+    Ok(())
+}
+
+
+```
 
 ## Usage
 
-Include it in your `Cargo.toml`:
+Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -63,9 +102,10 @@ inotify = "0.11"
 
 Please refer to the [documentation] and the example above, for information on how to use it in your code.
 
-Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you are looking for a higher-level and platform-independent file system notification library, please consider [notify].
+## Notice 
+Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you are looking for a higher-level and platform-independent file system notification library, please consider **[notify]**.
 
-If you need to access inotify in a way that this wrapper doesn't support, consider using [inotify-sys] instead.
+If you need to access inotify in a way that this wrapper doesn't support, consider using **[inotify-sys]** instead.
 
 ## Documentation
 
