@@ -7,9 +7,11 @@
 //! files or directories.
 //!
 //! The [`Inotify`] struct is the main entry point into the API.
+//! The [`EventStream`] struct is designed to be used with async streams.
 //!
-//! # Example
+//! # Examples
 //!
+//! If you just want to synchronously retrieve events
 //! ```
 //! use inotify::{
 //!     Inotify,
@@ -47,7 +49,15 @@
 //!     // Handle event
 //! }
 //! ```
-//!
+//! When you want to read events asynchronously, you need to convert it to [`EventStream`].
+//! The transform function is [`Inotify::into_event_stream`]
+//! ```
+//!  let mut stream = inotify.into_event_stream(&mut buffer)?;
+//!  // Read events from async stream
+//!  while let Some(event_or_error) = stream.next().await {
+//!     println!("event: {:?}", event_or_error?);
+//!  }
+//! ```
 //! # Attention: inotify gotchas
 //!
 //! inotify (as in, the Linux API, not this wrapper) has many edge cases, making
