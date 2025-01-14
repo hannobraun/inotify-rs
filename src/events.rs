@@ -1,13 +1,12 @@
 use std::{
     ffi::{OsStr, OsString},
     mem,
-    os::unix::ffi::OsStrExt,
+    os::{fd::OwnedFd, unix::ffi::OsStrExt},
     sync::Weak,
 };
 
 use inotify_sys as ffi;
 
-use crate::fd_guard::FdGuard;
 use crate::watches::WatchDescriptor;
 
 /// Iterator over inotify events
@@ -19,14 +18,14 @@ use crate::watches::WatchDescriptor;
 /// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Debug)]
 pub struct Events<'a> {
-    fd: Weak<FdGuard>,
+    fd: Weak<OwnedFd>,
     buffer: &'a [u8],
     num_bytes: usize,
     pos: usize,
 }
 
 impl<'a> Events<'a> {
-    pub(crate) fn new(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize) -> Self {
+    pub(crate) fn new(fd: Weak<OwnedFd>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd,
             buffer,
@@ -97,7 +96,7 @@ pub struct Event<S> {
 }
 
 impl<'a> Event<&'a OsStr> {
-    fn new(fd: Weak<FdGuard>, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
+    fn new(fd: Weak<OwnedFd>, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
@@ -123,7 +122,7 @@ impl<'a> Event<&'a OsStr> {
     /// # Panics
     ///
     /// Panics if the buffer does not contain a full event, including its name.
-    pub(crate) fn from_buffer(fd: Weak<FdGuard>, buffer: &'a [u8]) -> (usize, Self) {
+    pub(crate) fn from_buffer(fd: Weak<OwnedFd>, buffer: &'a [u8]) -> (usize, Self) {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         // Make sure that the buffer is big enough to contain an event, without

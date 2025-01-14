@@ -2,14 +2,13 @@ use std::{
     io,
     os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
     path::Path,
-    sync::{atomic::AtomicBool, Arc},
+    sync::Arc,
 };
 
 use inotify_sys as ffi;
 use libc::{fcntl, F_GETFL, F_SETFL, O_NONBLOCK};
 
 use crate::events::Events;
-use crate::fd_guard::FdGuard;
 use crate::util::read_into_buffer;
 use crate::watches::{WatchDescriptor, WatchMask, Watches};
 
@@ -28,7 +27,7 @@ use crate::stream::EventStream;
 /// [top-level documentation]: crate
 #[derive(Debug)]
 pub struct Inotify {
-    fd: Arc<FdGuard>,
+    fd: Arc<OwnedFd>,
 }
 
 impl Inotify {
@@ -85,12 +84,10 @@ impl Inotify {
             return Err(io::Error::last_os_error());
         }
 
-        Ok(Inotify {
-            fd: Arc::new(FdGuard {
-                fd,
-                close_on_drop: AtomicBool::new(true),
-            }),
-        })
+        // SAFETY: The resource pointed to by fd is open and suitable for assuming ownership.
+        let fd = unsafe { OwnedFd::from_raw_fd(fd) };
+
+        Ok(Inotify { fd: Arc::new(fd) })
     }
 
     /// Gets an interface that allows adding and removing watches.
@@ -124,21 +121,21 @@ impl Inotify {
     /// the documentation of [`Inotify::read_events`] for more information.
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<Events<'a>> {
         unsafe {
-            let res = fcntl(**self.fd, F_GETFL);
+            let res = fcntl(self.fd.as_raw_fd(), F_GETFL);
             if res == -1 {
                 return Err(io::Error::last_os_error());
             }
-            if fcntl(**self.fd, F_SETFL, res & !O_NONBLOCK) == -1 {
+            if fcntl(self.fd.as_raw_fd(), F_SETFL, res & !O_NONBLOCK) == -1 {
                 return Err(io::Error::last_os_error());
             }
         };
         let result = self.read_events(buffer);
         unsafe {
-            let res = fcntl(**self.fd, F_GETFL);
+            let res = fcntl(self.fd.as_raw_fd(), F_GETFL);
             if res == -1 {
                 return Err(io::Error::last_os_error());
             }
-            if fcntl(**self.fd, F_SETFL, res | O_NONBLOCK) == -1 {
+            if fcntl(self.fd.as_raw_fd(), F_SETFL, res | O_NONBLOCK) == -1 {
                 return Err(io::Error::last_os_error());
             }
         };
@@ -198,7 +195,7 @@ impl Inotify {
     /// [`ErrorKind::UnexpectedEof`]: std::io::ErrorKind::UnexpectedEof
     /// [`ErrorKind::InvalidInput`]: std::io::ErrorKind::InvalidInput
     pub fn read_events<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<Events<'a>> {
-        let num_bytes = read_into_buffer(**self.fd, buffer);
+        let num_bytes = read_into_buffer(self.fd.as_raw_fd(), buffer);
 
         let num_bytes = match num_bytes {
             0 => {
@@ -269,45 +266,8 @@ impl Inotify {
     /// initialized in `Inotify::init`. This is intended to be used to transform an
     /// `EventStream` back into an `Inotify`. Do not attempt to clone `Inotify` with this.
     #[cfg(feature = "stream")]
-    pub(crate) fn from_file_descriptor(fd: Arc<FdGuard>) -> Self {
+    pub(crate) fn from_file_descriptor(fd: Arc<OwnedFd>) -> Self {
         Inotify { fd }
-    }
-
-    /// Closes the inotify instance
-    ///
-    /// Closes the file descriptor referring to the inotify instance. The user
-    /// usually doesn't have to call this function, as the underlying inotify
-    /// instance is closed automatically, when [`Inotify`] is dropped.
-    ///
-    /// # Errors
-    ///
-    /// Directly returns the error from the call to [`close`], without adding any
-    /// error conditions of its own.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use inotify::Inotify;
-    ///
-    /// let mut inotify = Inotify::init()
-    ///     .expect("Failed to initialize an inotify instance");
-    ///
-    /// inotify.close()
-    ///     .expect("Failed to close inotify instance");
-    /// ```
-    ///
-    /// [`close`]: libc::close
-    pub fn close(self) -> io::Result<()> {
-        // `self` will be dropped when this method returns. If this is the only
-        // owner of `fd`, the `Arc` will also be dropped. The `Drop`
-        // implementation for `FdGuard` will attempt to close the file descriptor
-        // again, unless this flag here is cleared.
-        self.fd.should_not_close();
-
-        match unsafe { ffi::close(**self.fd) } {
-            0 => Ok(()),
-            _ => Err(io::Error::last_os_error()),
-        }
     }
 }
 
@@ -321,7 +281,7 @@ impl AsRawFd for Inotify {
 impl FromRawFd for Inotify {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Inotify {
-            fd: Arc::new(FdGuard::from_raw_fd(fd)),
+            fd: Arc::new(OwnedFd::from_raw_fd(fd)),
         }
     }
 }
@@ -329,8 +289,7 @@ impl FromRawFd for Inotify {
 impl IntoRawFd for Inotify {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.fd.should_not_close();
-        self.fd.fd
+        self.fd.as_raw_fd()
     }
 }
 
