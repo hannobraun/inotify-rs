@@ -3,15 +3,16 @@ use std::{
     ffi::CString,
     hash::{Hash, Hasher},
     io,
-    os::raw::c_int,
-    os::unix::ffi::OsStrExt,
+    os::{
+        fd::{AsRawFd as _, OwnedFd},
+        raw::c_int,
+        unix::ffi::OsStrExt,
+    },
     path::Path,
     sync::{Arc, Weak},
 };
 
 use inotify_sys as ffi;
-
-use crate::fd_guard::FdGuard;
 
 bitflags! {
     /// Describes a file system watch
@@ -242,12 +243,12 @@ impl WatchDescriptor {
 /// Interface for adding and removing watches
 #[derive(Clone, Debug)]
 pub struct Watches {
-    pub(crate) fd: Arc<FdGuard>,
+    pub(crate) fd: Arc<OwnedFd>,
 }
 
 impl Watches {
     /// Init watches with an inotify file descriptor
-    pub(crate) fn new(fd: Arc<FdGuard>) -> Self {
+    pub(crate) fn new(fd: Arc<OwnedFd>) -> Self {
         Watches { fd }
     }
 
@@ -320,8 +321,9 @@ impl Watches {
     {
         let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
 
-        let wd =
-            unsafe { ffi::inotify_add_watch(**self.fd, path.as_ptr() as *const _, mask.bits()) };
+        let wd = unsafe {
+            ffi::inotify_add_watch(self.fd.as_raw_fd(), path.as_ptr() as *const _, mask.bits())
+        };
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
@@ -383,14 +385,14 @@ impl Watches {
     /// [`io::Error`]: std::io::Error
     /// [`ErrorKind`]: std::io::ErrorKind
     pub fn remove(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+        if wd.fd.upgrade().as_ref().map(|fd| fd.as_raw_fd()) != Some(self.fd.as_raw_fd()) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Invalid WatchDescriptor",
             ));
         }
 
-        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
+        let result = unsafe { ffi::inotify_rm_watch(self.fd.as_raw_fd(), wd.id) };
         match result {
             0 => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -409,7 +411,7 @@ impl Watches {
 #[derive(Clone, Debug)]
 pub struct WatchDescriptor {
     pub(crate) id: c_int,
-    pub(crate) fd: Weak<FdGuard>,
+    pub(crate) fd: Weak<OwnedFd>,
 }
 
 impl Eq for WatchDescriptor {}
@@ -419,7 +421,11 @@ impl PartialEq for WatchDescriptor {
         let self_fd = self.fd.upgrade();
         let other_fd = other.fd.upgrade();
 
-        self.id == other.id && self_fd.is_some() && self_fd == other_fd
+        self.id == other.id
+            && match (self_fd, other_fd) {
+                (Some(fd1), Some(fd2)) => fd1.as_raw_fd() == fd2.as_raw_fd(),
+                _ => false,
+            }
     }
 }
 

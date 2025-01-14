@@ -1,6 +1,6 @@
 use std::{
     io,
-    os::unix::io::AsRawFd,
+    os::fd::{AsRawFd as _, OwnedFd},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -10,7 +10,6 @@ use futures_core::{ready, Stream};
 use tokio::io::unix::AsyncFd;
 
 use crate::events::{Event, EventOwned};
-use crate::fd_guard::FdGuard;
 use crate::util::read_into_buffer;
 use crate::watches::Watches;
 use crate::Inotify;
@@ -20,7 +19,7 @@ use crate::Inotify;
 /// Allows for streaming events returned by [`Inotify::into_event_stream`].
 #[derive(Debug)]
 pub struct EventStream<T> {
-    fd: AsyncFd<Arc<FdGuard>>,
+    fd: AsyncFd<Arc<OwnedFd>>,
     buffer: T,
     buffer_pos: usize,
     unused_bytes: usize,
@@ -31,7 +30,7 @@ where
     T: AsMut<[u8]> + AsRef<[u8]>,
 {
     /// Returns a new `EventStream` associated with the default reactor.
-    pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
+    pub(crate) fn new(fd: Arc<OwnedFd>, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
             fd: AsyncFd::new(fd)?,
             buffer,
@@ -90,7 +89,7 @@ where
 }
 
 fn read(
-    fd: &AsyncFd<Arc<FdGuard>>,
+    fd: &AsyncFd<Arc<OwnedFd>>,
     buffer: &mut [u8],
     cx: &mut Context,
 ) -> Poll<io::Result<usize>> {
