@@ -3,15 +3,15 @@ use std::{
     ffi::CString,
     hash::{Hash, Hasher},
     io,
-    os::raw::c_int,
-    os::unix::ffi::OsStrExt,
+    os::{
+        fd::{AsRawFd as _, BorrowedFd},
+        raw::c_int,
+        unix::ffi::OsStrExt,
+    },
     path::Path,
-    sync::{Arc, Weak},
 };
 
 use inotify_sys as ffi;
-
-use crate::fd_guard::FdGuard;
 
 bitflags! {
     /// Describes a file system watch
@@ -230,7 +230,7 @@ impl WatchMask {
     }
 }
 
-impl WatchDescriptor {
+impl WatchDescriptor<'_> {
     /// Getter method for a watcher's id.
     ///
     /// Can be used to distinguish events for files with the same name.
@@ -241,13 +241,13 @@ impl WatchDescriptor {
 
 /// Interface for adding and removing watches
 #[derive(Clone, Debug)]
-pub struct Watches {
-    pub(crate) fd: Arc<FdGuard>,
+pub struct Watches<'i> {
+    pub(crate) fd: BorrowedFd<'i>,
 }
 
-impl Watches {
+impl<'i> Watches<'i> {
     /// Init watches with an inotify file descriptor
-    pub(crate) fn new(fd: Arc<FdGuard>) -> Self {
+    pub(crate) fn new(fd: BorrowedFd<'i>) -> Self {
         Watches { fd }
     }
 
@@ -314,20 +314,21 @@ impl Watches {
     /// ```
     ///
     /// [`inotify_add_watch`]: inotify_sys::inotify_add_watch
-    pub fn add<P>(&mut self, path: P, mask: WatchMask) -> io::Result<WatchDescriptor>
+    pub fn add<P>(&mut self, path: P, mask: WatchMask) -> io::Result<WatchDescriptor<'i>>
     where
         P: AsRef<Path>,
     {
         let path = CString::new(path.as_ref().as_os_str().as_bytes())?;
 
-        let wd =
-            unsafe { ffi::inotify_add_watch(**self.fd, path.as_ptr() as *const _, mask.bits()) };
+        let wd = unsafe {
+            ffi::inotify_add_watch(self.fd.as_raw_fd(), path.as_ptr() as *const _, mask.bits())
+        };
 
         match wd {
             -1 => Err(io::Error::last_os_error()),
             _ => Ok(WatchDescriptor {
                 id: wd,
-                fd: Arc::downgrade(&self.fd),
+                fd: self.fd.clone(),
             }),
         }
     }
@@ -383,14 +384,14 @@ impl Watches {
     /// [`io::Error`]: std::io::Error
     /// [`ErrorKind`]: std::io::ErrorKind
     pub fn remove(&mut self, wd: WatchDescriptor) -> io::Result<()> {
-        if wd.fd.upgrade().as_ref() != Some(&self.fd) {
+        if wd.fd.as_raw_fd() == wd.fd.as_raw_fd() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Invalid WatchDescriptor",
             ));
         }
 
-        let result = unsafe { ffi::inotify_rm_watch(**self.fd, wd.id) };
+        let result = unsafe { ffi::inotify_rm_watch(self.fd.as_raw_fd(), wd.id) };
         match result {
             0 => Ok(()),
             -1 => Err(io::Error::last_os_error()),
@@ -407,35 +408,32 @@ impl Watches {
 ///
 /// [`Event`]: crate::Event
 #[derive(Clone, Debug)]
-pub struct WatchDescriptor {
+pub struct WatchDescriptor<'i> {
     pub(crate) id: c_int,
-    pub(crate) fd: Weak<FdGuard>,
+    pub(crate) fd: BorrowedFd<'i>,
 }
 
-impl Eq for WatchDescriptor {}
+impl Eq for WatchDescriptor<'_> {}
 
-impl PartialEq for WatchDescriptor {
+impl PartialEq for WatchDescriptor<'_> {
     fn eq(&self, other: &Self) -> bool {
-        let self_fd = self.fd.upgrade();
-        let other_fd = other.fd.upgrade();
-
-        self.id == other.id && self_fd.is_some() && self_fd == other_fd
+        self.id == other.id && self.fd.as_raw_fd() == other.fd.as_raw_fd()
     }
 }
 
-impl Ord for WatchDescriptor {
+impl Ord for WatchDescriptor<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.id.cmp(&other.id)
     }
 }
 
-impl PartialOrd for WatchDescriptor {
+impl PartialOrd for WatchDescriptor<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Hash for WatchDescriptor {
+impl Hash for WatchDescriptor<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // This function only takes `self.id` into account, as `self.fd` is a
         // weak pointer that might no longer be available. Since neither

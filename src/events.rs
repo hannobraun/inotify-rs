@@ -1,13 +1,11 @@
 use std::{
     ffi::{OsStr, OsString},
     mem,
-    os::unix::ffi::OsStrExt,
-    sync::Weak,
+    os::{fd::BorrowedFd, unix::ffi::OsStrExt},
 };
 
 use inotify_sys as ffi;
 
-use crate::fd_guard::FdGuard;
 use crate::watches::WatchDescriptor;
 
 /// Iterator over inotify events
@@ -18,15 +16,15 @@ use crate::watches::WatchDescriptor;
 /// [`Inotify::read_events_blocking`]: crate::Inotify::read_events_blocking
 /// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Debug)]
-pub struct Events<'a> {
-    fd: Weak<FdGuard>,
+pub struct Events<'a, 'i> {
+    fd: BorrowedFd<'i>,
     buffer: &'a [u8],
     num_bytes: usize,
     pos: usize,
 }
 
-impl<'a> Events<'a> {
-    pub(crate) fn new(fd: Weak<FdGuard>, buffer: &'a [u8], num_bytes: usize) -> Self {
+impl<'a, 'i> Events<'a, 'i> {
+    pub(crate) fn new(fd: BorrowedFd<'i>, buffer: &'a [u8], num_bytes: usize) -> Self {
         Events {
             fd,
             buffer,
@@ -36,8 +34,8 @@ impl<'a> Events<'a> {
     }
 }
 
-impl<'a> Iterator for Events<'a> {
-    type Item = Event<&'a OsStr>;
+impl<'a, 'i> Iterator for Events<'a, 'i> {
+    type Item = Event<'i, &'a OsStr>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos < self.num_bytes {
@@ -62,7 +60,7 @@ impl<'a> Iterator for Events<'a> {
 /// [`Inotify::read_events_blocking`]: crate::Inotify::read_events_blocking
 /// [`Inotify::read_events`]: crate::Inotify::read_events
 #[derive(Clone, Debug)]
-pub struct Event<S> {
+pub struct Event<'i, S> {
     /// Identifies the watch this event originates from
     ///
     /// This [`WatchDescriptor`] is equal to the one that [`Watches::add`]
@@ -73,7 +71,7 @@ pub struct Event<S> {
     ///
     /// [`Watches::add`]: crate::Watches::add
     /// [`Watches::remove`]: crate::Watches::remove
-    pub wd: WatchDescriptor,
+    pub wd: WatchDescriptor<'i>,
 
     /// Indicates what kind of event this is
     pub mask: EventMask,
@@ -96,8 +94,8 @@ pub struct Event<S> {
     pub name: Option<S>,
 }
 
-impl<'a> Event<&'a OsStr> {
-    fn new(fd: Weak<FdGuard>, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
+impl<'a, 'i> Event<'i, &'a OsStr> {
+    fn new(fd: BorrowedFd<'i>, event: &ffi::inotify_event, name: &'a OsStr) -> Self {
         let mask = EventMask::from_bits(event.mask)
             .expect("Failed to convert event mask. This indicates a bug.");
 
@@ -123,7 +121,7 @@ impl<'a> Event<&'a OsStr> {
     /// # Panics
     ///
     /// Panics if the buffer does not contain a full event, including its name.
-    pub(crate) fn from_buffer(fd: Weak<FdGuard>, buffer: &'a [u8]) -> (usize, Self) {
+    pub(crate) fn from_buffer(fd: BorrowedFd<'i>, buffer: &'a [u8]) -> (usize, Self) {
         let event_size = mem::size_of::<ffi::inotify_event>();
 
         // Make sure that the buffer is big enough to contain an event, without
@@ -177,7 +175,7 @@ impl<'a> Event<&'a OsStr> {
 
     /// Returns an owned copy of the event.
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
-    pub fn to_owned(&self) -> EventOwned {
+    pub fn to_owned(&self) -> Event<'i, OsString> {
         Event {
             wd: self.wd.clone(),
             mask: self.mask,
@@ -188,7 +186,7 @@ impl<'a> Event<&'a OsStr> {
 }
 
 /// An owned version of `Event`
-pub type EventOwned = Event<OsString>;
+pub type EventOwned<'i> = Event<'i, OsString>;
 
 bitflags! {
     /// Indicates the type of an event
@@ -340,7 +338,7 @@ impl EventMask {
 
 #[cfg(test)]
 mod tests {
-    use std::{io::prelude::*, mem, slice, sync};
+    use std::{fs::File, io::prelude::*, mem, os::fd::AsFd as _, slice};
 
     use inotify_sys as ffi;
 
@@ -367,9 +365,11 @@ mod tests {
         // After that event, simulate an event that starts with a non-zero byte.
         buffer[mem::size_of_val(event)] = 1;
 
+        let file = File::open("/dev/null").unwrap();
+        let fd = file.as_fd();
         // Now create the event and verify that the name is actually `None`, as
         // dictated by the value `len` above.
-        let (_, event) = Event::from_buffer(sync::Weak::new(), &buffer);
+        let (_, event) = Event::from_buffer(fd, &buffer);
         assert_eq!(event.name, None);
     }
 }

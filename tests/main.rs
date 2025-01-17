@@ -6,7 +6,7 @@
 use inotify::{Inotify, WatchMask};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
-use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
+use std::os::unix::io::{AsRawFd, IntoRawFd};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -246,7 +246,7 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
         let wd_1 = inotify_1.watches().add(&path, WatchMask::ACCESS).unwrap();
         let fd_1 = inotify_1.as_raw_fd();
 
-        inotify_1.close().unwrap();
+        drop(inotify_1);
         let inotify_2 = Inotify::init().unwrap();
 
         if fd_1 == inotify_2.as_raw_fd() {
@@ -261,7 +261,7 @@ fn watch_descriptor_equality_should_not_be_confused_by_reused_fds() {
     // though, so they shouldn't be equal.
     assert!(wd_1 != wd_2);
 
-    inotify_2.close().unwrap();
+    drop(inotify_2);
 
     // A little extra gotcha: If both inotify instances are closed, and the `Eq`
     // implementation naively compares the weak pointers, both will be `None`,
@@ -278,14 +278,12 @@ fn it_should_implement_raw_fd_traits_correctly() {
     // If `IntoRawFd` has been implemented naively, `Inotify`'s `Drop`
     // implementation will have closed the inotify instance at this point. Let's
     // make sure this didn't happen.
-    let mut inotify = unsafe { <Inotify as FromRawFd>::from_raw_fd(fd) };
 
-    let mut buffer = [0; 1024];
-    if let Err(error) = inotify.read_events(&mut buffer) {
-        if error.kind() != ErrorKind::WouldBlock {
-            panic!("Failed to add watch: {}", error);
-        }
-    }
+    assert_eq!(unsafe { libc::fcntl(fd, libc::F_GETFD) }, -1);
+    assert_eq!(
+        std::io::Error::last_os_error().kind(),
+        std::io::Error::from_raw_os_error(libc::EBADF).kind()
+    );
 }
 
 #[test]

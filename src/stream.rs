@@ -1,8 +1,8 @@
 use std::{
+    ffi::OsStr,
     io,
-    os::unix::io::AsRawFd,
+    os::fd::{AsFd as _, AsRawFd as _, OwnedFd},
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -10,7 +10,6 @@ use futures_core::{ready, Stream};
 use tokio::io::unix::AsyncFd;
 
 use crate::events::{Event, EventOwned};
-use crate::fd_guard::FdGuard;
 use crate::util::read_into_buffer;
 use crate::watches::Watches;
 use crate::Inotify;
@@ -20,7 +19,7 @@ use crate::Inotify;
 /// Allows for streaming events returned by [`Inotify::into_event_stream`].
 #[derive(Debug)]
 pub struct EventStream<T> {
-    fd: AsyncFd<Arc<FdGuard>>,
+    fd: AsyncFd<OwnedFd>,
     buffer: T,
     buffer_pos: usize,
     unused_bytes: usize,
@@ -31,7 +30,7 @@ where
     T: AsMut<[u8]> + AsRef<[u8]>,
 {
     /// Returns a new `EventStream` associated with the default reactor.
-    pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
+    pub(crate) fn new(fd: OwnedFd, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
             fd: AsyncFd::new(fd)?,
             buffer,
@@ -43,7 +42,7 @@ where
     /// Returns an instance of `Watches` to add and remove watches.
     /// See [`Watches::add`] and [`Watches::remove`].
     pub fn watches(&self) -> Watches {
-        Watches::new(self.fd.get_ref().clone())
+        Watches::new(self.fd.as_fd())
     }
 
     /// Consumes the `EventStream` instance and returns an `Inotify` using the original
@@ -53,13 +52,13 @@ where
     }
 }
 
-impl<T> Stream for EventStream<T>
+impl<'i, T> Stream for EventStream<T>
 where
     T: AsMut<[u8]> + AsRef<[u8]>,
 {
-    type Item = io::Result<EventOwned>;
+    type Item = io::Result<EventOwned<'i>>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&'i mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // Safety: safe because we never move out of `self_`.
         let self_ = unsafe { self.get_unchecked_mut() };
 
@@ -78,10 +77,8 @@ where
         // We have bytes in the buffer. inotify doesn't put partial events in
         // there, and we only take complete events out. That means we have at
         // least one event in there and can call `from_buffer` to take it out.
-        let (bytes_consumed, event) = Event::from_buffer(
-            Arc::downgrade(self_.fd.get_ref()),
-            &self_.buffer.as_ref()[self_.buffer_pos..],
-        );
+        let (bytes_consumed, event): (usize, Event<&'i OsStr>) =
+            Event::from_buffer(self_.fd.as_fd(), &self_.buffer.as_ref()[self_.buffer_pos..]);
         self_.buffer_pos += bytes_consumed;
         self_.unused_bytes -= bytes_consumed;
 
@@ -89,11 +86,7 @@ where
     }
 }
 
-fn read(
-    fd: &AsyncFd<Arc<FdGuard>>,
-    buffer: &mut [u8],
-    cx: &mut Context,
-) -> Poll<io::Result<usize>> {
+fn read(fd: &AsyncFd<OwnedFd>, buffer: &mut [u8], cx: &mut Context) -> Poll<io::Result<usize>> {
     let mut guard = ready!(fd.poll_read_ready(cx))?;
     let result = guard.try_io(|_| {
         let read = read_into_buffer(fd.as_raw_fd(), buffer);

@@ -83,7 +83,6 @@
 extern crate bitflags;
 
 mod events;
-mod fd_guard;
 mod inotify;
 mod util;
 mod watches;
