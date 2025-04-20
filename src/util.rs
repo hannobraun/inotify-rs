@@ -50,12 +50,12 @@ pub fn get_buffer_size(path: &Path) -> io::Result<usize> {
 ///
 /// path: An absolute path for the inotify events.
 pub fn get_absolute_path_buffer_size(path: &Path) -> usize {
-    INOTIFY_EVENT_SIZE
     // Get the length of the absolute parent path, if the path is not the root directory.
     // Because we canonicalize the path, we do not need to worry about prefixes.
-    + if let Some(parent_path) = path.parent() {
-        parent_path.as_os_str().len()
-    } else {
-        0
-    }
+    let parent_path_len = path
+        .parent()
+        .map(|parent_path| parent_path.as_os_str().len())
+        .unwrap_or(0);
+
+    INOTIFY_EVENT_SIZE + parent_path_len
 }
