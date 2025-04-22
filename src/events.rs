@@ -348,7 +348,7 @@ impl EventMask {
 
 /// A struct that provides structured access to event masks
 /// returned from reading an event from an inotify fd
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParsedEventMask {
     /// The kind of event that occurred
     pub kind: Option<EventKind>,
@@ -390,7 +390,7 @@ impl TryFrom<EventMask> for ParsedEventMask {
 ///
 /// Exactly 0 or 1 of these bitflags will be set in an event mask
 /// returned from reading an inotify fd
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EventKind {
     /// File was accessed (e.g., [`read(2)`], [`execve(2)`])
     ///
@@ -513,7 +513,7 @@ impl TryFrom<EventMask> for Option<EventKind> {
 /// The non-mutually-exclusive bitflags that may be set
 /// in an event read from an inotify fd. 0 or more of these
 /// bitflags may be set.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct EventAuxiliaryFlags {
     /// Watch was removed when explicitly removed via [`inotify_rm_watch(2)`]
     /// or automatically (because the file was deleted or the filesystem was unmounted)
@@ -548,7 +548,7 @@ impl From<EventMask> for EventAuxiliaryFlags {
 }
 
 /// An error that occured from parsing an raw event mask
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventMaskParseError {
     /// More than one bit repesenting the event type was set
     TooManyBitsSet,
