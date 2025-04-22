@@ -1,5 +1,8 @@
 use std::{
+    convert::{TryFrom, TryInto},
+    error::Error,
     ffi::{OsStr, OsString},
+    fmt::Display,
     mem,
     os::unix::ffi::OsStrExt,
     sync::Weak,
@@ -326,6 +329,11 @@ bitflags! {
 }
 
 impl EventMask {
+    /// Parse this event mask into a ParsedEventMask
+    pub fn parse(self: Self) -> Result<ParsedEventMask, EventMaskParseError> {
+        self.try_into()
+    }
+
     /// Wrapper around [`Self::from_bits_retain`] for backwards compatibility
     ///
     /// # Safety
@@ -337,6 +345,229 @@ impl EventMask {
         Self::from_bits_retain(bits)
     }
 }
+
+/// A struct that provides structured access to event masks
+/// returned from reading an event from an inotify fd
+#[derive(Debug)]
+pub struct ParsedEventMask {
+    /// The kind of event that occurred
+    pub kind: Option<EventKind>,
+    /// The auxillary flags about the event
+    pub auxillary_flags: EventAuxillaryFlags,
+}
+
+impl ParsedEventMask {
+    /// Construct a `ParsedEventMask` from its component parts
+    pub fn from_parts(kind: Option<EventKind>, auxillary_flags: EventAuxillaryFlags) -> Self {
+        ParsedEventMask {
+            kind,
+            auxillary_flags,
+        }
+    }
+
+    /// Parse a raw event mask
+    pub fn from_raw_event_mask(mask: EventMask) -> Result<Self, EventMaskParseError> {
+        if mask.contains(EventMask::Q_OVERFLOW) {
+            return Err(EventMaskParseError::QueueOverflow);
+        }
+
+        let kind = mask.try_into()?;
+        let auxillary_flags = mask.into();
+
+        Ok(ParsedEventMask::from_parts(kind, auxillary_flags))
+    }
+}
+
+impl TryFrom<EventMask> for ParsedEventMask {
+    type Error = EventMaskParseError;
+
+    fn try_from(value: EventMask) -> Result<Self, Self::Error> {
+        Self::from_raw_event_mask(value)
+    }
+}
+
+/// Represents the type of inotify event
+///
+/// Exactly 0 or 1 of these bitflags will be set in an event mask
+/// returned from reading an inotify fd
+#[derive(Debug, Clone, Copy)]
+pub enum EventKind {
+    /// File was accessed (e.g., [`read(2)`], [`execve(2)`])
+    ///
+    /// [`read(2)`]: https://man7.org/linux/man-pages/man2/read.2.html
+    /// [`execve(2)`]: https://man7.org/linux/man-pages/man2/execve.2.html
+    Access,
+
+    /// Metadata changed—for example, permissions (e.g.,
+    /// [`chmod(2)`]), timestamps (e.g., [`utimensat(2)`]), extended
+    /// attributes ([`setxattr(2)`]), link count (since Linux
+    /// 2.6.25; e.g., for the target of [`link(2)`] and for
+    /// [`unlink(2)`]), and user/group ID (e.g., [`chown(2)`])
+    ///
+    /// [`chmod(2)`]: https://man7.org/linux/man-pages/man2/chmod.2.html
+    /// [`utimensat(2)`]: https://man7.org/linux/man-pages/man2/utimensat.2.html
+    /// [`setxattr(2)`]: https://man7.org/linux/man-pages/man2/setxattr.2.html
+    /// [`link(2)`]: https://man7.org/linux/man-pages/man2/link.2.html
+    /// [`unlink(2)`]: https://man7.org/linux/man-pages/man2/unlink.2.html
+    /// [`chown(2)`]: https://man7.org/linux/man-pages/man2/chown.2.html
+    Attrib,
+
+    /// File opened for writing was closed
+    CloseWrite,
+
+    /// File or directory not opened for writing was closed
+    CloseNowrite,
+
+    /// File/directory created in watched directory (e.g.,
+    /// [`open(2)`] **O_CREAT**, [`mkdir(2)`], [`link(2)`], [`symlink(2)`], [`bind(2)`]
+    /// on a UNIX domain socket)
+    ///
+    /// [`open(2)`]: https://man7.org/linux/man-pages/man2/open.2.html
+    /// [`mkdir(2)`]: https://man7.org/linux/man-pages/man2/mkdir.2.html
+    /// [`link(2)`]: https://man7.org/linux/man-pages/man2/link.2.html
+    /// [`symlink(2)`]: https://man7.org/linux/man-pages/man2/symlink.2.html
+    /// [`bind(2)`]: https://man7.org/linux/man-pages/man2/bind.2.html
+    Create,
+
+    /// File/directory deleted from watched directory
+    Delete,
+
+    /// Watched file/directory was itself deleted. (This event
+    /// also occurs if an object is moved to another
+    /// filesystem, since [`mv(1)`] in effect copies the file to
+    /// the other filesystem and then deletes it from the
+    /// original filesystem.)
+    ///
+    /// [`mv(1)`]: https://man7.org/linux/man-pages/man1/mv.1.html
+    DeleteSelf,
+
+    /// File was modified (e.g., [`write(2)`], [`truncate(2)`])
+    ///
+    /// [`write(2)`]: https://man7.org/linux/man-pages/man2/write.2.html
+    /// [`truncate(2)`]: https://man7.org/linux/man-pages/man2/truncate.2.html
+    Modify,
+
+    /// Watched file/directory was itself moved
+    MoveSelf,
+
+    /// Generated for the directory containing the old filename when a file is renamed
+    MovedFrom,
+
+    /// Generated for the directory containing the new filename when a file is renamed
+    MovedTo,
+
+    /// File or directory was opened
+    Open,
+}
+
+impl EventKind {
+    /// Parse the auxillary flags from a raw event mask
+    pub fn from_raw_event_mask(mask: EventMask) -> Result<Option<Self>, EventMaskParseError> {
+        const BITFLAG_ENUM_MAP: &[(EventMask, EventKind)] = &[
+            (EventMask::ACCESS, EventKind::Access),
+            (EventMask::ATTRIB, EventKind::Attrib),
+            (EventMask::CLOSE_WRITE, EventKind::CloseWrite),
+            (EventMask::CLOSE_NOWRITE, EventKind::CloseNowrite),
+            (EventMask::CREATE, EventKind::Create),
+            (EventMask::DELETE, EventKind::Delete),
+            (EventMask::DELETE_SELF, EventKind::DeleteSelf),
+            (EventMask::MODIFY, EventKind::Modify),
+            (EventMask::MOVE_SELF, EventKind::MoveSelf),
+            (EventMask::MOVED_FROM, EventKind::MovedFrom),
+            (EventMask::MOVED_TO, EventKind::MovedTo),
+            (EventMask::OPEN, EventKind::Open),
+        ];
+
+        let mut kinds = BITFLAG_ENUM_MAP.iter().filter_map(|bf_map| {
+            if mask.contains(bf_map.0) {
+                Some(bf_map.1)
+            } else {
+                None
+            }
+        });
+
+        // Optionally take the first matching bitflag
+        let kind = kinds.next();
+
+        if kinds.next().is_some() {
+            // The mask is invalid.
+            //
+            // More than one of the bitflags are set
+            return Err(EventMaskParseError::TooManyBitsSet);
+        }
+
+        Ok(kind)
+    }
+}
+
+impl TryFrom<EventMask> for Option<EventKind> {
+    type Error = EventMaskParseError;
+
+    fn try_from(value: EventMask) -> Result<Self, Self::Error> {
+        EventKind::from_raw_event_mask(value)
+    }
+}
+
+/// Auxiliary flags for inotify events
+///
+/// The non-mutually-exclusive bitflags that may be set
+/// in an event read from an inotify fd. 0 or more of these
+/// bitflags may be set.
+#[derive(Debug, Clone, Copy)]
+pub struct EventAuxillaryFlags {
+    /// Watch was removed when explicitly removed via [`inotify_rm_watch(2)`]
+    /// or automatically (because the file was deleted or the filesystem was unmounted)
+    ///
+    /// [`inotify_rm_watch(2)`]: https://man7.org/linux/man-pages/man2/inotify_rm_watch.2.html
+    pub ignored: bool,
+
+    /// Event subject is a directory rather than a regular file
+    pub isdir: bool,
+
+    /// File system containing watched object was unmounted
+    ///
+    /// An event with **IN_IGNORED** will subsequently be generated for the same watch descriptor.
+    pub unmount: bool,
+}
+
+impl EventAuxillaryFlags {
+    /// Parse the auxillary flags from a raw event mask
+    pub fn from_raw_event_mask(mask: EventMask) -> Self {
+        EventAuxillaryFlags {
+            ignored: mask.contains(EventMask::IGNORED),
+            isdir: mask.contains(EventMask::ISDIR),
+            unmount: mask.contains(EventMask::UNMOUNT),
+        }
+    }
+}
+
+impl From<EventMask> for EventAuxillaryFlags {
+    fn from(value: EventMask) -> Self {
+        Self::from_raw_event_mask(value)
+    }
+}
+
+/// An error that occured from parsing an raw event mask
+#[derive(Debug, Clone, Copy)]
+pub enum EventMaskParseError {
+    /// More than one bit repesenting the event type was set
+    TooManyBitsSet,
+    /// The event is a signal that the kernels event queue overflowed
+    QueueOverflow,
+}
+
+impl Display for EventMaskParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TooManyBitsSet => {
+                writeln!(f, "Error parsing event mask: too many event type bits set")
+            }
+            Self::QueueOverflow => writeln!(f, "Error: the kernel's event queue overflowed"),
+        }
+    }
+}
+
+impl Error for EventMaskParseError {}
 
 #[cfg(test)]
 mod tests {
