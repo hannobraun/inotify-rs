@@ -352,16 +352,16 @@ impl EventMask {
 pub struct ParsedEventMask {
     /// The kind of event that occurred
     pub kind: Option<EventKind>,
-    /// The auxillary flags about the event
-    pub auxillary_flags: EventAuxillaryFlags,
+    /// The auxiliary flags about the event
+    pub auxiliary_flags: EventAuxiliaryFlags,
 }
 
 impl ParsedEventMask {
     /// Construct a `ParsedEventMask` from its component parts
-    pub fn from_parts(kind: Option<EventKind>, auxillary_flags: EventAuxillaryFlags) -> Self {
+    pub fn from_parts(kind: Option<EventKind>, auxiliary_flags: EventAuxiliaryFlags) -> Self {
         ParsedEventMask {
             kind,
-            auxillary_flags,
+            auxiliary_flags,
         }
     }
 
@@ -372,9 +372,9 @@ impl ParsedEventMask {
         }
 
         let kind = mask.try_into()?;
-        let auxillary_flags = mask.into();
+        let auxiliary_flags = mask.into();
 
-        Ok(ParsedEventMask::from_parts(kind, auxillary_flags))
+        Ok(ParsedEventMask::from_parts(kind, auxiliary_flags))
     }
 }
 
@@ -461,7 +461,7 @@ pub enum EventKind {
 }
 
 impl EventKind {
-    /// Parse the auxillary flags from a raw event mask
+    /// Parse the auxiliary flags from a raw event mask
     pub fn from_raw_event_mask(mask: EventMask) -> Result<Option<Self>, EventMaskParseError> {
         const BITFLAG_ENUM_MAP: &[(EventMask, EventKind)] = &[
             (EventMask::ACCESS, EventKind::Access),
@@ -514,7 +514,7 @@ impl TryFrom<EventMask> for Option<EventKind> {
 /// in an event read from an inotify fd. 0 or more of these
 /// bitflags may be set.
 #[derive(Debug, Clone, Copy)]
-pub struct EventAuxillaryFlags {
+pub struct EventAuxiliaryFlags {
     /// Watch was removed when explicitly removed via [`inotify_rm_watch(2)`]
     /// or automatically (because the file was deleted or the filesystem was unmounted)
     ///
@@ -530,10 +530,10 @@ pub struct EventAuxillaryFlags {
     pub unmount: bool,
 }
 
-impl EventAuxillaryFlags {
-    /// Parse the auxillary flags from a raw event mask
+impl EventAuxiliaryFlags {
+    /// Parse the auxiliary flags from a raw event mask
     pub fn from_raw_event_mask(mask: EventMask) -> Self {
-        EventAuxillaryFlags {
+        EventAuxiliaryFlags {
             ignored: mask.contains(EventMask::IGNORED),
             isdir: mask.contains(EventMask::ISDIR),
             unmount: mask.contains(EventMask::UNMOUNT),
@@ -541,7 +541,7 @@ impl EventAuxillaryFlags {
     }
 }
 
-impl From<EventMask> for EventAuxillaryFlags {
+impl From<EventMask> for EventAuxiliaryFlags {
     fn from(value: EventMask) -> Self {
         Self::from_raw_event_mask(value)
     }

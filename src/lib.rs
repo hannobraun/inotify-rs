@@ -92,7 +92,7 @@ mod watches;
 mod stream;
 
 pub use crate::events::{
-    Event, EventAuxillaryFlags, EventKind, EventMask, EventMaskParseError, EventOwned, Events,
+    Event, EventAuxiliaryFlags, EventKind, EventMask, EventMaskParseError, EventOwned, Events,
     ParsedEventMask,
 };
 pub use crate::inotify::Inotify;
