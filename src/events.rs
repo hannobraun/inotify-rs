@@ -461,24 +461,24 @@ pub enum EventKind {
 }
 
 impl EventKind {
+    const BITFLAG_ENUM_MAP: &[(EventMask, EventKind)] = &[
+        (EventMask::ACCESS, EventKind::Access),
+        (EventMask::ATTRIB, EventKind::Attrib),
+        (EventMask::CLOSE_WRITE, EventKind::CloseWrite),
+        (EventMask::CLOSE_NOWRITE, EventKind::CloseNowrite),
+        (EventMask::CREATE, EventKind::Create),
+        (EventMask::DELETE, EventKind::Delete),
+        (EventMask::DELETE_SELF, EventKind::DeleteSelf),
+        (EventMask::MODIFY, EventKind::Modify),
+        (EventMask::MOVE_SELF, EventKind::MoveSelf),
+        (EventMask::MOVED_FROM, EventKind::MovedFrom),
+        (EventMask::MOVED_TO, EventKind::MovedTo),
+        (EventMask::OPEN, EventKind::Open),
+    ];
+
     /// Parse the auxiliary flags from a raw event mask
     pub fn from_raw_event_mask(mask: EventMask) -> Result<Option<Self>, EventMaskParseError> {
-        const BITFLAG_ENUM_MAP: &[(EventMask, EventKind)] = &[
-            (EventMask::ACCESS, EventKind::Access),
-            (EventMask::ATTRIB, EventKind::Attrib),
-            (EventMask::CLOSE_WRITE, EventKind::CloseWrite),
-            (EventMask::CLOSE_NOWRITE, EventKind::CloseNowrite),
-            (EventMask::CREATE, EventKind::Create),
-            (EventMask::DELETE, EventKind::Delete),
-            (EventMask::DELETE_SELF, EventKind::DeleteSelf),
-            (EventMask::MODIFY, EventKind::Modify),
-            (EventMask::MOVE_SELF, EventKind::MoveSelf),
-            (EventMask::MOVED_FROM, EventKind::MovedFrom),
-            (EventMask::MOVED_TO, EventKind::MovedTo),
-            (EventMask::OPEN, EventKind::Open),
-        ];
-
-        let mut kinds = BITFLAG_ENUM_MAP.iter().filter_map(|bf_map| {
+        let mut kinds = Self::BITFLAG_ENUM_MAP.iter().filter_map(|bf_map| {
             if mask.contains(bf_map.0) {
                 Some(bf_map.1)
             } else {
@@ -513,7 +513,7 @@ impl TryFrom<EventMask> for Option<EventKind> {
 /// The non-mutually-exclusive bitflags that may be set
 /// in an event read from an inotify fd. 0 or more of these
 /// bitflags may be set.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Default)]
 pub struct EventAuxiliaryFlags {
     /// Watch was removed when explicitly removed via [`inotify_rm_watch(2)`]
     /// or automatically (because the file was deleted or the filesystem was unmounted)
@@ -575,7 +575,9 @@ mod tests {
 
     use inotify_sys as ffi;
 
-    use super::Event;
+    use crate::{EventMask, EventMaskParseError};
+
+    use super::{Event, EventAuxiliaryFlags, EventKind, ParsedEventMask};
 
     #[test]
     fn from_buffer_should_not_mistake_next_event_for_name_of_previous_event() {
@@ -602,5 +604,80 @@ mod tests {
         // dictated by the value `len` above.
         let (_, event) = Event::from_buffer(sync::Weak::new(), &buffer);
         assert_eq!(event.name, None);
+    }
+
+    #[test]
+    fn parse_event_kinds() {
+        // Parse each event kind
+        for bf_map in EventKind::BITFLAG_ENUM_MAP {
+            assert_eq!(
+                Ok(ParsedEventMask {
+                    kind: Some(bf_map.1),
+                    auxiliary_flags: Default::default()
+                }),
+                bf_map.0.parse()
+            );
+        }
+
+        // Parse an event with no event kind
+        assert_eq!(
+            Ok(ParsedEventMask {
+                kind: None,
+                auxiliary_flags: Default::default()
+            }),
+            EventMask::from_bits_retain(0).parse()
+        )
+    }
+
+    #[test]
+    fn parse_event_auxiliary_flags() {
+        assert_eq!(
+            Ok(ParsedEventMask {
+                kind: None,
+                auxiliary_flags: EventAuxiliaryFlags {
+                    ignored: true,
+                    isdir: false,
+                    unmount: false
+                }
+            }),
+            EventMask::IGNORED.parse()
+        );
+
+        assert_eq!(
+            Ok(ParsedEventMask {
+                kind: None,
+                auxiliary_flags: EventAuxiliaryFlags {
+                    ignored: false,
+                    isdir: true,
+                    unmount: false
+                }
+            }),
+            EventMask::ISDIR.parse()
+        );
+
+        assert_eq!(
+            Ok(ParsedEventMask {
+                kind: None,
+                auxiliary_flags: EventAuxiliaryFlags {
+                    ignored: false,
+                    isdir: false,
+                    unmount: true
+                }
+            }),
+            EventMask::UNMOUNT.parse()
+        );
+    }
+
+    #[test]
+    fn parse_event_errors() {
+        assert_eq!(
+            Err(EventMaskParseError::QueueOverflow),
+            EventMask::Q_OVERFLOW.parse()
+        );
+
+        assert_eq!(
+            Err(EventMaskParseError::TooManyBitsSet),
+            (EventMask::ATTRIB | EventMask::ACCESS).parse()
+        );
     }
 }
