@@ -330,7 +330,7 @@ bitflags! {
 
 impl EventMask {
     /// Parse this event mask into a ParsedEventMask
-    pub fn parse(self: Self) -> Result<ParsedEventMask, EventMaskParseError> {
+    pub fn parse(self) -> Result<ParsedEventMask, EventMaskParseError> {
         self.try_into()
     }
 
