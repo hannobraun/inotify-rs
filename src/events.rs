@@ -493,7 +493,7 @@ impl EventKind {
             // The mask is invalid.
             //
             // More than one of the bitflags are set
-            return Err(EventMaskParseError::TooManyBitsSet);
+            return Err(EventMaskParseError::TooManyBitsSet(mask));
         }
 
         Ok(kind)
@@ -551,7 +551,7 @@ impl From<EventMask> for EventAuxiliaryFlags {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventMaskParseError {
     /// More than one bit repesenting the event type was set
-    TooManyBitsSet,
+    TooManyBitsSet(EventMask),
     /// The event is a signal that the kernels event queue overflowed
     QueueOverflow,
 }
@@ -559,8 +559,11 @@ pub enum EventMaskParseError {
 impl Display for EventMaskParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::TooManyBitsSet => {
-                writeln!(f, "Error parsing event mask: too many event type bits set")
+            Self::TooManyBitsSet(mask) => {
+                writeln!(
+                    f,
+                    "Error parsing event mask: too many event type bits set | {mask:?}"
+                )
             }
             Self::QueueOverflow => writeln!(f, "Error: the kernel's event queue overflowed"),
         }
@@ -675,9 +678,7 @@ mod tests {
             EventMask::Q_OVERFLOW.parse()
         );
 
-        assert_eq!(
-            Err(EventMaskParseError::TooManyBitsSet),
-            (EventMask::ATTRIB | EventMask::ACCESS).parse()
-        );
+        let mask = EventMask::ATTRIB | EventMask::ACCESS;
+        assert_eq!(Err(EventMaskParseError::TooManyBitsSet(mask)), mask.parse());
     }
 }
