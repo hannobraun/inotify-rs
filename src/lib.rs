@@ -91,7 +91,10 @@ mod watches;
 #[cfg(feature = "stream")]
 mod stream;
 
-pub use crate::events::{Event, EventMask, EventOwned, Events};
+pub use crate::events::{
+    Event, EventAuxiliaryFlags, EventKind, EventMask, EventMaskParseError, EventOwned, Events,
+    ParsedEventMask,
+};
 pub use crate::inotify::Inotify;
 pub use crate::util::{get_absolute_path_buffer_size, get_buffer_size};
 pub use crate::watches::{WatchDescriptor, WatchMask, Watches};
