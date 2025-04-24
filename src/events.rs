@@ -351,6 +351,10 @@ impl EventMask {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParsedEventMask {
     /// The kind of event that occurred
+    ///
+    /// Inotify events that come from the kernel have
+    /// exactly 0 or 1 of the flags associated with the
+    /// event type set.
     pub kind: Option<EventKind>,
     /// The auxiliary flags about the event
     pub auxiliary_flags: EventAuxiliaryFlags,
@@ -371,8 +375,8 @@ impl ParsedEventMask {
             return Err(EventMaskParseError::QueueOverflow);
         }
 
-        let kind = mask.try_into()?;
-        let auxiliary_flags = mask.into();
+        let kind = Option::<EventKind>::try_from(mask)?;
+        let auxiliary_flags = EventAuxiliaryFlags::from(mask);
 
         Ok(ParsedEventMask::from_parts(kind, auxiliary_flags))
     }
@@ -387,9 +391,6 @@ impl TryFrom<EventMask> for ParsedEventMask {
 }
 
 /// Represents the type of inotify event
-///
-/// Exactly 0 or 1 of these bitflags will be set in an event mask
-/// returned from reading an inotify fd
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EventKind {
     /// File was accessed (e.g., [`read(2)`], [`execve(2)`])
