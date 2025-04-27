@@ -51,12 +51,22 @@
 //! ```
 //! When you want to read events asynchronously, you need to convert it to [`EventStream`].
 //! The transform function is [`Inotify::into_event_stream`]
-//! ```skip
-//!  let mut stream = inotify.into_event_stream(&mut buffer)?;
-//!  // Read events from async stream
-//!  while let Some(event_or_error) = stream.next().await {
-//!     println!("event: {:?}", event_or_error?);
-//!  }
+//! ```
+//! # async fn stream_events() {
+//! # use futures_util::StreamExt;
+//! #
+//! # let mut inotify = inotify::Inotify::init()
+//! #     .expect("Error while initializing inotify instance");
+//! #
+//! let mut buffer = [0; 1024];
+//! let mut stream = inotify.into_event_stream(&mut buffer)
+//!     .expect("Error converting to stream");
+//!
+//! // Read events from async stream
+//! while let Some(event_or_error) = stream.next().await {
+//!     println!("event: {:?}", event_or_error.expect("Stream error"));
+//! }
+//! # }
 //! ```
 //! # Attention: inotify gotchas
 //!
