@@ -253,10 +253,7 @@ impl Inotify {
 
     /// Create a stream which collects events. Consumes the `Inotify` instance.
     ///
-    /// Returns a `Stream` over all events that are available. This stream is an
-    /// infinite source of events.
-    ///
-    /// An internal buffer which can hold the largest possible event is used.
+    /// Returns a asynchronous `Stream` over the Inotify instance's events.
     #[cfg(feature = "stream")]
     pub fn into_event_stream<T>(self, buffer: T) -> io::Result<EventStream<T>>
     where
