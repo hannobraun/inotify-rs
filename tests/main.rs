@@ -3,7 +3,7 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
-use inotify::{Inotify, WatchMask};
+use inotify::{EventMask, Inotify, WatchMask};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
@@ -12,8 +12,6 @@ use tempfile::TempDir;
 
 #[cfg(feature = "stream")]
 use futures_util::StreamExt;
-#[cfg(feature = "stream")]
-use inotify::EventMask;
 #[cfg(feature = "stream")]
 use maplit::hashmap;
 #[cfg(feature = "stream")]
@@ -441,6 +439,74 @@ impl TestDir {
 
         (path, file)
     }
+}
+
+#[test]
+fn it_should_receive_delete_event_when_file_is_deleted() {
+    let mut testdir = TestDir::new();
+    let (path, _file) = testdir.new_file();
+
+    let mut inotify = Inotify::init().unwrap();
+    let _watch = inotify
+        .watches()
+        .add(path.parent().unwrap(), WatchMask::DELETE)
+        .unwrap();
+
+    std::fs::remove_file(&path).unwrap();
+
+    let mut buffer = [0; 1024];
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
+    match events.next() {
+        Some(event) => assert_eq!(event.mask, EventMask::DELETE),
+        None => panic!("Expected event, got none."),
+    }
+}
+
+#[test]
+fn it_should_receive_delete_event_watchee_is_deleted() {
+    let testdir = TestDir::new();
+    let path = testdir.dir.path();
+
+    let mut inotify = Inotify::init().unwrap();
+    let _watch = inotify.watches().add(path, WatchMask::DELETE_SELF).unwrap();
+
+    std::fs::remove_dir(path).unwrap();
+
+    let mut buffer = [0; 1024];
+    let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
+    match events.next() {
+        Some(event) => assert_eq!(event.mask, EventMask::DELETE_SELF),
+        None => panic!("Expected event, got none."),
+    }
+}
+
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_receive_delete_event_when_file_is_deleted_async() {
+    use std::time::Duration;
+    use tokio::time::timeout;
+
+    let mut testdir = TestDir::new();
+    let (path, _file) = testdir.new_file();
+
+    let inotify = Inotify::init().unwrap();
+    // Watch the parent directory, not the file itself, to receive DELETE events
+    let _watch = inotify
+        .watches()
+        .add(path.parent().unwrap(), WatchMask::DELETE)
+        .unwrap();
+
+    let mut buffer = [0; 1024];
+    let mut stream = inotify.into_event_stream(&mut buffer).unwrap();
+
+    std::fs::remove_file(&path).unwrap();
+
+    let event = timeout(Duration::from_secs(2), stream.next())
+        .await
+        .unwrap() // Timeout
+        .unwrap() // End of stream
+        .unwrap(); // Stream error
+    assert_eq!(event.mask, EventMask::DELETE);
 }
 
 fn write_to(file: &mut File) {
