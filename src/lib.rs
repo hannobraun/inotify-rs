@@ -84,6 +84,11 @@
 //! [inotify-rs]: https://crates.io/crates/inotify
 //! [inotify]: https://en.wikipedia.org/wiki/Inotify
 //! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
+//!
+//! # `Vec` as buffers
+//!
+//! Using a `Vec::with_capacity(4096)` as a buffer is problematic, since this buffer has reserved
+//! capacity but length `0`. Use `vec![0u8; 4096]` instead.
 
 #![deny(missing_docs)]
 #![deny(warnings)]

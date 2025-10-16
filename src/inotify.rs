@@ -122,6 +122,9 @@ impl Inotify {
     /// This method calls [`Inotify::read_events`] internally and behaves
     /// essentially the same, apart from the blocking behavior. Please refer to
     /// the documentation of [`Inotify::read_events`] for more information.
+    ///
+    /// Care should be taken when using a [`Vec`] as buffer. See the [crate
+    /// documentation](crate) for details.
     pub fn read_events_blocking<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<Events<'a>> {
         unsafe {
             let res = fcntl(**self.fd, F_GETFL);
@@ -159,6 +162,9 @@ impl Inotify {
     ///
     /// The `buffer` argument, as the name indicates, is used as a buffer for
     /// the inotify events. Its contents may be overwritten.
+    ///
+    /// Care should be taken when using a [`Vec`] as buffer. See the [crate
+    /// documentation](crate) for details.
     ///
     /// # Errors
     ///
@@ -254,6 +260,9 @@ impl Inotify {
     /// Create a stream which collects events. Consumes the `Inotify` instance.
     ///
     /// Returns a asynchronous `Stream` over the Inotify instance's events.
+    ///
+    /// Care should be taken when using a [`Vec`] as buffer. See the [crate
+    /// documentation](crate) for details.
     #[cfg(feature = "stream")]
     pub fn into_event_stream<T>(self, buffer: T) -> io::Result<EventStream<T>>
     where
