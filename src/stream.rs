@@ -46,6 +46,72 @@ where
         Watches::new(self.fd.get_ref().clone())
     }
 
+    /// Reads and returns a single available event
+    ///
+    /// Returns the next available event from the internal buffer. If the buffer
+    /// is empty, it will attempt to read more events from the file descriptor.
+    /// Returns `Ok(None)` if no events are available without blocking.
+    ///
+    /// Please note that inotify will merge identical successive unread events
+    /// into a single event. This means this method can not be used to count the
+    /// number of file system events.
+    ///
+    /// # Errors
+    ///
+    /// This function directly returns all errors from the call to [`read`],
+    /// except for [`ErrorKind::WouldBlock`] which results in `Ok(None)`.
+    /// [`ErrorKind::UnexpectedEof`] is returned if the call to [`read`]
+    /// returns `0`, signaling end-of-file.
+    ///
+    /// [`read`]: libc::read
+    /// [`ErrorKind::WouldBlock`]: std::io::ErrorKind::WouldBlock
+    /// [`ErrorKind::UnexpectedEof`]: std::io::ErrorKind::UnexpectedEof
+    pub fn read_events(&mut self) -> io::Result<Option<EventOwned>> {
+        if self.unused_bytes == 0 {
+            // Nothing usable in buffer. Need to reset and fill buffer.
+            self.buffer_pos = 0;
+            let num_bytes = read_into_buffer(self.fd.as_raw_fd(), self.buffer.as_mut());
+
+            self.unused_bytes = match num_bytes {
+                0 => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "`read` return `0`, signaling end-of-file",
+                    ));
+                }
+                -1 => {
+                    let error = io::Error::last_os_error();
+                    if error.kind() == io::ErrorKind::WouldBlock {
+                        return Ok(None);
+                    }
+                    return Err(error);
+                }
+                _ if num_bytes < 0 => {
+                    panic!(
+                        "{} {} {} {} {} {}",
+                        "Unexpected return value from `read`. Received a negative",
+                        "value that was not `-1`. According to the `read` man page",
+                        "this shouldn't happen, as either `-1` is returned on",
+                        "error, `0` on end-of-file, or a positive value for the",
+                        "number of bytes read. Returned value:",
+                        num_bytes,
+                    );
+                }
+                _ => num_bytes as usize,
+            };
+        }
+
+        // We have bytes in the buffer. Extract one event.
+        let (bytes_consumed, event) = Event::from_buffer(
+            Arc::downgrade(self.fd.get_ref()),
+            &self.buffer.as_ref()[self.buffer_pos..],
+        );
+        self.buffer_pos += bytes_consumed;
+        self.unused_bytes -= bytes_consumed;
+
+        Ok(Some(event.to_owned()))
+    }
+
     /// Consumes the `EventStream` instance and returns an `Inotify` using the original
     /// file descriptor that was passed from `Inotify` to create the `EventStream`.
     pub fn into_inotify(self) -> Inotify {

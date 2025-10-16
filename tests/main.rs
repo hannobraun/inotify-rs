@@ -135,6 +135,35 @@ async fn it_should_watch_a_file_after_converting_back_from_eventstream() {
     assert!(num_events > 0);
 }
 
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_read_a_single_event_from_eventstream() {
+    let mut testdir = TestDir::new();
+    let (path, mut file) = testdir.new_file();
+
+    let inotify = Inotify::init().unwrap();
+    let watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
+
+    let mut buffer = [0; 1024];
+    let mut stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
+
+    write_to(&mut file);
+
+    let event = stream.read_events().unwrap().expect("Expected event");
+    assert_eq!(watch, event.wd);
+}
+
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_return_none_when_no_events_available_in_eventstream() {
+    let inotify = Inotify::init().unwrap();
+
+    let mut buffer = [0; 1024];
+    let mut stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
+
+    assert!(stream.read_events().unwrap().is_none());
+}
+
 #[test]
 fn it_should_return_immediately_if_no_events_are_available() {
     let mut inotify = Inotify::init().unwrap();
