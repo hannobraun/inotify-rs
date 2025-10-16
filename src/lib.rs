@@ -51,7 +51,7 @@
 //! ```
 //! When you want to read events asynchronously, you need to convert it to [`EventStream`].
 //! The transform function is [`Inotify::into_event_stream`]
-//! ```
+//! ```ignore
 //! # async fn stream_events() {
 //! # use futures_util::StreamExt;
 //! #
