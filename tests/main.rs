@@ -6,12 +6,14 @@
 use inotify::{EventMask, Inotify, WatchMask};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
+#[cfg(feature = "stream")]
+use std::mem;
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[cfg(feature = "stream")]
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 #[cfg(feature = "stream")]
 use maplit::hashmap;
 #[cfg(feature = "stream")]
@@ -375,6 +377,58 @@ async fn it_should_distinguish_event_for_files_with_same_name() {
 
     let () = event_handle.await.unwrap();
     let () = file_removal_handler.await.unwrap();
+}
+
+#[cfg(feature = "stream")]
+#[tokio::test]
+async fn it_should_yield_all_events_with_small_buffer() {
+    let testdir = TestDir::new();
+    let dir_path = testdir.dir.path().to_owned();
+
+    let inotify = Inotify::init().expect("Failed to initialize inotify instance");
+
+    inotify
+        .watches()
+        .add(&dir_path, WatchMask::CREATE)
+        .expect("Failed to add watch");
+
+    let num_files = 3usize;
+    for i in 0..num_files {
+        let file_path = dir_path.join(format!("{}", i));
+        File::create(&file_path).expect("Failed to create file");
+    }
+
+    let event_struct_size = mem::size_of::<inotify_sys::inotify_event>();
+    let name_len_padded = 4; // "0\0" padded to 4-byte alignment
+    let single_event_size = event_struct_size + name_len_padded;
+
+    // Use a buffer that can fit exactly one event but not two.
+    let buffer_size = single_event_size + (single_event_size - 1); // 20 + 19 = 39 bytes
+    let mut buffer = vec![0u8; buffer_size];
+    let mut stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
+
+    // Await one event to ensure that everything has settled.
+    let first_event = stream.next().await.unwrap().unwrap();
+    assert!(first_event.mask.contains(EventMask::CREATE));
+
+    // Each call should yield one event since the buffer only fits one.
+    let mut events = vec![first_event];
+    while let Some(result) = stream.next().now_or_never() {
+        match result {
+            Some(Ok(event)) => {
+                assert!(event.mask.contains(EventMask::CREATE));
+                events.push(event);
+            }
+            Some(Err(e)) => panic!("Error reading event: {}", e),
+            None => break, // Stream ended
+        }
+    }
+
+    assert_eq!(
+        events.len(),
+        num_files,
+        "All events should yield with now_or_never"
+    );
 }
 
 struct TestDir {
