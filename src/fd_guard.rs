@@ -87,7 +87,7 @@ impl PartialEq for FdGuard {
         // This allows comparing duplicated Inotify descriptors that point to the
         // same Inotify instance, which allows for scenarios where an Inotify
         // wrapper both owns a file descriptor for control purposes and spawns a
-        // second thread that needs a separate unowned descriptor to use the `epoll`
+        // second thread that needs a separate unowned descriptor to use the `epoll-rs`
         // crate.
         let current_process = std::process::id();
         let result = match util::cvt(unsafe {
