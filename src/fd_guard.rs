@@ -6,6 +6,8 @@ use std::{
 
 use inotify_sys as ffi;
 
+use crate::util;
+
 /// A RAII guard around a `RawFd` that closes it automatically on drop.
 #[derive(Debug)]
 pub struct FdGuard {
@@ -78,6 +80,28 @@ impl AsFd for FdGuard {
 
 impl PartialEq for FdGuard {
     fn eq(&self, other: &FdGuard) -> bool {
-        self.fd == other.fd
+        let initial = self.fd == other.fd;
+        if initial {
+            return true;
+        }
+        // This allows comparing duplicated Inotify descriptors that point to the
+        // same Inotify instance, which allows for scenarios where an Inotify
+        // wrapper both owns a file descriptor for control purposes and spawns a
+        // second thread that needs a separate unowned descriptor to use the `epoll`
+        // crate.
+        let current_process = std::process::id();
+        let result = match util::cvt(unsafe {
+            libc::syscall(
+                libc::SYS_kcmp,
+                current_process,
+                current_process,
+                self.fd,
+                other.fd,
+            ) as i64
+        }) {
+            Err(_) => false,
+            Ok(cmp) => cmp == 0,
+        };
+        result
     }
 }
