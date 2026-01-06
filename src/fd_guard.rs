@@ -89,12 +89,14 @@ impl PartialEq for FdGuard {
         // wrapper both owns a file descriptor for control purposes and spawns a
         // second thread that needs a separate unowned descriptor to use the `epoll-rs`
         // crate.
+        const KCMP_FILE: i32 = 0;
         let current_process = std::process::id();
         let result = match util::cvt(unsafe {
             libc::syscall(
                 libc::SYS_kcmp,
                 current_process,
                 current_process,
+                KCMP_FILE,
                 self.fd,
                 other.fd,
             ) as i64
