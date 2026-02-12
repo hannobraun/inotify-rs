@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{ErrorKind, Write};
 #[cfg(feature = "stream")]
 use std::mem;
+use std::os::fd::AsFd;
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -313,6 +314,31 @@ fn it_should_watch_correctly_with_a_watches_clone() {
         num_events += 1;
     }
     assert!(num_events > 0);
+}
+
+#[test]
+fn watch_descriptor_equality_should_work_for_multiple_fds_of_same_instance() {
+    let mut testdir = TestDir::new();
+    let (path, _) = testdir.new_file();
+    let inotify = Inotify::init().unwrap();
+    // Clone the fd of the inotify instance to create a second reference to the same instance
+    let second_inotify_reference = Inotify::from(
+        inotify
+            .as_fd()
+            .try_clone_to_owned()
+            .expect("failed to clone fd of inotify"),
+    );
+    // Since both descriptors point to the same inotify instance, attempting to add a watch twice
+    // should return the same watch descriptor
+    let first_watch = inotify.watches().add(&path, WatchMask::MODIFY).unwrap();
+    let second_watch = second_inotify_reference
+        .watches()
+        .add(&path, WatchMask::MODIFY)
+        .unwrap();
+    assert_eq!(
+        first_watch, second_watch,
+        "first and second watch descriptors should be equal"
+    );
 }
 
 #[cfg(feature = "stream")]

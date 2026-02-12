@@ -62,7 +62,7 @@ pub fn get_absolute_path_buffer_size(path: &Path) -> usize {
 
 /// Converts Linux return integers to Result using the *-1 means error is in `errno`*  convention.
 /// Non-error values are `Ok`-wrapped.
-pub fn cvt<T: Into<i64> + Copy>(t: T) -> io::Result<T> {
+pub fn libc_convert<T: Into<i64> + Copy>(t: T) -> io::Result<T> {
     if t.into() == -1 {
         Err(io::Error::last_os_error())
     } else {
