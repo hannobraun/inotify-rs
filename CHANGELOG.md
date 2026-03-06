@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.1 (2026-03-06)
+
+- Make improvements to documentation ([#224], [#226], [#228], [#239], [#240], [#244])
+- Add `EventMask::parse` and `ParsedEventMask` ([#236], [#238])
+
+[#224]: https://github.com/hannobraun/inotify-rs/pull/224
+[#226]: https://github.com/hannobraun/inotify-rs/pull/226
+[#228]: https://github.com/hannobraun/inotify-rs/pull/228
+[#236]: https://github.com/hannobraun/inotify-rs/pull/236
+[#238]: https://github.com/hannobraun/inotify-rs/pull/238
+[#239]: https://github.com/hannobraun/inotify-rs/pull/239
+[#240]: https://github.com/hannobraun/inotify-rs/pull/240
+[#244]: https://github.com/hannobraun/inotify-rs/pull/244
+
 ## v0.11.0 (2024-08-19)
 
 - Fix link in README ([#209])
