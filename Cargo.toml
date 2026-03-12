@@ -13,7 +13,7 @@ rust-version = "1.70"
 
 description   = "Idiomatic wrapper for inotify"
 documentation = "https://docs.rs/inotify"
-repository    = "https://github.com/hannobraun/inotify"
+repository    = "https://github.com/hannobraun/inotify-rs"
 license       = "ISC"
 readme        = "README.md"
 
