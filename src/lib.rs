@@ -83,7 +83,7 @@
 //!
 //! [inotify-rs]: https://crates.io/crates/inotify
 //! [inotify]: https://en.wikipedia.org/wiki/Inotify
-//! [inotify man pages]: http://man7.org/linux/man-pages/man7/inotify.7.html
+//! [inotify man pages]: https://man7.org/linux/man-pages/man7/inotify.7.html
 //!
 //! # `Vec` as buffers
 //!
