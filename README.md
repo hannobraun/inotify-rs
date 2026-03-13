@@ -131,11 +131,11 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
-[inotify]: http://en.wikipedia.org/wiki/Inotify
-[Rust programming language]: http://rust-lang.org/
+[inotify]: https://en.wikipedia.org/wiki/Inotify
+[Rust programming language]: https://rust-lang.org/
 [documentation]: https://docs.rs/inotify
 [notify]: https://crates.io/crates/notify
 [inotify-sys]: https://crates.io/crates/inotify-sys
 [API reference]: https://docs.rs/inotify
-[examples directory]: https://github.com/inotify-rs/inotify/tree/main/examples
-[inotify man page]: http://man7.org/linux/man-pages/man7/inotify.7.html
+[examples directory]: https://github.com/hannobraun/inotify-rs/tree/main/examples
+[inotify man page]: https://man7.org/linux/man-pages/man7/inotify.7.html
