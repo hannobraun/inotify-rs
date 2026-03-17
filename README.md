@@ -64,8 +64,7 @@ Perhaps you want asynchronous monitoring of events. An example of asynchronous i
 ```rust
 use std::{fs::File, io, thread, time::Duration};
 
-use futures_util::StreamExt;
-use inotify::{Inotify, WatchMask};
+use inotify::{Inotify, StreamExt, WatchMask};
 use tempfile::TempDir;
 
 #[tokio::main]
