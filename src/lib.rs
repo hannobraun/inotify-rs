@@ -53,7 +53,7 @@
 //! The transform function is [`Inotify::into_event_stream`]
 //! ```
 //! # async fn stream_events() {
-//! # use futures_util::StreamExt;
+//! # use inotify::StreamExt;
 //! #
 //! # let mut inotify = inotify::Inotify::init()
 //! #     .expect("Error while initializing inotify instance");
@@ -116,3 +116,5 @@ pub use crate::watches::{WatchDescriptor, WatchMask, Watches};
 
 #[cfg(feature = "stream")]
 pub use self::stream::EventStream;
+#[cfg(feature = "stream")]
+pub use futures_util::{Stream, StreamExt};
