@@ -24,6 +24,9 @@ exclude    = ["/inotify-rs.sublime-project"]
 [features]
 default = ["stream"]
 stream = ["futures-util", "tokio"]
+# Forward to inotify-sys: skip linking libinotify on FreeBSD and use the
+# in-kernel inotify wrappers in libc (FreeBSD 14.4+).
+freebsd-native = ["inotify-sys/freebsd-native"]
 
 
 [dependencies]
