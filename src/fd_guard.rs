@@ -91,7 +91,7 @@ impl PartialEq for FdGuard {
         // crate.
         const KCMP_FILE: i32 = 0;
         let current_process = std::process::id();
-        let result = match util::libc_convert(unsafe {
+        match util::libc_convert(unsafe {
             libc::syscall(
                 libc::SYS_kcmp,
                 current_process,
@@ -103,7 +103,6 @@ impl PartialEq for FdGuard {
         }) {
             Err(_) => false,
             Ok(cmp) => cmp == 0,
-        };
-        result
+        }
     }
 }
