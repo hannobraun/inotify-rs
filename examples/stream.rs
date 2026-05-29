@@ -1,7 +1,6 @@
 use std::{fs::File, io, thread, time::Duration};
 
-use futures_util::StreamExt;
-use inotify::{Inotify, WatchMask};
+use inotify::{Inotify, StreamExt, WatchMask};
 use tempfile::TempDir;
 
 #[tokio::main]

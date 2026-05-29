@@ -1,12 +1,15 @@
 # inotify-rs [![crates.io](https://img.shields.io/crates/v/inotify.svg)](https://crates.io/crates/inotify) [![Documentation](https://docs.rs/inotify/badge.svg)](https://docs.rs/inotify) [![Rust](https://github.com/hannobraun/inotify-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/hannobraun/inotify-rs/actions/workflows/rust.yml)
 
-## Introduce
-Idiomatic [inotify] wrapper for the [Rust programming language].This package generally tries to adhere to the underlying inotify API closely, while making access to it safe and convenient.
+## Introduction
+
+Idiomatic [inotify] wrapper for the [Rust programming language]. This package generally tries to adhere to the underlying inotify API closely, while making access to it safe and convenient.
 
 ## Examples
+
 Now inotify-rs supports synchronous or asynchronous event monitoring.
 An example of synchronous is as follows:
-```rs
+
+```rust
 use inotify::{EventMask, Inotify, WatchMask};
 use std::env;
 
@@ -55,12 +58,13 @@ fn main() {
     }
 }
 ```
-Perhaps you want asynchronous monitoring of events.An example of asynchronous is as follows:
-```rs
+
+Perhaps you want asynchronous monitoring of events. An example of asynchronous is as follows:
+
+```rust
 use std::{fs::File, io, thread, time::Duration};
 
-use futures_util::StreamExt;
-use inotify::{Inotify, WatchMask};
+use inotify::{Inotify, StreamExt, WatchMask};
 use tempfile::TempDir;
 
 #[tokio::main]
@@ -87,8 +91,6 @@ async fn main() -> Result<(), io::Error> {
 
     Ok(())
 }
-
-
 ```
 
 ## Usage
@@ -103,6 +105,7 @@ inotify = "0.11"
 Please refer to the [documentation] and the example above, for information on how to use it in your code.
 
 ## Notice 
+
 Please note that inotify-rs is a relatively low-level wrapper around the original inotify API. And, of course, it is Linux-specific, just like inotify itself. If you are looking for a higher-level and platform-independent file system notification library, please consider **[notify]**.
 
 If you need to access inotify in a way that this wrapper doesn't support, consider using **[inotify-sys]** instead.
@@ -131,11 +134,11 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
-[inotify]: http://en.wikipedia.org/wiki/Inotify
-[Rust programming language]: http://rust-lang.org/
+[inotify]: https://en.wikipedia.org/wiki/Inotify
+[Rust programming language]: https://rust-lang.org/
 [documentation]: https://docs.rs/inotify
 [notify]: https://crates.io/crates/notify
 [inotify-sys]: https://crates.io/crates/inotify-sys
 [API reference]: https://docs.rs/inotify
-[examples directory]: https://github.com/inotify-rs/inotify/tree/main/examples
-[inotify man page]: http://man7.org/linux/man-pages/man7/inotify.7.html
+[examples directory]: https://github.com/hannobraun/inotify-rs/tree/main/examples
+[inotify man page]: https://man7.org/linux/man-pages/man7/inotify.7.html

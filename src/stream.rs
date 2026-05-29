@@ -6,7 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_core::{ready, Stream};
+use futures_util::{ready, Stream};
 use tokio::io::unix::AsyncFd;
 
 use crate::events::{Event, EventOwned};

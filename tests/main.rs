@@ -3,6 +3,8 @@
 // This test suite is incomplete and doesn't cover all available functionality.
 // Contributions to improve test coverage would be highly appreciated!
 
+#[cfg(feature = "stream")]
+use inotify::StreamExt;
 use inotify::{EventMask, Inotify, WatchMask};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
@@ -14,7 +16,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[cfg(feature = "stream")]
-use futures_util::{FutureExt, StreamExt};
+use futures_util::FutureExt;
 #[cfg(feature = "stream")]
 use maplit::hashmap;
 #[cfg(feature = "stream")]
@@ -64,7 +66,6 @@ async fn it_should_watch_a_file_async() {
 
     let mut buffer = [0; 1024];
 
-    use futures_util::StreamExt;
     let events = inotify
         .into_event_stream(&mut buffer[..])
         .unwrap()
@@ -90,7 +91,6 @@ async fn it_should_watch_a_file_from_eventstream_watches() {
 
     let mut buffer = [0; 1024];
 
-    use futures_util::StreamExt;
     let stream = inotify.into_event_stream(&mut buffer[..]).unwrap();
 
     // Hold ownership of `watches` for this test, so that the underlying file descriptor has
