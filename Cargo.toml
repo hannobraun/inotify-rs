@@ -2,12 +2,6 @@
 
 name    = "inotify"
 version = "0.11.1"
-authors = [
-  "Hanno Braun <mail@hannobraun.de>",
-  "Félix Saparelli <me@passcod.name>",
-  "Cristian Kubis <cristian.kubis@tsunix.de>",
-  "Frank Denis <github@pureftpd.org>"
-]
 edition = "2018"
 rust-version = "1.70"
 
