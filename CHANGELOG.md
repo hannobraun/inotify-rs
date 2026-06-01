@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.11.2
+
+- Make improvements to documentation ([#254], [#256])
+- Re-export `Stream` and `StreamExt` ([#257])
+- Consider file descriptors backed by one inotify instance as equal ([#260])
+
+[#254]: https://github.com/hannobraun/inotify-rs/pull/254
+[#256]: https://github.com/hannobraun/inotify-rs/pull/256
+[#257]: https://github.com/hannobraun/inotify-rs/pull/257
+[#260]: https://github.com/hannobraun/inotify-rs/pull/260
+
 ## v0.11.1 (2026-03-06)
 
 - Make improvements to documentation ([#224], [#226], [#228], [#239], [#240], [#244])
