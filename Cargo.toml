@@ -23,7 +23,7 @@ stream = ["futures-util", "tokio"]
 [dependencies]
 bitflags     = "2"
 futures-util = { version = "0.3.30", optional = true }
-inotify-sys  = "0.1.5"
+inotify-sys  = "0.1.7"
 libc         = "0.2"
 tokio        = { version = "1.40.0", optional = true, features = ["net"] }
 
