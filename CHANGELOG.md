@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.3 (2026-07-06)
+
+- Add `WatchMask::MASK_CREATE` ([#263])
+
+[#263]: https://github.com/hannobraun/inotify-rs/pull/263
+
 ## v0.11.2 (2026-06-01)
 
 - Make improvements to documentation ([#254], [#256])
