@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.11.2
+## v0.11.2 (2026-06-01)
 
 - Make improvements to documentation ([#254], [#256])
 - Re-export `Stream` and `StreamExt` ([#257])
