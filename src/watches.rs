@@ -200,10 +200,15 @@ bitflags! {
         /// See [`inotify_sys::IN_EXCL_UNLINK`].
         const EXCL_UNLINK = ffi::IN_EXCL_UNLINK;
 
-        /// If a watch for the inode exists, amend it instead of replacing it
+        /// If a watch for the inode exists, amend it instead of replacing it. Conflicts with [`WatchMask::MASK_CREATE`].
         ///
         /// See [`inotify_sys::IN_MASK_ADD`].
         const MASK_ADD = ffi::IN_MASK_ADD;
+
+        /// Only create watches, errors if a watch on this inode already exists. Conflicts with [`WatchMask::MASK_ADD`].
+        ///
+        /// See [`inotify_sys::IN_MASK_CREATE`].
+        const MASK_CREATE = ffi::IN_MASK_CREATE;
 
         /// Only receive one event, then remove the watch
         ///
