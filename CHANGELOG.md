@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.4 (2026-07-08)
+
+- Add support for FreeBSD ([#258])
+
+[#258]: https://github.com/hannobraun/inotify-rs/pull/258
+
 ## v0.11.3 (2026-07-06)
 
 - Add `WatchMask::MASK_CREATE` ([#263])
