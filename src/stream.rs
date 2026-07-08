@@ -7,7 +7,7 @@ use std::{
 };
 
 use futures_util::{ready, Stream};
-use tokio::io::unix::AsyncFd;
+use tokio::io::{unix::AsyncFd, Interest};
 
 use crate::events::{Event, EventOwned};
 use crate::fd_guard::FdGuard;
@@ -33,7 +33,7 @@ where
     /// Returns a new `EventStream` associated with the default reactor.
     pub(crate) fn new(fd: Arc<FdGuard>, buffer: T) -> io::Result<Self> {
         Ok(EventStream {
-            fd: AsyncFd::new(fd)?,
+            fd: AsyncFd::with_interest(fd, Interest::READABLE)?,
             buffer,
             buffer_pos: 0,
             unused_bytes: 0,
