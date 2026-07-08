@@ -555,7 +555,7 @@ fn it_should_receive_delete_event_watchee_is_deleted() {
     let mut buffer = [0; 1024];
     let mut events = inotify.read_events_blocking(&mut buffer).unwrap();
     match events.next() {
-        Some(event) => assert_eq!(event.mask, EventMask::DELETE_SELF),
+        Some(event) => assert!(event.mask.contains(EventMask::DELETE_SELF)),
         None => panic!("Expected event, got none."),
     }
 }

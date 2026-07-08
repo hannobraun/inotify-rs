@@ -89,20 +89,42 @@ impl PartialEq for FdGuard {
         // wrapper both owns a file descriptor for control purposes and spawns a
         // second thread that needs a separate unowned descriptor to use the `epoll-rs`
         // crate.
-        const KCMP_FILE: i32 = 0;
         let current_process = std::process::id();
-        match util::libc_convert(unsafe {
-            libc::syscall(
-                libc::SYS_kcmp,
-                current_process,
-                current_process,
-                KCMP_FILE,
-                self.fd,
-                other.fd,
-            ) as i64
-        }) {
-            Err(_) => false,
-            Ok(cmp) => cmp == 0,
-        }
+        kcmp_file_descriptors(current_process, self.fd, other.fd)
     }
 }
+
+fn kcmp_file_descriptors(current_process: u32, fd1: RawFd, fd2: RawFd) -> bool {
+    match util::libc_convert(unsafe { kcmp_file(current_process, fd1, fd2) }) {
+        Err(_) => false,
+        Ok(cmp) => cmp == 0,
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+unsafe fn kcmp_file(current_process: u32, fd1: RawFd, fd2: RawFd) -> i64 {
+    const KCMP_FILE: i32 = 0;
+
+    libc::syscall(
+        libc::SYS_kcmp,
+        current_process,
+        current_process,
+        KCMP_FILE,
+        fd1,
+        fd2,
+    ) as i64
+}
+
+#[cfg(target_os = "freebsd")]
+unsafe fn kcmp_file(current_process: u32, fd1: RawFd, fd2: RawFd) -> i64 {
+    libc::kcmp(
+        current_process as libc::pid_t,
+        current_process as libc::pid_t,
+        libc::KCMP_FILE,
+        fd1 as libc::c_ulong,
+        fd2 as libc::c_ulong,
+    ) as i64
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "freebsd")))]
+compile_error!("FdGuard equality requires kcmp support; add a target-specific kcmp_file implementation for this platform");

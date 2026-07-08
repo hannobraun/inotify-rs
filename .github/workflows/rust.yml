@@ -47,6 +47,23 @@ jobs:
       - name: Run tests (no default features)
         run: cargo test --no-default-features --all-targets --verbose
 
+  test-freebsd:
+    name: Test (FreeBSD)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+          shell: cpa.sh {0}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test on FreeBSD
+        uses: cross-platform-actions/action@v1.3.0
+        with:
+          operating_system: freebsd
+          version: "15.1"
+      - run: |
+          sudo pkg install -y rust
+          cargo test
+
   miri:
     name: "Miri"
     runs-on: ubuntu-latest
