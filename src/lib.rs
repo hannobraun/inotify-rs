@@ -93,6 +93,7 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![deny(missing_debug_implementations)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[macro_use]
 extern crate bitflags;
@@ -115,6 +116,8 @@ pub use crate::util::{get_absolute_path_buffer_size, get_buffer_size};
 pub use crate::watches::{WatchDescriptor, WatchMask, Watches};
 
 #[cfg(feature = "stream")]
+#[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 pub use self::stream::EventStream;
 #[cfg(feature = "stream")]
+#[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
 pub use futures_util::{Stream, StreamExt};
