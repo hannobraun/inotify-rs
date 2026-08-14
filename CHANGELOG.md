@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.5 (2026-08-14)
+
+- Show in API docs where `stream` feature is required ([#266])
+
+[#266]: https://github.com/hannobraun/inotify-rs/pull/266
+
 ## v0.11.4 (2026-07-08)
 
 - Add support for FreeBSD ([#258])
