@@ -250,6 +250,7 @@ impl Inotify {
     /// as they will contend over one event source and each produce unpredictable stream contents.
     #[deprecated = "use `into_event_stream()` instead, which enforces a single Stream and predictable reads"]
     #[cfg(feature = "stream")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
     pub fn event_stream<T>(&mut self, buffer: T) -> io::Result<EventStream<T>>
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
@@ -264,6 +265,7 @@ impl Inotify {
     /// Care should be taken when using a [`Vec`] as buffer. See the [crate
     /// documentation](crate) for details.
     #[cfg(feature = "stream")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
     pub fn into_event_stream<T>(self, buffer: T) -> io::Result<EventStream<T>>
     where
         T: AsMut<[u8]> + AsRef<[u8]>,
